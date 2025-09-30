@@ -1,6 +1,6 @@
 package response
 
-import "main/internal/lib/errs"
+import "main/internal/pkg/errs"
 
 const (
 	StatusOK    = "OK"

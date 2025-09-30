@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"main/internal/lib/errs"
-	"main/internal/lib/response"
 	dto "main/internal/participant/dto"
+	"main/internal/pkg/errs"
+	"main/internal/pkg/response"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
