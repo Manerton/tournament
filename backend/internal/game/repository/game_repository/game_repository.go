@@ -1,0 +1,30 @@
+package game_repository
+
+import (
+	"context"
+	"fmt"
+	"main/internal/common/repository"
+	"main/internal/game/model/game"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+type GameRespository struct {
+	repository.RepositoryBase[game.Game]
+}
+
+func New() *GameRespository {
+	return &GameRespository{}
+}
+
+func (r *GameRespository) GetByEventId(ctx context.Context, db *gorm.DB, eventId uuid.UUID) ([]game.Game, error) {
+	const op = "repository.GameRepository.GetByEventId"
+
+	var games []game.Game
+	err := db.WithContext(ctx).Where(game.Game{EventID: eventId}).Find(&games).Error
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return games, nil
+}

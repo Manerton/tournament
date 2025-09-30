@@ -3,15 +3,15 @@ package district_repository
 import (
 	"context"
 	"fmt"
+	"main/internal/common/repository"
 	"main/internal/location/model/district"
-	"main/internal/location/repository/location_repository"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type DistrictRepository struct {
-	location_repository.LocationRepositoryBase[district.District]
+	repository.RepositoryBase[district.District]
 }
 
 func New() *DistrictRepository {

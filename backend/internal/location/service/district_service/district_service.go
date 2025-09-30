@@ -12,7 +12,7 @@ import (
 )
 
 type DisctrictRepositoryInterface interface {
-	Create(context.Context, *gorm.DB, district.District) error
+	Create(context.Context, *gorm.DB, *district.District) error
 	Delete(context.Context, *gorm.DB, uuid.UUID) error
 }
 
@@ -32,7 +32,7 @@ func (s DistrictService) Create(ctx context.Context, dto location_dto.DistrictDT
 	const op = "service.DistrictService.Create"
 
 	model := location_mapper.ToModelDistrict(dto)
-	err := s.repository.Create(ctx, s.db, model)
+	err := s.repository.Create(ctx, s.db, &model)
 	if err != nil {
 		return fmt.Errorf("%s: failed create region: %w", op, err)
 	}

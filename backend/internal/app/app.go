@@ -5,6 +5,8 @@ import (
 	"main/internal/location/service/country_service"
 	"main/internal/storage/postgresql"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type App struct {
@@ -23,9 +25,18 @@ func New() *App {
 	_ = coutnryService
 
 	var app = App{}
+
+	// init router
+	router := chi.NewRouter()
+	app.initRoutes(router)
+
 	app.server = &http.Server{}
 
 	return &app
+}
+
+func (a *App) initRoutes(router *chi.Mux) {
+
 }
 
 func (a *App) Run() error {

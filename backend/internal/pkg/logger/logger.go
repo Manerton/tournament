@@ -31,3 +31,10 @@ func InitLogger(level string) *slog.Logger {
 
 	return newLog
 }
+
+func Err(err error) slog.Attr {
+	return slog.Attr{
+		Key:   "error",
+		Value: slog.StringValue(err.Error()),
+	}
+}

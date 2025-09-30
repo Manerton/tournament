@@ -3,6 +3,7 @@ package event_repository
 import (
 	"context"
 	"fmt"
+	"main/internal/common/repository"
 	"main/internal/event/model/event"
 
 	"github.com/google/uuid"
@@ -10,21 +11,11 @@ import (
 )
 
 type EventRepository struct {
+	repository.RepositoryBase[event.Event]
 }
 
 func New() *EventRepository {
 	return &EventRepository{}
-}
-
-func (r *EventRepository) GetByID(ctx context.Context, db *gorm.DB, id uuid.UUID) (*event.Event, error) {
-	const op = "repository.EventRepository.GetByID"
-
-	var model event.Event
-	err := db.WithContext(ctx).First(&model, id).Error
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	return &model, nil
 }
 
 func (r *EventRepository) GetAll(ctx context.Context, db *gorm.DB) ([]event.Event, error) {
@@ -49,30 +40,16 @@ func (r *EventRepository) GetByPreviousEventID(ctx context.Context, db *gorm.DB,
 	return models, nil
 }
 
-func (r *EventRepository) Create(ctx context.Context, db *gorm.DB, model event.Event) (uuid.UUID, error) {
-	const op = "repository.EventRepository.Create"
-
-	err := db.WithContext(ctx).Create(&model).Error
+func (r *EventRepository) GetNumLastTour(ctx context.Context, db *gorm.DB, parentId uuid.UUID) (int, error) {
+	const op = "repository.EventRepository.GetLastTour"
+	var stage int
+	err := db.Model(&event.Event{}).
+		Where("previous_event_id = ?", parentId).
+		Select("COALESCE(MAX(stage), 0)").
+		Scan(&stage).Error
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("%s: %w", op, err)
+		return 0, fmt.Errorf("%s: %w", op, err)
 	}
-	return model.ID, nil
-}
 
-func (r *EventRepository) UpdateByID(ctx context.Context, db *gorm.DB, model event.Event) error {
-	const op = "repository.EventRepository.UpdateByID"
-	err := db.WithContext(ctx).Updates(&model).Error
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-	return nil
-}
-
-func (r *EventRepository) DeleteByID(ctx context.Context, db *gorm.DB, id uuid.UUID) error {
-	const op = "repository.EventRepository.DeleteByID"
-	err := db.WithContext(ctx).Delete(event.Event{}, id).Error
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-	return nil
+	return stage, nil
 }

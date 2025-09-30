@@ -1,12 +1,12 @@
 package country_repository
 
 import (
+	"main/internal/common/repository"
 	"main/internal/location/model/country"
-	"main/internal/location/repository/location_repository"
 )
 
 type CountryRepository struct {
-	location_repository.LocationRepositoryBase[country.Country]
+	repository.RepositoryBase[country.Country]
 }
 
 func New() *CountryRepository {

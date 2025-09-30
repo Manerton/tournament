@@ -7,3 +7,12 @@ type EventDTOCreate struct {
 	PreviousEventID *string `json:"previous_event_id" binding:"omitempty,uuid"`
 	TypeDraws       int     `json:"type_draws" binding:"required,oneof=1 2 3"` // 1: Knockout, 2: RoundRobin, 3: Swiss
 }
+
+type EventDTOResponse struct {
+	ID              string `json:"id"`
+	Name            string `json:"name" binding:"required"`
+	StartDate       string `json:"start_date" binding:"required,datetime=2006-01-02"`
+	EndDate         string `json:"end_date" binding:"required,datetime=2006-01-02"`
+	PreviousEventID string `json:"previous_event_id" binding:"omitempty,uuid"`
+	TypeDraws       int
+}

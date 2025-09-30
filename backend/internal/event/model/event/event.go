@@ -20,4 +20,5 @@ type Event struct {
 	PreviousEventID *uuid.UUID `gorm:"type:uuid;index"`
 	PreviousEvent   *Event     `gorm:"foreignKey:PreviousEventID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	TypeDraws       int        `gorm:"type:varchar(100);not null;index"` // TODO: Define enum type
+	Stage           int
 }

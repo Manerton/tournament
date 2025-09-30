@@ -12,7 +12,7 @@ import (
 )
 
 type SchoolRepositoryInterface interface {
-	Create(context.Context, *gorm.DB, school.School) error
+	Create(context.Context, *gorm.DB, *school.School) error
 	Delete(context.Context, *gorm.DB, uuid.UUID) error
 }
 
@@ -32,7 +32,7 @@ func (s *SchoolService) Create(ctx context.Context, dto location_dto.SchoolDTO) 
 	const op = "service.SchoolService.Create"
 
 	model := location_mapper.ToModelSchool(dto)
-	err := s.repository.Create(ctx, s.db, model)
+	err := s.repository.Create(ctx, s.db, &model)
 	if err != nil {
 		return fmt.Errorf("%s: failed create school: %w", op, err)
 	}

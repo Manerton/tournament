@@ -3,15 +3,15 @@ package school_repository
 import (
 	"context"
 	"fmt"
+	"main/internal/common/repository"
 	"main/internal/location/model/school"
-	"main/internal/location/repository/location_repository"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type SchoolRepository struct {
-	location_repository.LocationRepositoryBase[school.School]
+	repository.RepositoryBase[school.School]
 }
 
 func New() *SchoolRepository {

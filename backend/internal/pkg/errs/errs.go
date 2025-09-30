@@ -33,4 +33,5 @@ var (
 	ErrInternalError = &ApiError{Code: "INTERNAL_SERVER_ERROR", HttpCode: http.StatusInternalServerError, Message: "Something was wrong"}
 	ErrBadRequest    = &ApiError{Code: "BAD_REQUEST", HttpCode: http.StatusBadRequest, Message: "Invalid data"}
 	ErrNotFound      = &ApiError{Code: "RECORD_NOT_FOUND", HttpCode: http.StatusNotFound, Message: "record not found"}
+	ErrInvalidId     = &ApiError{Code: "INVALID_ID", HttpCode: http.StatusBadRequest, Message: "Invalid ID"}
 )

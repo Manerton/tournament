@@ -3,15 +3,15 @@ package region_respository
 import (
 	"context"
 	"fmt"
+	"main/internal/common/repository"
 	"main/internal/location/model/region"
-	"main/internal/location/repository/location_repository"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type RegionRepository struct {
-	location_repository.LocationRepositoryBase[region.Region]
+	repository.RepositoryBase[region.Region]
 }
 
 func New() *RegionRepository {

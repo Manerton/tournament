@@ -12,7 +12,7 @@ import (
 )
 
 type CountryRepositoryInterface interface {
-	Create(context.Context, *gorm.DB, country.Country) error
+	Create(context.Context, *gorm.DB, *country.Country) error
 	UpdateByID(context.Context, *gorm.DB, country.Country) error
 	DeleteByID(context.Context, *gorm.DB, uuid.UUID) error
 }
@@ -33,7 +33,7 @@ func (s *CoutnryService) Create(ctx context.Context, dto location_dto.CountryDTO
 	const op = "service.CountryService.Create"
 
 	model := location_mapper.ToModelCountry(dto)
-	err := s.repository.Create(ctx, s.db, model)
+	err := s.repository.Create(ctx, s.db, &model)
 	if err != nil {
 		return fmt.Errorf("%s: failed create country: %w", op, err)
 	}

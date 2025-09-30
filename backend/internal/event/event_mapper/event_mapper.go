@@ -27,3 +27,26 @@ func ToModelEvent(dto event_dto.EventDTOCreate) event.Event {
 		PreviousEventID: prev,
 	}
 }
+
+func ToDTOEvent(model event.Event) event_dto.EventDTOResponse {
+	var prevId string
+	if model.PreviousEventID != nil {
+		prevId = model.PreviousEventID.String()
+	}
+
+	return event_dto.EventDTOResponse{
+		ID:              model.ID.String(),
+		Name:            model.Name,
+		StartDate:       model.StartDate.String(),
+		EndDate:         model.EndDate.String(),
+		PreviousEventID: prevId,
+	}
+}
+
+func ToDTOEvents(models []event.Event) []event_dto.EventDTOResponse {
+	dtos := make([]event_dto.EventDTOResponse, len(models))
+	for i, model := range models {
+		dtos[i] = ToDTOEvent(model)
+	}
+	return dtos
+}
