@@ -7,8 +7,10 @@ import (
 )
 
 type Team struct {
-	ID      uuid.UUID   `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	Name    string      `gorm:"type:varchar(255);not null;uniqueIndex"`
-	EventID uuid.UUID   `gorm:"type:uuid;not null;index"`
-	Event   event.Event `gorm:"foreignKey:EventID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	ID               uuid.UUID   `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	Name             string      `gorm:"type:varchar(255);not null;uniqueIndex"`
+	ResponsibleName  string      `gorm:"type:varchar(255);not null"`
+	ResponsiblePhone string      `gorm:"type:varchar(20);not null"`
+	EventID          uuid.UUID   `gorm:"type:uuid;not null;index"`
+	Event            event.Event `gorm:"foreignKey:EventID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
