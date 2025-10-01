@@ -11,6 +11,17 @@ import (
 type RepositoryBase[T any] struct {
 }
 
+func (r *RepositoryBase[T]) GetAll(ctx context.Context, db *gorm.DB) ([]T, error) {
+	const op = "repository.RepositoryBase.GetAll"
+
+	var model []T
+	err := db.WithContext(ctx).Find(&model).Error
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return model, nil
+}
+
 func (r *RepositoryBase[T]) GetByID(ctx context.Context, db *gorm.DB, id uuid.UUID, model T) error {
 	const op = "repository.RepositoryBase.GetByID"
 

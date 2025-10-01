@@ -10,6 +10,14 @@ type TeamCreateDTO struct {
 	SchoolID          string `json:"school_id" binding:"required,uuid4"`
 }
 
+type TeamResponseDTO struct {
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	ResponsibleName  string `json:"responsible_name"`
+	ResponsiblePhone string `json:"responsible_phone"`
+	EventID          string `json:"event_id"`
+}
+
 type RegisterTeamRequestDTO struct {
 	TeamCreateDTO
 	Participants []participant_dto.ParticipantCreateDTO `json:"participants" binding:"required,dive,required"`

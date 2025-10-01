@@ -20,3 +20,13 @@ func ToTeamModel(dto team_dto.TeamCreateDTO) (team.Team, error) {
 		ResponsiblePhone: dto.ResponsibleName,
 	}, nil
 }
+
+func ToTeamDTO(model team.Team) team_dto.TeamResponseDTO {
+	return team_dto.TeamResponseDTO{
+		ID:               model.ID.String(),
+		Name:             model.Name,
+		ResponsibleName:  model.ResponsibleName,
+		ResponsiblePhone: model.ResponsiblePhone,
+		EventID:          model.EventID.String(),
+	}
+}
