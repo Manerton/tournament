@@ -8,24 +8,20 @@ import (
 
 func ToParticipantModel(dto ParticipantCreateDTO) *participant.Participant {
 	return &participant.Participant{
-		Firstname:  dto.Firstname,
-		Surname:    dto.Surname,
-		Patronymic: dto.Patronymic,
-		Birthdate:  dto.Birthdate,
-		Gender:     dto.Gender,
-		SchoolID:   dto.SchoolID,
+		FIO:      dto.FIO,
+		Gender:   dto.Gender,
+		SchoolID: dto.SchoolID,
+		Class:    dto.Class,
 	}
 }
 
 func ToParticipantResponseDTO(model *participant.Participant) ParticipantResponseDTO {
 	return ParticipantResponseDTO{
-		ID:         model.ID,
-		Firstname:  model.Firstname,
-		Surname:    model.Surname,
-		Patronymic: model.Patronymic,
-		Birthdate:  model.Birthdate,
-		Gender:     model.Gender,
-		SchoolID:   model.SchoolID,
+		ID:       model.ID,
+		FIO:      model.FIO,
+		Gender:   model.Gender,
+		SchoolID: model.SchoolID,
+		Class:    model.Class,
 	}
 }
 
@@ -39,18 +35,12 @@ func ToParticipantsResponseDTO(models []participant.Participant) []ParticipantRe
 
 // Конвертируем Update DTO в Participant модель для обновления
 func ConvertUpdateDTOToParticipant(id uuid.UUID, dto UpdateParticipantDTO, existing participant.Participant) participant.Participant {
-	if dto.Firstname != nil {
-		existing.Firstname = *dto.Firstname
+	if dto.FIO != nil {
+		existing.FIO = *dto.FIO
 	}
-	if dto.Surname != nil {
-		existing.Surname = *dto.Surname
-	}
-	if dto.Patronymic != nil {
-		existing.Patronymic = *dto.Patronymic
-	}
-	if dto.Birthdate != nil {
-		existing.Birthdate = *dto.Birthdate
-	}
+	// if dto.Birthdate != nil {
+	// 	existing.Birthdate = *dto.Birthdate
+	// }
 	if dto.Gender != nil {
 		existing.Gender = *dto.Gender
 	}
