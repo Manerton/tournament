@@ -11,6 +11,10 @@ import (
 
 type ParticipantRepository struct{}
 
+func New() *ParticipantRepository {
+	return &ParticipantRepository{}
+}
+
 // Создать участника
 func (r *ParticipantRepository) Create(ctx context.Context, db *gorm.DB, participant *models.Participant) error {
 	const op = "repositories.ParticipantRepository.Create"

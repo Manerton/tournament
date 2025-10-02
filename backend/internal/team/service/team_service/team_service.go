@@ -18,6 +18,7 @@ import (
 
 type TeamRepositoryInterface interface {
 	GetByID(context.Context, *gorm.DB, uuid.UUID) (team.Team, error)
+	GetByEventID(context.Context, *gorm.DB, uuid.UUID) ([]team.Team, error)
 
 	Create(context.Context, *gorm.DB, *team.Team) error
 }
@@ -68,6 +69,25 @@ func (s *TeamService) GetByID(ctx context.Context, id string) (team_dto.TeamResp
 	}
 
 	return team_mapper.ToTeamDTO(teamModel), nil
+}
+
+func (s *TeamService) GetTeamsByEventId(ctx context.Context, eventId string) ([]team_dto.TeamResponseDTO, error) {
+	const op = "service.TeamService.GetTeamsByEventId"
+
+	log := s.log.With(slog.String("op", op))
+
+	uid, err := uuid.Parse(eventId)
+	if err != nil {
+		log.Error("failed parse id to uuid", slog.String("id", eventId), logger.Err(err))
+		return nil, errs.ErrBadRequest
+	}
+
+	models, err := s.teamRepository.GetByEventID(ctx, s.db, uid)
+	if err != nil {
+		log.Error("failed get team by event id", logger.Err(err))
+		return nil, errs.ErrInternalError
+	}
+	return team_mapper.ToTeamsDTO(models), nil
 }
 
 func (s *TeamService) RegisterTeam(ctx context.Context, dto team_dto.RegisterTeamRequestDTO) error {

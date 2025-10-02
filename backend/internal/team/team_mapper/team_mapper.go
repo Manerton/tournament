@@ -30,3 +30,11 @@ func ToTeamDTO(model team.Team) team_dto.TeamResponseDTO {
 		EventID:          model.EventID.String(),
 	}
 }
+
+func ToTeamsDTO(models []team.Team) []team_dto.TeamResponseDTO {
+	dtos := make([]team_dto.TeamResponseDTO, len(models))
+	for _, model := range models {
+		dtos = append(dtos, ToTeamDTO(model))
+	}
+	return dtos
+}

@@ -22,14 +22,15 @@ func (r *RepositoryBase[T]) GetAll(ctx context.Context, db *gorm.DB) ([]T, error
 	return model, nil
 }
 
-func (r *RepositoryBase[T]) GetByID(ctx context.Context, db *gorm.DB, id uuid.UUID, model T) error {
+func (r *RepositoryBase[T]) GetByID(ctx context.Context, db *gorm.DB, id uuid.UUID) (T, error) {
 	const op = "repository.RepositoryBase.GetByID"
 
-	err := db.WithContext(ctx).First(model, id).Error
+	var model T
+	err := db.WithContext(ctx).First(&model, id).Error
 	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+		return model, fmt.Errorf("%s: %w", op, err)
 	}
-	return nil
+	return model, nil
 }
 
 func (r *RepositoryBase[T]) Create(ctx context.Context, db *gorm.DB, model *T) error {

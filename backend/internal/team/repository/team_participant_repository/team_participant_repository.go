@@ -8,3 +8,7 @@ import (
 type TeamParticipantRepository struct {
 	repository.RepositoryBase[team_participant.TeamParticipant]
 }
+
+func New() *TeamParticipantRepository {
+	return &TeamParticipantRepository{}
+}
