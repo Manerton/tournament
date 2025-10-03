@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"main/internal/config"
 	"main/internal/participant/repository/participant_repository"
 	"main/internal/pkg/logger"
 	"main/internal/storage/postgresql"
@@ -22,7 +23,7 @@ type App struct {
 	log    *slog.Logger
 }
 
-func New(log *slog.Logger) *App {
+func New(log *slog.Logger, cfg *config.Config) *App {
 	// init storage
 	storage := postgresql.MustPostgreSQL("")
 
@@ -43,13 +44,21 @@ func New(log *slog.Logger) *App {
 	router := chi.NewRouter()
 	app.initRoutes(router, teamHandler)
 
-	app.server = &http.Server{}
+	app.server = &http.Server{
+		Addr: cfg.GetAddress(),
+	}
 
 	return &app
 }
 
 func (a *App) initRoutes(router *chi.Mux, teamHandler *team_handler.TeamHandler) {
 	router.Post("/backend/team/register", teamHandler.RegisterTeam)
+}
+
+func (a *App) MustRun() {
+	if err := a.Run(); err != nil {
+		panic(err)
+	}
 }
 
 func (a *App) Run() error {
@@ -70,8 +79,4 @@ func (a *App) Stop() {
 		return
 	}
 	a.log.Info("server stopped")
-}
-
-func (a *App) init() {
-
 }
