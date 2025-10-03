@@ -13,11 +13,17 @@ func ToTeamModel(dto team_dto.TeamCreateDTO) (team.Team, error) {
 		return team.Team{}, err
 	}
 
+	shcoolId, err := uuid.Parse(dto.SchoolID)
+	if err != nil {
+		return team.Team{}, err
+	}
+
 	return team.Team{
 		Name:             dto.TeamName,
 		EventID:          eventId,
 		ResponsibleName:  dto.ResponsibleName,
 		ResponsiblePhone: dto.ResponsibleName,
+		SchoolID:         shcoolId,
 	}, nil
 }
 
@@ -28,6 +34,7 @@ func ToTeamDTO(model team.Team) team_dto.TeamResponseDTO {
 		ResponsibleName:  model.ResponsibleName,
 		ResponsiblePhone: model.ResponsiblePhone,
 		EventID:          model.EventID.String(),
+		SchoolID:         model.SchoolID.String(),
 	}
 }
 

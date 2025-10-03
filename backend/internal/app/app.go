@@ -38,17 +38,18 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	// init handler
 	teamHandler := team_handler.New(teamService)
 
-	var app = App{}
+	var app = &App{}
 
 	// init router
 	router := chi.NewRouter()
 	app.initRoutes(router, teamHandler)
 
 	app.server = &http.Server{
-		Addr: cfg.GetAddress(),
+		Addr:    cfg.GetAddress(),
+		Handler: router,
 	}
 
-	return &app
+	return app
 }
 
 func (a *App) initRoutes(router *chi.Mux, teamHandler *team_handler.TeamHandler) {

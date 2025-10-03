@@ -13,4 +13,5 @@ type GameParticipant struct {
 	Game          game.Game               `gorm:"foreignKey:GameID;constraint:OnUpdate:CASCADE;OnDelete:CASCADE;"`
 	ParticipantID uuid.UUID               `gorm:"type:uuid"`
 	Participant   participant.Participant `gorm:"foreignKey:ParticipantID;constraint:OnUpdate:CASCADE;OnDelete:CASCADE;"`
+	Score         int                     `gorm:"type:int;not null;default:0;check:score >= 0"`
 }

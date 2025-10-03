@@ -25,9 +25,12 @@ type TeamRepositoryInterface interface {
 
 type TeamParticipantRepositoryInterface interface {
 	Create(context.Context, *gorm.DB, *team_participant.TeamParticipant) error
+	GetAllByTeamID(context.Context, *gorm.DB, uuid.UUID) ([]team_participant.TeamParticipant, error)
 }
 
 type ParticipantRepositoryInterface interface {
+	GetByID(context.Context, *gorm.DB, uuid.UUID) (participant.Participant, error)
+
 	Create(context.Context, *gorm.DB, *participant.Participant) error
 }
 
@@ -134,6 +137,5 @@ func (s *TeamService) RegisterTeam(ctx context.Context, dto team_dto.RegisterTea
 			return errs.ErrInternalError
 		}
 	}
-
 	return nil
 }
