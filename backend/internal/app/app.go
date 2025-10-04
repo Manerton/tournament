@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 )
 
 type App struct {
@@ -25,7 +26,7 @@ type App struct {
 
 func New(log *slog.Logger, cfg *config.Config) *App {
 	// init storage
-	storage := postgresql.MustPostgreSQL("")
+	storage := postgresql.MustPostgreSQL(cfg.GetDSN())
 
 	// init repository
 	teamRepository := team_repository.New()
@@ -53,7 +54,34 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 }
 
 func (a *App) initRoutes(router *chi.Mux, teamHandler *team_handler.TeamHandler) {
+	// Регистрационная форма по созданию команд и участников
 	router.Post("/backend/team/register", teamHandler.RegisterTeam)
+
+	// Получение всех команд в рамках одного события
+	router.Get("/backend/teams/{id}", teamHandler.GetTeamsByEventId)
+}
+
+func (a *App) initCors(router *chi.Mux, frontedUrl string) {
+	corsOptions := cors.Options{
+		AllowedOrigins: []string{frontedUrl},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders: []string{
+			"Accept",
+			"Authorization",
+			"Content-Type",
+			"X-CSRF-Token",
+			"X-Requested-With",
+		},
+		ExposedHeaders: []string{
+			"Link",
+			"Content-Length",
+			"Access-Control-Allow-Origin",
+			"Access-Control-Allow-Credentials",
+		},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}
+	router.Use(cors.Handler(corsOptions))
 }
 
 func (a *App) MustRun() {

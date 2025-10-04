@@ -9,14 +9,13 @@ import (
 	"syscall"
 )
 
-const configPath = ""
+const configPath = "backend/config-yaml/local.yaml"
 
 func main() {
-
+	// init config
 	cfg := config.MustConfig(configPath)
-
+	// init logger
 	log := logger.InitLogger(cfg.EnvLevel)
-
 	// init app
 	app := app.New(log, cfg)
 	// init gorutine for start server

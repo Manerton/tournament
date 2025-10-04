@@ -16,19 +16,24 @@ type DBConfig struct {
 	SSLModel string `yaml:"ssl_model"`
 }
 
+func (c *DBConfig) GetDSN() string {
+	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=%s", c.Host, c.User, c.Pass, c.Name, c.SSLModel)
+}
+
 type ServerConfig struct {
 	Host string `yaml:"host"`
 	Port string `yaml:"port"`
+}
+
+func (c *ServerConfig) GetAddress() string {
+	return fmt.Sprintf("%s:%s", c.Host, c.Port)
 }
 
 type Config struct {
 	EnvLevel     string `yaml:"env"`
 	DBConfig     `yaml:"DB_INFO"`
 	ServerConfig `yaml:"HTTP_SERVER_INFO"`
-}
-
-func (c *ServerConfig) GetAddress() string {
-	return fmt.Sprintf("%s:%s", c.Host, c.Port)
+	FrontendURL  string `yaml:"FRONTEND_URL"`
 }
 
 func MustConfig(path string) *Config {
