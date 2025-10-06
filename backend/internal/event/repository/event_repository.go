@@ -33,15 +33,25 @@ func (r *EventRepository) GetByPreviousEventID(ctx context.Context, db *gorm.DB,
 	const op = "repository.EventRepository.GetByPreviousEventID"
 
 	var models []event.Event
-	err := db.WithContext(ctx).Where(event.Event{PreviousEventID: &previousEventID}).Find(&models).Error
+	err := db.WithContext(ctx).Where(event.Event{PreviousEventID: &previousEventID}).Order("stage ASC").Find(&models).Error
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return models, nil
 }
 
-func (r *EventRepository) GetNumLastTour(ctx context.Context, db *gorm.DB, parentId uuid.UUID) (int, error) {
+func (r *EventRepository) GetLastTour(ctx context.Context, db *gorm.DB, parentId uuid.UUID) (event.Event, error) {
 	const op = "repository.EventRepository.GetLastTour"
+	var lastTour event.Event
+	err := db.Model(&event.Event{}).Where(event.Event{PreviousEventID: &parentId}).Order("stage DESC").Limit(1).First(&lastTour).Error
+	if err != nil {
+		return event.Event{}, fmt.Errorf("%s: %w", op, err)
+	}
+	return lastTour, nil
+}
+
+func (r *EventRepository) GetNumLastTour(ctx context.Context, db *gorm.DB, parentId uuid.UUID) (int, error) {
+	const op = "repository.EventRepository.GetNumLastTour"
 	var stage int
 	err := db.Model(&event.Event{}).
 		Where("previous_event_id = ?", parentId).

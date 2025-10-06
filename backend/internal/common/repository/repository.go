@@ -33,6 +33,17 @@ func (r *RepositoryBase[T]) GetByID(ctx context.Context, db *gorm.DB, id uuid.UU
 	return model, nil
 }
 
+func (r *RepositoryBase[T]) GetByFilter(ctx context.Context, db *gorm.DB, filter T) ([]T, error) {
+	const op = "repository.RepositoryBase.GetByID"
+
+	var model []T
+	err := db.WithContext(ctx).Where(filter).Find(&model).Error
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return model, nil
+}
+
 func (r *RepositoryBase[T]) Create(ctx context.Context, db *gorm.DB, model *T) error {
 	const op = "repository.RepositoryBase.Create"
 

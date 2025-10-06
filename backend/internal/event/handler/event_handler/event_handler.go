@@ -1,0 +1,108 @@
+package event_handler
+
+import (
+	"context"
+	"main/internal/event/dto/event_dto"
+	"main/internal/pkg/errs"
+	"main/internal/pkg/response"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
+	"github.com/google/uuid"
+)
+
+type EventServiceInterface interface {
+	GetActualEvents(context.Context) ([]event_dto.EventDTOResponse, error)
+	GetByPreviousEventID(context.Context, string) ([]event_dto.EventDTOResponse, error)
+
+	Create(context.Context, event_dto.EventDTOCreate) (uuid.UUID, error)
+}
+
+type EventHandler struct {
+	eventService EventServiceInterface
+}
+
+func New(eventService EventServiceInterface) *EventHandler {
+	return &EventHandler{
+		eventService: eventService,
+	}
+}
+
+func (h *EventHandler) GetActualEvents(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	events, err := h.eventService.GetActualEvents(ctx)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.StatusOK,
+		StatusCode: http.StatusOK,
+		Data:       events,
+	})
+}
+
+func (h *EventHandler) GetAllStagesByParentId(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := chi.URLParam(r, "id")
+
+	events, err := h.eventService.GetByPreviousEventID(ctx, id)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.StatusOK,
+		StatusCode: http.StatusOK,
+		Data:       events,
+	})
+}
+
+func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var dto event_dto.EventDTOCreate
+	err := render.DecodeJSON(r.Body, &dto)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap("failed decode dto")))
+		return
+	}
+
+	id, err := h.eventService.Create(ctx, dto)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		StatusCode: http.StatusOK,
+		Status:     response.StatusOK,
+		Data:       id,
+	})
+}

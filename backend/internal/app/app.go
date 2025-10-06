@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"main/internal/config"
+	"main/internal/event/handler/event_handler"
+	event_repository "main/internal/event/repository"
+	event_service "main/internal/event/service"
 	"main/internal/participant/repository/participant_repository"
 	"main/internal/pkg/logger"
 	"main/internal/storage/postgresql"
@@ -31,19 +34,24 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	// init repository
 	teamRepository := team_repository.New()
 	participantRepository := participant_repository.New()
+	eventRepository := event_repository.New()
 	teamParticipantRepository := team_participant_repository.New()
 
 	// init service
 	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, log, storage)
+	eventService := event_service.New(eventRepository, log, storage)
 
 	// init handler
 	teamHandler := team_handler.New(teamService)
+	eventHandler := event_handler.New(eventService)
 
-	var app = &App{}
+	var app = &App{
+		log: log,
+	}
 
 	// init router
 	router := chi.NewRouter()
-	app.initRoutes(router, teamHandler)
+	app.initRoutes(router, teamHandler, eventHandler)
 
 	app.server = &http.Server{
 		Addr:    cfg.GetAddress(),
@@ -53,12 +61,20 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	return app
 }
 
-func (a *App) initRoutes(router *chi.Mux, teamHandler *team_handler.TeamHandler) {
+func (a *App) initRoutes(router *chi.Mux, teamHandler *team_handler.TeamHandler, eventHandler *event_handler.EventHandler) {
 	// Регистрационная форма по созданию команд и участников
 	router.Post("/backend/team/register", teamHandler.RegisterTeam)
 
 	// Получение всех команд в рамках одного события
 	router.Get("/backend/teams/{id}", teamHandler.GetTeamsByEventId)
+
+	// Получение всех актуальных событий
+	router.Get("/backend/actual-events", eventHandler.GetActualEvents)
+	// Получение всех туров-этапов события по id
+	router.Get("/backend/stages/{id}", eventHandler.GetAllStagesByParentId)
+
+	// Создание нового события
+	router.Post("/backend/event", eventHandler.Create)
 }
 
 func (a *App) initCors(router *chi.Mux, frontedUrl string) {
