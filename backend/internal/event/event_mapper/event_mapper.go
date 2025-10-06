@@ -25,6 +25,7 @@ func ToModelEvent(dto event_dto.EventDTOCreate) event.Event {
 		EndDate:         endDate,
 		TypeDraws:       dto.TypeDraws,
 		PreviousEventID: prev,
+		Status:          event.ActiveStatus,
 	}
 }
 
@@ -40,6 +41,10 @@ func ToDTOEvent(model event.Event) event_dto.EventDTOResponse {
 		StartDate:       model.StartDate.String(),
 		EndDate:         model.EndDate.String(),
 		PreviousEventID: prevId,
+		Status:          model.Status,
+		Type:            model.Type,
+		TypeDraws:       model.TypeDraws,
+		Stage:           model.Stage,
 	}
 }
 
