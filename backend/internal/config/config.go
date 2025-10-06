@@ -17,7 +17,7 @@ type DBConfig struct {
 }
 
 func (c *DBConfig) GetDSN() string {
-	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=%s", c.Host, c.User, c.Pass, c.Name, c.SSLModel)
+	return fmt.Sprintf("host=%s user=%s dbname=%s password=%s sslmode=%s", c.Host, c.User, c.Name, c.Pass, c.SSLModel)
 }
 
 type ServerConfig struct {
@@ -33,7 +33,7 @@ type Config struct {
 	EnvLevel     string `yaml:"env"`
 	DBConfig     `yaml:"DB_INFO"`
 	ServerConfig `yaml:"HTTP_SERVER_INFO"`
-	FrontendURL  string `yaml:"FRONTEND_URL"`
+	FrontendURL  string `yaml:"FRONTEND_INFO"`
 }
 
 func MustConfig(path string) *Config {
@@ -49,10 +49,10 @@ func MustConfig(path string) *Config {
 		log.Fatalf("config file does not exist: %s", envPath)
 	}
 
-	var myConfig *Config
-	if err := cleanenv.ReadConfig(envPath, myConfig); err != nil {
+	var myConfig Config
+	if err := cleanenv.ReadConfig(envPath, &myConfig); err != nil {
 		log.Fatalf("failed read config - %s: %v", envPath, err)
 	}
 
-	return myConfig
+	return &myConfig
 }

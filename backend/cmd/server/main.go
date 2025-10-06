@@ -9,7 +9,7 @@ import (
 	"syscall"
 )
 
-const configPath = "backend/config-yaml/local.yaml"
+const configPath = "config-yaml/local.yaml"
 
 func main() {
 	// init config
