@@ -3,9 +3,10 @@ package sso_service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	sso_dto "main/internal/SSO/dto"
-	user_session "main/internal/SSO/model/session-storage"
+	session_storage "main/internal/SSO/model/session-storage"
 	user "main/internal/SSO/model/user"
 	utils "main/internal/pkg/util"
 
@@ -24,10 +25,11 @@ type UserRepository interface {
 }
 
 type UserSessionRepository interface {
-	Create(ctx context.Context, db *gorm.DB, session user_session.UserSession) (uuid.UUID, error)
-	GetByID(ctx context.Context, db *gorm.DB, id uuid.UUID) (user_session.UserSession, error)
-	GetAll(ctx context.Context, db *gorm.DB) ([]user_session.UserSession, error)
-	Update(ctx context.Context, db *gorm.DB, session user_session.UserSession) error
+	Create(ctx context.Context, db *gorm.DB, session session_storage.UserSession) (uuid.UUID, error)
+	GetByID(ctx context.Context, db *gorm.DB, id uuid.UUID) (session_storage.UserSession, error)
+	GetByToken(ctx context.Context, db *gorm.DB, token string) (*session_storage.UserSession, error)
+	GetAll(ctx context.Context, db *gorm.DB) ([]session_storage.UserSession, error)
+	Update(ctx context.Context, db *gorm.DB, session session_storage.UserSession) error
 	Delete(ctx context.Context, db *gorm.DB, id uuid.UUID) error
 }
 
@@ -128,8 +130,7 @@ func (s *SsoService) DeleteUser(ctx context.Context, id uuid.UUID) error {
 // ----------------- Работа с сессиями -----------------
 
 func (s *SsoService) CreateSession(ctx context.Context, userId uuid.UUID, sessionToken, csrfToken string) (uuid.UUID, error) {
-
-	session := user_session.UserSession{
+	session := session_storage.UserSession{
 		UserId:       userId,
 		SessionToken: sessionToken,
 		CSRFToken:    csrfToken,
@@ -137,11 +138,11 @@ func (s *SsoService) CreateSession(ctx context.Context, userId uuid.UUID, sessio
 	return s.sessionRepository.Create(ctx, s.db, session)
 }
 
-func (s *SsoService) GetSessionByID(ctx context.Context, id uuid.UUID) (user_session.UserSession, error) {
+func (s *SsoService) GetSessionByID(ctx context.Context, id uuid.UUID) (session_storage.UserSession, error) {
 	return s.sessionRepository.GetByID(ctx, s.db, id)
 }
 
-func (s *SsoService) ListSessions(ctx context.Context) ([]user_session.UserSession, error) {
+func (s *SsoService) ListSessions(ctx context.Context) ([]session_storage.UserSession, error) {
 	return s.sessionRepository.GetAll(ctx, s.db)
 }
 
@@ -180,14 +181,17 @@ func (s *SsoService) Login(ctx context.Context, login, password string) (uuid.UU
 	}
 
 	// 3. Генерируем токены
-	sessionToken := utils.GenerateToken(10)
-	csrfToken := utils.GenerateToken(10)
+	sessionToken := utils.GenerateToken(32)
+	csrfToken := utils.GenerateToken(32)
 
 	// 4. Создаем новую сессию
-	session := user_session.UserSession{
+	session := session_storage.UserSession{
 		UserId:       userEntity.ID,
 		SessionToken: sessionToken,
 		CSRFToken:    csrfToken,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		ExpiresAt:    time.Now().Add(30 * time.Minute),
 	}
 
 	sessionID, err := s.sessionRepository.Create(ctx, s.db, session)
@@ -196,6 +200,36 @@ func (s *SsoService) Login(ctx context.Context, login, password string) (uuid.UU
 	}
 
 	return sessionID, sessionToken, csrfToken, nil
+}
+
+func (s *SsoService) Refresh(ctx context.Context, token string) (string, string, error) {
+	// 1. Проверяем существование сессии
+	sessionEntity, err := s.sessionRepository.GetByToken(ctx, s.db, token)
+	if err != nil {
+		return "", "", fmt.Errorf("refresh: session not found: %w", err)
+	}
+
+	// 2. Проверяем не истекла ли сессия
+	if time.Now().After(sessionEntity.ExpiresAt) {
+		return "", "", fmt.Errorf("refresh: session expired")
+	}
+
+	// 3. Генерируем новые токены
+	sessionToken := utils.GenerateToken(32) // рекомендуется более длинный токен
+	csrfToken := utils.GenerateToken(32)
+
+	// 4. Обновляем сущность
+	sessionEntity.SessionToken = sessionToken
+	sessionEntity.CSRFToken = csrfToken
+	sessionEntity.UpdatedAt = time.Now()
+	sessionEntity.ExpiresAt = time.Now().Add(30 * time.Minute)
+
+	// 5. Сохраняем обновленную сессию
+	if err := s.sessionRepository.Update(ctx, s.db, *sessionEntity); err != nil {
+		return "", "", fmt.Errorf("refresh: failed to update session: %w", err)
+	}
+
+	return sessionToken, csrfToken, nil
 }
 
 func (s *SsoService) Logout(ctx context.Context, sessionID uuid.UUID) error {

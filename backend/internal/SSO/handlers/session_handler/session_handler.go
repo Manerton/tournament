@@ -3,6 +3,7 @@ package session_handler
 import (
 	"context"
 	"net/http"
+	"time"
 
 	sso_dto "main/internal/SSO/dto"
 	"main/internal/pkg/errs"
@@ -15,11 +16,12 @@ import (
 // Интерфейс сервиса для работы с сессиями
 type SessionServiceInterface interface {
 	CreateSession(ctx context.Context, userId string, sessionToken, csrfToken string) (string, error)
-	GetSessionByID(ctx context.Context, id string) (interface{}, error) // можно DTO
-	ListSessions(ctx context.Context) ([]interface{}, error)            // можно DTO
+	GetSessionByID(ctx context.Context, id string) (interface{}, error)
+	ListSessions(ctx context.Context) ([]interface{}, error)
 	UpdateSession(ctx context.Context, id string, dto sso_dto.UpdateUserSessionDTO) error
 	DeleteSession(ctx context.Context, id string) error
-	Login(ctx context.Context, login, password string) (string, string, string, error)
+	Login(ctx context.Context, login, password string) (string, string, error)
+	Refresh(ctx context.Context, token string) (string, string, error)
 	Logout(ctx context.Context, sessionID string) error
 }
 
@@ -42,7 +44,7 @@ func (h *SessionHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionID, sessionToken, csrfToken, err := h.service.Login(ctx, dto.Login, dto.Password)
+	sessionToken, csrfToken, err := h.service.Login(ctx, dto.Login, dto.Password)
 	if err != nil {
 		render.Status(r, http.StatusUnauthorized)
 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap(err.Error())))
@@ -53,19 +55,66 @@ func (h *SessionHandler) Login(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
 		Value:    sessionToken,
-		Path:     "/",
+		Expires:  time.Now().Add(30 * time.Minute),
 		HttpOnly: true, // запрещает доступ из JS
 		Secure:   true, // включить в проде (https)
 		SameSite: http.SameSiteStrictMode,
 	})
 
-	// Возвращаем session_id + csrf_token в теле
+	http.SetCookie(w, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    csrfToken,
+		Expires:  time.Now().Add(30 * time.Minute),
+		HttpOnly: false, // запрещает доступ из JS
+	})
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.StatusOK,
+		StatusCode: http.StatusOK,
+	})
+}
+
+// POST /sessions/refresh/{id}
+func (h *SessionHandler) refresh(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// 1. Получаем session_token из cookie
+	cookie, err := r.Cookie("session_token")
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap(err.Error())))
+		return
+	}
+
+	// 2. Вызываем сервис для обновления токенов
+	sessionToken, csrfToken, err := h.service.Refresh(ctx, cookie.Value)
+	if err != nil {
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError.Wrap(err.Error())))
+		return
+	}
+
+	// 3. Устанавливаем новые cookies
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    sessionToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		Expires:  time.Now().Add(30 * time.Minute), // или ваш срок
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    csrfToken,
+		Path:     "/",
+		Expires:  time.Now().Add(30 * time.Minute), // или ваш срок
+		HttpOnly: false,                            // доступен для JS
+	})
+
 	render.JSON(w, r, response.ApiResponse{
 		Status: response.StatusOK,
-		Data: map[string]string{
-			"session_id": sessionID,
-			"csrf_token": csrfToken,
-		},
+		Data:   map[string]string{"message": "tokens refreshed successfully"},
 	})
 }
 
@@ -84,10 +133,16 @@ func (h *SessionHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
 		Value:    "",
-		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
-		MaxAge:   -1, // удалить
+		Expires:  time.Now().Add(-time.Minute),
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    "",
+		Expires:  time.Now().Add(-time.Minute),
+		HttpOnly: false, // запрещает доступ из JS
 	})
 
 	render.JSON(w, r, response.ApiResponse{

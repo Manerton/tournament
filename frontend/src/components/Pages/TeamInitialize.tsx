@@ -179,7 +179,6 @@ export default function RegisterTeamPage() {
                 <th>ФИО</th>
                 <th>Пол</th>
                 <th>Класс</th>
-                <th>Школа</th>
                 <th></th>
               </tr>
             </thead>
@@ -189,7 +188,6 @@ export default function RegisterTeamPage() {
                   <td>{p.fio}</td>
                   <td>{p.gender === 1 ? "Мужской" : "Женский"}</td>
                   <td>{p.class}</td>
-                  <td>{schools[p.school_id]}</td>
                   <td>
                     <Button
                       size="sm"
@@ -269,15 +267,6 @@ export default function RegisterTeamPage() {
                 onChange={(e) =>
                   setCurrentParticipant({ ...currentParticipant, class: parseInt(e.target.value) })
                 }
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Школа</Form.Label>
-              <Form.Control
-                type="text"
-                value={team.school_id ? schools[team.school_id] : ""}
-                disabled
               />
             </Form.Group>
           </Form>
