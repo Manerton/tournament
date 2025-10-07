@@ -3,6 +3,33 @@
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- Таблица пользователей
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    login VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Таблица пользовательских сессий
+CREATE TABLE user_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    session_token VARCHAR(255) NOT NULL UNIQUE,
+    csrf_token VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    
+    -- Индексы
+    INDEX idx_user_sessions_user_id (user_id),
+    INDEX idx_user_sessions_session_token (session_token),
+    INDEX idx_user_sessions_expires_at (expires_at)
+);
+
+-- Остальные существующие таблицы
 CREATE TABLE countries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL UNIQUE
@@ -103,5 +130,7 @@ DROP TABLE IF EXISTS schools CASCADE;
 DROP TABLE IF EXISTS districts CASCADE;
 DROP TABLE IF EXISTS regions CASCADE;
 DROP TABLE IF EXISTS countries CASCADE;
+DROP TABLE IF EXISTS user_sessions CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 
 -- +goose StatementEnd

@@ -1,9 +1,15 @@
 package user
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type User struct {
-	ID           uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	Login        string    `gorm:"type:varchar(255);not null;uniqueIndex"`
-	Password     string    `gorm:"type:varchar(255);not null"`
+	ID        uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	Login     string    `gorm:"type:varchar(255);not null;uniqueIndex"`
+	Password  string    `gorm:"type:varchar(255);not null"`
+	CreatedAt time.Time `gorm:"not null;default:now()"`
+	UpdatedAt time.Time `gorm:"not null;default:now()"`
 }
