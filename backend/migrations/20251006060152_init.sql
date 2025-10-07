@@ -1,6 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
-
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Таблица пользователей
@@ -21,13 +20,13 @@ CREATE TABLE user_sessions (
     csrf_token VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    
-    -- Индексы
-    INDEX idx_user_sessions_user_id (user_id),
-    INDEX idx_user_sessions_session_token (session_token),
-    INDEX idx_user_sessions_expires_at (expires_at)
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
+
+-- Создание индексов для user_sessions
+CREATE INDEX idx_user_sessions_user_id ON user_sessions(user_id);
+CREATE INDEX idx_user_sessions_expires_at ON user_sessions(expires_at);
+CREATE INDEX idx_user_sessions_session_token ON user_sessions(session_token);
 
 -- Остальные существующие таблицы
 CREATE TABLE countries (
@@ -114,12 +113,10 @@ CREATE TABLE game_participants (
         ON UPDATE CASCADE ON DELETE CASCADE,
     score INT NOT NULL DEFAULT 0 CHECK (score >= 0)
 );
-
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-
 DROP TABLE IF EXISTS game_participants CASCADE;
 DROP TABLE IF EXISTS games CASCADE;
 DROP TABLE IF EXISTS team_participants CASCADE;
@@ -132,5 +129,4 @@ DROP TABLE IF EXISTS regions CASCADE;
 DROP TABLE IF EXISTS countries CASCADE;
 DROP TABLE IF EXISTS user_sessions CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
-
 -- +goose StatementEnd
