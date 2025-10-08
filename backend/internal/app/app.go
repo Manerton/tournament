@@ -9,6 +9,10 @@ import (
 	session_repository "main/internal/SSO/repository/session-repository"
 	user_repository "main/internal/SSO/repository/user-repository"
 	sso_service "main/internal/SSO/service"
+	"main/internal/game/repository/game_participant_repository"
+	"main/internal/game/repository/game_repository"
+	"main/internal/game/service/game_service"
+	"main/internal/leaderboard/repository/leaderboard_repository"
 
 	"main/internal/config"
 	"main/internal/event/handler/event_handler"
@@ -38,17 +42,22 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	storage := postgresql.MustPostgreSQL(cfg.GetDSN())
 
 	// init repository
+	gameRepository := game_repository.New()
+	gameParticpantRepository := game_participant_repository.New()
 	teamRepository := team_repository.New()
 	participantRepository := participant_repository.New()
 	eventRepository := event_repository.New()
 	teamParticipantRepository := team_participant_repository.New()
+	leaderboardRepository := leaderboard_repository.New()
 	userRepository := user_repository.New()
 	sessionRepository := session_repository.New()
 
 	// init service
+	gameService := game_service.New(log, storage, gameRepository, leaderboardRepository, gameParticpantRepository, teamParticipantRepository)
 	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, log, storage)
-	eventService := event_service.New(eventRepository, log, storage)
+	eventService := event_service.New(eventRepository, log, storage, gameService)
 	ssoService := sso_service.New(storage, log, userRepository, sessionRepository)
+
 	// init handler
 	teamHandler := team_handler.New(teamService)
 	eventHandler := event_handler.New(eventService)
