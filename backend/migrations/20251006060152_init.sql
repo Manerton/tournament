@@ -102,7 +102,7 @@ CREATE TABLE games (
     team_b UUID NOT NULL,
     event_id UUID NOT NULL REFERENCES events(id)
         ON UPDATE CASCADE ON DELETE CASCADE,
-    finished INT NOT NULL DEFAULT 0 CHECK (finished IN (0, 1, 2, 3))
+    finished INT NOT NULL DEFAULT 3 CHECK (finished IN (1, 2, 3))
 );
 
 CREATE TABLE game_participants (
@@ -113,10 +113,23 @@ CREATE TABLE game_participants (
         ON UPDATE CASCADE ON DELETE CASCADE,
     score INT NOT NULL DEFAULT 0 CHECK (score >= 0)
 );
+
+CREATE TABLE leaderboards (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID NOT NULL REFERENCES events(id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    team_id UUID NOT NULL REFERENCES teams(id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    enemies_ids UUID[] NOT NULL,
+    scores int[] NOT NULL,
+    win_count INT NOT NULL DEFAULT 0 CHECK (win_count >= 0)
+);
+
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
+DROP TABLE IF EXISTS leaderboards CASCADE;
 DROP TABLE IF EXISTS game_participants CASCADE;
 DROP TABLE IF EXISTS games CASCADE;
 DROP TABLE IF EXISTS team_participants CASCADE;
