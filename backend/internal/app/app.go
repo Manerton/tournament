@@ -4,6 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"main/internal/SSO/handlers/session_handler"
+	"main/internal/SSO/handlers/user_handler"
+	session_repository "main/internal/SSO/repository/session-repository"
+	user_repository "main/internal/SSO/repository/user-repository"
+	sso_service "main/internal/SSO/service"
+
 	"main/internal/config"
 	"main/internal/event/handler/event_handler"
 	event_repository "main/internal/event/repository"
@@ -36,14 +42,18 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	participantRepository := participant_repository.New()
 	eventRepository := event_repository.New()
 	teamParticipantRepository := team_participant_repository.New()
+	userRepository := user_repository.New()
+	sessionRepository := session_repository.New()
 
 	// init service
 	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, log, storage)
 	eventService := event_service.New(eventRepository, log, storage)
-
+	ssoService := sso_service.New(storage, log, userRepository, sessionRepository)
 	// init handler
 	teamHandler := team_handler.New(teamService)
 	eventHandler := event_handler.New(eventService)
+	sessionHandler := session_handler.NewSessionHandler(ssoService)
+	userHandler := user_handler.NewUserHandler(ssoService)
 
 	var app = &App{
 		log: log,
@@ -51,7 +61,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 
 	// init router
 	router := chi.NewRouter()
-	app.initRoutes(router, teamHandler, eventHandler)
+	app.initRoutes(router, teamHandler, eventHandler, userHandler, sessionHandler)
 
 	app.server = &http.Server{
 		Addr:    cfg.GetAddress(),
@@ -61,20 +71,39 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	return app
 }
 
-func (a *App) initRoutes(router *chi.Mux, teamHandler *team_handler.TeamHandler, eventHandler *event_handler.EventHandler) {
-	// Регистрационная форма по созданию команд и участников
-	router.Post("/backend/team/register", teamHandler.RegisterTeam)
+func (a *App) initRoutes(router *chi.Mux, teamHandler *team_handler.TeamHandler, eventHandler *event_handler.EventHandler, userHandler *user_handler.UserHandler, sessionHandler *session_handler.SessionHandler) {
 
-	// Получение всех команд в рамках одного события
-	router.Get("/backend/teams/{id}", teamHandler.GetTeamsByEventId)
+	// Группа маршрутов для аутентификации и сессий
+	router.Route("/backend/sessions", func(r chi.Router) {
+		r.Post("/login", sessionHandler.Login)        // POST /backend/sessions/login
+		r.Post("/refresh", sessionHandler.Refresh)    // POST /backend/sessions/refresh
+		r.Post("/logout/{id}", sessionHandler.Logout) // POST /backend/sessions/logout/{id}
+		r.Get("/{id}", sessionHandler.GetSessionByID) // GET /backend/sessions/{id}
+		r.Get("/", sessionHandler.ListSessions)       // GET /backend/sessions
+		// r.Put("/{id}", sessionHandler.UpdateSession)  // PUT /backend/sessions/{id} (закомментирован)
+	})
 
-	// Получение всех актуальных событий
-	router.Get("/backend/actual-events", eventHandler.GetActualEvents)
-	// Получение всех туров-этапов события по id
-	router.Get("/backend/stages/{id}", eventHandler.GetAllStagesByParentId)
+	// Группа маршрутов для пользователей
+	router.Route("/backend/users", func(r chi.Router) {
+		r.Post("/", userHandler.CreateUser)       // POST /backend/users
+		r.Get("/{id}", userHandler.GetUserByID)   // GET /backend/users/{id}
+		r.Get("/", userHandler.ListUsers)         // GET /backend/users
+		r.Put("/{id}", userHandler.UpdateUser)    // PUT /backend/users/{id}
+		r.Delete("/{id}", userHandler.DeleteUser) // DELETE /backend/users/{id}
+	})
 
-	// Создание нового события
-	router.Post("/backend/event", eventHandler.Create)
+	// Группа маршрутов для команд
+	router.Route("/backend/teams", func(r chi.Router) {
+		r.Post("/register", teamHandler.RegisterTeam)       // POST /backend/teams/register
+		r.Get("/event/{id}", teamHandler.GetTeamsByEventId) // GET /backend/teams/event/{id}
+	})
+
+	// Группа маршрутов для событий
+	router.Route("/backend/events", func(r chi.Router) {
+		r.Post("/", eventHandler.Create)                           // POST /backend/events
+		r.Get("/actual", eventHandler.GetActualEvents)             // GET /backend/events/actual
+		r.Get("/{id}/stages", eventHandler.GetAllStagesByParentId) // GET /backend/events/{id}/stages
+	})
 }
 
 func (a *App) initCors(router *chi.Mux, frontedUrl string) {

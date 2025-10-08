@@ -3,12 +3,14 @@ package sso_service
 import (
 	"context"
 	"fmt"
-	"time"
-
+	"log/slog"
 	sso_dto "main/internal/SSO/dto"
 	session_storage "main/internal/SSO/model/session-storage"
 	user "main/internal/SSO/model/user"
+	"main/internal/pkg/errs"
+	"main/internal/pkg/logger"
 	utils "main/internal/pkg/util"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -16,33 +18,38 @@ import (
 )
 
 type UserRepository interface {
-	Create(ctx context.Context, db *gorm.DB, user user.User) (uuid.UUID, error)
+	Create(ctx context.Context, db *gorm.DB, user *user.User) error
 	GetByID(ctx context.Context, db *gorm.DB, id uuid.UUID) (user.User, error)
 	GetByLogin(ctx context.Context, db *gorm.DB, login string) (user.User, error)
 	GetAll(ctx context.Context, db *gorm.DB) ([]user.User, error)
 	Update(ctx context.Context, db *gorm.DB, user user.User) error
-	Delete(ctx context.Context, db *gorm.DB, id uuid.UUID) error
+	DeleteByID(ctx context.Context, db *gorm.DB, id uuid.UUID) error
 }
 
 type UserSessionRepository interface {
-	Create(ctx context.Context, db *gorm.DB, session session_storage.UserSession) (uuid.UUID, error)
+	Create(ctx context.Context, db *gorm.DB, session *session_storage.UserSession) error
 	GetByID(ctx context.Context, db *gorm.DB, id uuid.UUID) (session_storage.UserSession, error)
-	GetByToken(ctx context.Context, db *gorm.DB, token string) (*session_storage.UserSession, error)
+	GetByToken(ctx context.Context, db *gorm.DB, token string) (session_storage.UserSession, error)
 	GetAll(ctx context.Context, db *gorm.DB) ([]session_storage.UserSession, error)
 	Update(ctx context.Context, db *gorm.DB, session session_storage.UserSession) error
-	Delete(ctx context.Context, db *gorm.DB, id uuid.UUID) error
+	DeleteByID(ctx context.Context, db *gorm.DB, id uuid.UUID) error
+	DeleteByToken(ctx context.Context, db *gorm.DB, token string) error
+	DeleteExpiredSessions(ctx context.Context, db *gorm.DB) error
 }
 
 // сервис
 type SsoService struct {
 	db                *gorm.DB
+	log               *slog.Logger
 	userRepository    UserRepository
 	sessionRepository UserSessionRepository
 }
 
-func NewSsoService(db *gorm.DB, userRepo UserRepository, sessionRepo UserSessionRepository) *SsoService {
+func New(db *gorm.DB, log *slog.Logger, userRepo UserRepository, sessionRepo UserSessionRepository) *SsoService {
+	alog := log.With("owner", "ssoService")
 	return &SsoService{
 		db:                db,
+		log:               alog,
 		userRepository:    userRepo,
 		sessionRepository: sessionRepo,
 	}
@@ -51,8 +58,14 @@ func NewSsoService(db *gorm.DB, userRepo UserRepository, sessionRepo UserSession
 // ----------------- Работа с пользователями -----------------
 
 func (s *SsoService) CreateUser(ctx context.Context, dto sso_dto.CreateUserDTO) (uuid.UUID, error) {
+	const op = "services.SSOService.CreateUser"
+	log := s.log.With(
+		slog.String("op", op),
+	)
+
 	hashedPassword, err := utils.HashPassword(dto.Password)
 	if err != nil {
+		log.Error("failed hash password", logger.Err(err))
 		return uuid.Nil, fmt.Errorf("hash password: %w", err)
 	}
 
@@ -60,11 +73,21 @@ func (s *SsoService) CreateUser(ctx context.Context, dto sso_dto.CreateUserDTO) 
 		Login:    dto.Login,
 		Password: hashedPassword,
 	}
-	return s.userRepository.Create(ctx, s.db, u)
+	return uuid.UUID{}, s.userRepository.Create(ctx, s.db, &u)
 }
 
-func (s *SsoService) GetUserByID(ctx context.Context, id uuid.UUID) (sso_dto.UserResponseDTO, error) {
-	entity, err := s.userRepository.GetByID(ctx, s.db, id)
+func (s *SsoService) GetUserByID(ctx context.Context, id string) (sso_dto.UserResponseDTO, error) {
+	const op = "services.SSOService.GetUserByID"
+	log := s.log.With(
+		slog.String("op", op),
+	)
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		log.Error("failed parse id to uuid", logger.Err(err))
+		return sso_dto.UserResponseDTO{}, errs.ErrBadRequest.Wrap("failed parse uuid")
+	}
+
+	entity, err := s.userRepository.GetByID(ctx, s.db, uid)
 	if err != nil {
 		return sso_dto.UserResponseDTO{}, fmt.Errorf("get user by id: %w", err)
 	}
@@ -76,8 +99,13 @@ func (s *SsoService) GetUserByID(ctx context.Context, id uuid.UUID) (sso_dto.Use
 }
 
 func (s *SsoService) GetUserByLogin(ctx context.Context, login string) (sso_dto.UserResponseDTO, error) {
+	const op = "services.SSOService.GetUserByLogin"
+	log := s.log.With(
+		slog.String("op", op),
+	)
 	entity, err := s.userRepository.GetByLogin(ctx, s.db, login)
 	if err != nil {
+		log.Error("failed get user by login", logger.Err(err))
 		return sso_dto.UserResponseDTO{}, fmt.Errorf("get user by login: %w", err)
 	}
 
@@ -88,8 +116,15 @@ func (s *SsoService) GetUserByLogin(ctx context.Context, login string) (sso_dto.
 }
 
 func (s *SsoService) ListUsers(ctx context.Context) ([]sso_dto.UserResponseDTO, error) {
+
+	const op = "services.SSOService.ListUsers"
+	log := s.log.With(
+		slog.String("op", op),
+	)
+
 	entities, err := s.userRepository.GetAll(ctx, s.db)
 	if err != nil {
+		log.Error("failed get list users", logger.Err(err))
 		return nil, fmt.Errorf("list users: %w", err)
 	}
 
@@ -103,8 +138,19 @@ func (s *SsoService) ListUsers(ctx context.Context) ([]sso_dto.UserResponseDTO, 
 	return result, nil
 }
 
-func (s *SsoService) UpdateUser(ctx context.Context, id uuid.UUID, dto sso_dto.UpdateUserDTO) error {
-	entity, err := s.userRepository.GetByID(ctx, s.db, id)
+func (s *SsoService) UpdateUser(ctx context.Context, dto sso_dto.UpdateUserDTO) error {
+
+	const op = "services.SSOService.UpdateUser"
+	log := s.log.With(
+		slog.String("op", op),
+	)
+	uid, err := uuid.Parse(dto.Id)
+	if err != nil {
+		log.Error("failed parse id to uuid", logger.Err(err))
+		return errs.ErrBadRequest.Wrap("failed parse uuid")
+	}
+
+	entity, err := s.userRepository.GetByID(ctx, s.db, uid)
 	if err != nil {
 		return fmt.Errorf("update user: %w", err)
 	}
@@ -123,31 +169,75 @@ func (s *SsoService) UpdateUser(ctx context.Context, id uuid.UUID, dto sso_dto.U
 	return s.userRepository.Update(ctx, s.db, entity)
 }
 
-func (s *SsoService) DeleteUser(ctx context.Context, id uuid.UUID) error {
-	return s.userRepository.Delete(ctx, s.db, id)
+func (s *SsoService) DeleteUser(ctx context.Context, id string) error {
+	const op = "services.SSOService.DeleteUser"
+	log := s.log.With(
+		slog.String("op", op),
+	)
+
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		log.Error("failed parse id to uuid", logger.Err(err))
+		return errs.ErrBadRequest.Wrap("failed parse uuid")
+	}
+
+	return s.userRepository.DeleteByID(ctx, s.db, uid)
 }
 
 // ----------------- Работа с сессиями -----------------
 
-func (s *SsoService) CreateSession(ctx context.Context, userId uuid.UUID, sessionToken, csrfToken string) (uuid.UUID, error) {
+func (s *SsoService) CreateSession(ctx context.Context, userId string) (uuid.UUID, error) {
+
+	const op = "services.SSOService.CreateSession"
+	log := s.log.With(
+		slog.String("op", op),
+	)
+
+	uid, err := uuid.Parse(userId)
+	if err != nil {
+		log.Error("failed parse id to uuid", logger.Err(err))
+		return uid, errs.ErrBadRequest.Wrap("failed parse uuid")
+	}
+
+	sessionToken := utils.GenerateToken(10)
+	csrfToken := utils.GenerateToken(10)
+
 	session := session_storage.UserSession{
-		UserId:       userId,
+		UserId:       uid,
 		SessionToken: sessionToken,
 		CSRFToken:    csrfToken,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		ExpiresAt:    time.Now().Add(30 * time.Minute),
 	}
-	return s.sessionRepository.Create(ctx, s.db, session)
+	return uid, s.sessionRepository.Create(ctx, s.db, &session)
 }
 
-func (s *SsoService) GetSessionByID(ctx context.Context, id uuid.UUID) (session_storage.UserSession, error) {
-	return s.sessionRepository.GetByID(ctx, s.db, id)
+func (s *SsoService) GetSessionByID(ctx context.Context, id string) (session_storage.UserSession, error) {
+
+	const op = "services.SSOService.GetSessionByID"
+	log := s.log.With(
+		slog.String("op", op),
+	)
+
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		log.Error("failed parse id to uuid", logger.Err(err))
+		return session_storage.UserSession{}, errs.ErrBadRequest.Wrap("failed parse uuid")
+	}
+	return s.sessionRepository.GetByID(ctx, s.db, uid)
+}
+
+func (s *SsoService) GetSessionByToken(ctx context.Context, token string) (session_storage.UserSession, error) {
+	return s.sessionRepository.GetByToken(ctx, s.db, token)
 }
 
 func (s *SsoService) ListSessions(ctx context.Context) ([]session_storage.UserSession, error) {
 	return s.sessionRepository.GetAll(ctx, s.db)
 }
 
-func (s *SsoService) UpdateSession(ctx context.Context, id uuid.UUID, dto sso_dto.UpdateUserSessionDTO) error {
-	entity, err := s.sessionRepository.GetByID(ctx, s.db, id)
+func (s *SsoService) UpdateSession(ctx context.Context, token string, dto sso_dto.UpdateUserSessionDTO) error {
+	entity, err := s.sessionRepository.GetByToken(ctx, s.db, token)
 	if err != nil {
 		return fmt.Errorf("update session: %w", err)
 	}
@@ -162,8 +252,26 @@ func (s *SsoService) UpdateSession(ctx context.Context, id uuid.UUID, dto sso_dt
 	return s.sessionRepository.Update(ctx, s.db, entity)
 }
 
-func (s *SsoService) DeleteSession(ctx context.Context, id uuid.UUID) error {
-	return s.sessionRepository.Delete(ctx, s.db, id)
+func (s *SsoService) DeleteSession(ctx context.Context, id string) error {
+	const op = "services.SSOService.DeleteSession"
+	log := s.log.With(
+		slog.String("op", op),
+	)
+
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		log.Error("failed parse id to uuid", logger.Err(err))
+		return errs.ErrBadRequest.Wrap("failed parse uuid")
+	}
+	return s.sessionRepository.DeleteByID(ctx, s.db, uid)
+}
+
+func (s *SsoService) DeleteSessionByToken(ctx context.Context, token string) error {
+	return s.sessionRepository.DeleteByToken(ctx, s.db, token)
+}
+
+func (s *SsoService) DeleteExpiredSessions(ctx context.Context) error {
+	return s.sessionRepository.DeleteExpiredSessions(ctx, s.db)
 }
 
 // ----------------- Аутентификация -----------------
@@ -181,8 +289,8 @@ func (s *SsoService) Login(ctx context.Context, login, password string) (uuid.UU
 	}
 
 	// 3. Генерируем токены
-	sessionToken := utils.GenerateToken(32)
-	csrfToken := utils.GenerateToken(32)
+	sessionToken := utils.GenerateToken(10)
+	csrfToken := utils.GenerateToken(10)
 
 	// 4. Создаем новую сессию
 	session := session_storage.UserSession{
@@ -194,12 +302,12 @@ func (s *SsoService) Login(ctx context.Context, login, password string) (uuid.UU
 		ExpiresAt:    time.Now().Add(30 * time.Minute),
 	}
 
-	sessionID, err := s.sessionRepository.Create(ctx, s.db, session)
+	err = s.sessionRepository.Create(ctx, s.db, &session)
 	if err != nil {
 		return uuid.Nil, "", "", fmt.Errorf("login: failed to create session: %w", err)
 	}
 
-	return sessionID, sessionToken, csrfToken, nil
+	return session.ID, sessionToken, csrfToken, nil
 }
 
 func (s *SsoService) Refresh(ctx context.Context, token string) (string, string, error) {
@@ -215,8 +323,8 @@ func (s *SsoService) Refresh(ctx context.Context, token string) (string, string,
 	}
 
 	// 3. Генерируем новые токены
-	sessionToken := utils.GenerateToken(32) // рекомендуется более длинный токен
-	csrfToken := utils.GenerateToken(32)
+	sessionToken := utils.GenerateToken(10) // рекомендуется более длинный токен
+	csrfToken := utils.GenerateToken(10)
 
 	// 4. Обновляем сущность
 	sessionEntity.SessionToken = sessionToken
@@ -225,16 +333,16 @@ func (s *SsoService) Refresh(ctx context.Context, token string) (string, string,
 	sessionEntity.ExpiresAt = time.Now().Add(30 * time.Minute)
 
 	// 5. Сохраняем обновленную сессию
-	if err := s.sessionRepository.Update(ctx, s.db, *sessionEntity); err != nil {
+	if err := s.sessionRepository.Update(ctx, s.db, sessionEntity); err != nil {
 		return "", "", fmt.Errorf("refresh: failed to update session: %w", err)
 	}
 
 	return sessionToken, csrfToken, nil
 }
 
-func (s *SsoService) Logout(ctx context.Context, sessionID uuid.UUID) error {
+func (s *SsoService) Logout(ctx context.Context, sessionToken string) error {
 	// Удаляем сессию по ID
-	if err := s.sessionRepository.Delete(ctx, s.db, sessionID); err != nil {
+	if err := s.sessionRepository.DeleteByToken(ctx, s.db, sessionToken); err != nil {
 		return fmt.Errorf("logout: failed to delete session: %w", err)
 	}
 	return nil

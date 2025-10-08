@@ -6,21 +6,26 @@ import (
 	"time"
 
 	sso_dto "main/internal/SSO/dto"
+	session_storage "main/internal/SSO/model/session-storage"
 	"main/internal/pkg/errs"
 	"main/internal/pkg/response"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/google/uuid"
 )
 
 // Интерфейс сервиса для работы с сессиями
 type SessionServiceInterface interface {
-	CreateSession(ctx context.Context, userId string, sessionToken, csrfToken string) (string, error)
-	GetSessionByID(ctx context.Context, id string) (interface{}, error)
-	ListSessions(ctx context.Context) ([]interface{}, error)
-	UpdateSession(ctx context.Context, id string, dto sso_dto.UpdateUserSessionDTO) error
+	CreateSession(ctx context.Context, userId string) (uuid.UUID, error)
+	GetSessionByID(ctx context.Context, id string) (session_storage.UserSession, error)
+	GetSessionByToken(ctx context.Context, token string) (session_storage.UserSession, error)
+	ListSessions(ctx context.Context) ([]session_storage.UserSession, error)
+	//UpdateSession(ctx context.Context, token string, dto sso_dto.UpdateUserSessionDTO) error
 	DeleteSession(ctx context.Context, id string) error
-	Login(ctx context.Context, login, password string) (string, string, error)
+	DeleteSessionByToken(ctx context.Context, token string) error
+	DeleteExpiredSessions(ctx context.Context) error
+	Login(ctx context.Context, login, password string) (uuid.UUID, string, string, error)
 	Refresh(ctx context.Context, token string) (string, string, error)
 	Logout(ctx context.Context, sessionID string) error
 }
@@ -44,7 +49,7 @@ func (h *SessionHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionToken, csrfToken, err := h.service.Login(ctx, dto.Login, dto.Password)
+	userId, sessionToken, csrfToken, err := h.service.Login(ctx, dto.Login, dto.Password)
 	if err != nil {
 		render.Status(r, http.StatusUnauthorized)
 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap(err.Error())))
@@ -71,11 +76,14 @@ func (h *SessionHandler) Login(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response.ApiResponse{
 		Status:     response.StatusOK,
 		StatusCode: http.StatusOK,
+		Data: map[string]string{
+			"user_id": userId.String(),
+		},
 	})
 }
 
-// POST /sessions/refresh/{id}
-func (h *SessionHandler) refresh(w http.ResponseWriter, r *http.Request) {
+// POST /sessions/refresh
+func (h *SessionHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// 1. Получаем session_token из cookie
@@ -187,25 +195,24 @@ func (h *SessionHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT /sessions/{id}
-func (h *SessionHandler) UpdateSession(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	id := chi.URLParam(r, "id")
-	var updateDTO sso_dto.UpdateUserSessionDTO
+// func (h *SessionHandler) UpdateSession(w http.ResponseWriter, r *http.Request) {
+// 	ctx := r.Context()
+// 	var updateDTO sso_dto.UpdateUserSessionDTO
 
-	if err := render.DecodeJSON(r.Body, &updateDTO); err != nil {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap(err.Error())))
-		return
-	}
+// 	if err := render.DecodeJSON(r.Body, &updateDTO); err != nil {
+// 		render.Status(r, http.StatusBadRequest)
+// 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap(err.Error())))
+// 		return
+// 	}
 
-	if err := h.service.UpdateSession(ctx, id, updateDTO); err != nil {
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError.Wrap(err.Error())))
-		return
-	}
+// 	if err := h.service.UpdateSession(ctx, updateDTO); err != nil {
+// 		render.Status(r, http.StatusInternalServerError)
+// 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError.Wrap(err.Error())))
+// 		return
+// 	}
 
-	render.JSON(w, r, response.ApiResponse{
-		Status: response.StatusOK,
-		Data:   map[string]string{"message": "session updated successfully"},
-	})
-}
+// 	render.JSON(w, r, response.ApiResponse{
+// 		Status: response.StatusOK,
+// 		Data:   map[string]string{"message": "session updated successfully"},
+// 	})
+// }

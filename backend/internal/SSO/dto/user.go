@@ -10,6 +10,7 @@ type CreateUserDTO struct {
 
 // DTO для обновления пользователя
 type UpdateUserDTO struct {
+	Id 		 string `json:"-"`
 	Login    string `json:"login,omitempty"`
 	Password string `json:"password,omitempty"`
 }
