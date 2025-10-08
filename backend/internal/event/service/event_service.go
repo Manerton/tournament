@@ -29,17 +29,24 @@ type EventRepositoryInterface interface {
 	DeleteByID(ctx context.Context, db *gorm.DB, id uuid.UUID) error
 }
 
+type GameServiceInterface interface {
+	AllGamesIsFinished(ctx context.Context, eventId uuid.UUID) (bool, error)
+}
+
 type EventService struct {
 	db         *gorm.DB
 	repository EventRepositoryInterface
 	log        *slog.Logger
+
+	gameService GameServiceInterface
 }
 
-func New(repository EventRepositoryInterface, log *slog.Logger, db *gorm.DB) *EventService {
+func New(repository EventRepositoryInterface, log *slog.Logger, db *gorm.DB, gameService GameServiceInterface) *EventService {
 	return &EventService{
-		db:         db,
-		log:        log,
-		repository: repository,
+		db:          db,
+		log:         log,
+		repository:  repository,
+		gameService: gameService,
 	}
 }
 
@@ -182,6 +189,42 @@ func (s *EventService) createTour(ctx context.Context, transactionDB *gorm.DB, p
 	}
 
 	return newTour.ID, nil
+}
+
+func (s *EventService) FinishedTour(ctx context.Context, id string) error {
+	const op = "service.EventService.FinishedTour"
+	log := s.log.With(slog.String("op", op))
+
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		log.Error("failed parse id to uuid", slog.String("id", id), logger.Err(err))
+		return errs.ErrInvalidId
+	}
+
+	eventModel, err := s.repository.GetByID(ctx, s.db, uid)
+	if err != nil {
+		log.Error("failed get event by id", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	ok, err := s.gameService.AllGamesIsFinished(ctx, eventModel.ID)
+	if err != nil {
+		log.Error("failed check all games is finished", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	if !ok {
+		return fmt.Errorf("not all games is finished")
+	}
+
+	eventModel.Status = event.FinishedStatus
+	err = s.repository.UpdateByID(ctx, s.db, eventModel)
+	if err != nil {
+		log.Error("failed update event", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	return nil
 }
 
 func (s *EventService) Delete(ctx context.Context, id string) error {
