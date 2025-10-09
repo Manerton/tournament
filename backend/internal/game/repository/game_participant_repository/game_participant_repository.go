@@ -20,22 +20,34 @@ func New() *GameParticipantRepository {
 
 func (r *GameParticipantRepository) GetAllByGameID(ctx context.Context, db *gorm.DB, gameID uuid.UUID) ([]game_participant.GameParticipant, error) {
 	const op = "repository.GameParticipantRepository.GetAllByGameID"
-	var GameParticipants []game_participant.GameParticipant
-	err := db.WithContext(ctx).Where(game_participant.GameParticipant{GameID: gameID}, gameID).Find(&GameParticipants).Error
+	var result []game_participant.GameParticipant
+	err := db.WithContext(ctx).Where(game_participant.GameParticipant{GameID: gameID}, gameID).Find(&result).Error
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	return GameParticipants, nil
+	return result, nil
 }
 
 func (r *GameParticipantRepository) GetAllByParticipantID(ctx context.Context, db *gorm.DB, participantID uuid.UUID) ([]game_participant.GameParticipant, error) {
 	const op = "repository.GameParticipantRepository.GetAllByParticipantID"
-	var GameParticipants []game_participant.GameParticipant
-	err := db.WithContext(ctx).Where(game_participant.GameParticipant{ParticipantID: participantID}, participantID).Find(&GameParticipants).Error
+	var result []game_participant.GameParticipant
+	err := db.WithContext(ctx).Where(game_participant.GameParticipant{ParticipantID: participantID}, participantID).Find(&result).Error
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	return GameParticipants, nil
+	return result, nil
+}
+
+func (r *GameParticipantRepository) GetByGameParticipantID(ctx context.Context, db *gorm.DB, gameId uuid.UUID, participantID uuid.UUID) (game_participant.GameParticipant, error) {
+	const op = "repository.GameParticipantRepository.GetByGameParticipantID"
+
+	var result game_participant.GameParticipant
+	err := db.WithContext(ctx).Where(game_participant.GameParticipant{GameID: gameId, ParticipantID: participantID}).First(&result).Error
+	if err != nil {
+		return game_participant.GameParticipant{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return result, nil
 }
 
 func (r *GameParticipantRepository) UpdateScore(ctx context.Context, db *gorm.DB, gameID uuid.UUID, participantID uuid.UUID, score int) error {

@@ -21,12 +21,17 @@ import (
 
 type GameRepositoryInterface interface {
 	Create(ctx context.Context, db *gorm.DB, _ *game.Game) error
+	GetByID(ctx context.Context, db *gorm.DB, _ uuid.UUID) (game.Game, error)
 	GetByEventId(ctx context.Context, db *gorm.DB, eventId uuid.UUID) ([]game.Game, error)
+
+	UpdateByID(ctx context.Context, db *gorm.DB, game game.Game) error
 	DeleteByID(ctx context.Context, db *gorm.DB, id uuid.UUID) error
 }
 
 type GameParticipantRepositoryInterface interface {
 	Create(ctx context.Context, db *gorm.DB, _ *game_participant.GameParticipant) error
+
+	GetByGameParticipantID(ctx context.Context, db *gorm.DB, gameId uuid.UUID, participantID uuid.UUID) (game_participant.GameParticipant, error)
 }
 
 type LeaderboardRepostioryInterface interface {
@@ -37,27 +42,38 @@ type TeamParticipantRepositoryInterface interface {
 	GetAllByTeamID(ctx context.Context, db *gorm.DB, teamID uuid.UUID) ([]team_participant.TeamParticipant, error)
 }
 
+type LeaderboardServiceInterface interface {
+	AddGameResultTx(ctx context.Context, transactionDB *gorm.DB, teamId uuid.UUID, enemyId uuid.UUID, teamScore int) error
+}
+
 type GameService struct {
-	log                       *slog.Logger
+	log *slog.Logger
+	db  *gorm.DB
+
 	gameRepository            GameRepositoryInterface
 	gameParticipantRepository GameParticipantRepositoryInterface
 	leaderboardRepostiory     LeaderboardRepostioryInterface
 	teamParticipantRepository TeamParticipantRepositoryInterface
-	db                        *gorm.DB
+
+	leaderboardService LeaderboardServiceInterface
 }
 
 func New(log *slog.Logger, db *gorm.DB,
 	gameRepository GameRepositoryInterface,
 	leaderboardRepostiory LeaderboardRepostioryInterface,
 	gameParticipantRepository GameParticipantRepositoryInterface,
-	teamParticipantRepository TeamParticipantRepositoryInterface) *GameService {
+	teamParticipantRepository TeamParticipantRepositoryInterface,
+	leaderboardService LeaderboardServiceInterface) *GameService {
 	return &GameService{
-		log:                       log,
-		db:                        db,
+		log: log,
+		db:  db,
+
 		gameRepository:            gameRepository,
 		leaderboardRepostiory:     leaderboardRepostiory,
 		gameParticipantRepository: gameParticipantRepository,
 		teamParticipantRepository: teamParticipantRepository,
+
+		leaderboardService: leaderboardService,
 	}
 }
 
@@ -209,10 +225,88 @@ func (s *GameService) createGameParticipants(ctx context.Context, transactionDB 
 	return nil
 }
 
-func (s *GameService) FinishGame(ctx context.Context, gameID uuid.UUID) error {
+func (s *GameService) FinishGame(ctx context.Context, gameID string) error {
 	const op = "service.GameService.FinishGame"
 
+	log := s.log.With(slog.String("op", op))
+
+	uid, err := uuid.Parse(gameID)
+	if err != nil {
+		log.Error("failed parse id to uuid", slog.String("id", gameID), logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	gameModel, err := s.gameRepository.GetByID(ctx, s.db, uid)
+	if err != nil {
+		log.Error("failed get game by id", slog.String("id", gameID), logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	teamAScore, err := s.getTeamScore(ctx, gameModel.TeamA, gameModel.ID)
+	if err != nil {
+		log.Error("failed get team score", slog.String("TeamA", gameModel.TeamA.String()))
+		return errs.ErrInternalError
+	}
+
+	teamBScore, err := s.getTeamScore(ctx, gameModel.TeamB, gameModel.ID)
+	if err != nil {
+		log.Error("failed get team score", slog.String("TeamB", gameModel.TeamB.String()))
+		return errs.ErrInternalError
+	}
+
+	if teamAScore == teamBScore {
+		// TODO get corrent error
+		return errs.ErrBadRequest
+	}
+
+	if teamAScore > teamBScore {
+		gameModel.Finished = game.TeamAWon
+	} else {
+		gameModel.Finished = game.TeamBWon
+	}
+
+	transactionDB := s.db.Begin()
+	err = s.gameRepository.UpdateByID(ctx, transactionDB, gameModel)
+	if err != nil {
+		transactionDB.Rollback()
+		log.Error("failed update status game", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	err = s.leaderboardService.AddGameResultTx(ctx, transactionDB, gameModel.TeamA, gameModel.TeamB, teamAScore)
+	if err != nil {
+		transactionDB.Rollback()
+		log.Error("failed add game result for team A", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	err = s.leaderboardService.AddGameResultTx(ctx, transactionDB, gameModel.TeamB, gameModel.TeamA, teamBScore)
+	if err != nil {
+		transactionDB.Rollback()
+		log.Error("failed add game result for team B", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	transactionDB.Commit()
 	return nil
+}
+
+func (s *GameService) getTeamScore(ctx context.Context, teamId uuid.UUID, gameId uuid.UUID) (int, error) {
+	const op = "service.GameService.getTeamScore"
+
+	teamParticipants, err := s.teamParticipantRepository.GetAllByTeamID(ctx, s.db, teamId)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	var teamScoreSum int = 0
+	for _, teamParticipant := range teamParticipants {
+		gameParticipant, err := s.gameParticipantRepository.GetByGameParticipantID(ctx, s.db, gameId, teamParticipant.ParticipantID)
+		if err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+		teamScoreSum += gameParticipant.Score
+	}
+
+	return teamScoreSum, nil
 }
 
 func (s *GameService) AllGamesIsFinished(ctx context.Context, eventId uuid.UUID) (bool, error) {
