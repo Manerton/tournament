@@ -85,7 +85,8 @@ CREATE TABLE teams (
     event_id UUID NOT NULL REFERENCES events(id)
         ON UPDATE CASCADE ON DELETE CASCADE,
     school_id UUID NOT NULL REFERENCES schools(id)
-        ON UPDATE CASCADE ON DELETE CASCADE
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    status INT NOT NULL DEFAULT 1 CHECK (status IN (1, 2))
 );
 
 CREATE TABLE team_participants (
@@ -122,7 +123,8 @@ CREATE TABLE leaderboards (
         ON UPDATE CASCADE ON DELETE CASCADE,
     enemies_ids UUID[] NOT NULL,
     scores int[] NOT NULL,
-    win_count INT NOT NULL DEFAULT 0 CHECK (win_count >= 0)
+    win_count INT NOT NULL DEFAULT 0 CHECK (win_count >= 0),
+    CONSTRAINT unique_team_event UNIQUE (team_id, event_id)
 );
 
 -- +goose StatementEnd

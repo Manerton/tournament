@@ -28,3 +28,14 @@ func (r *TeamRepository) GetByEventID(ctx context.Context, db *gorm.DB, id uuid.
 	}
 	return result, nil
 }
+
+func (r *TeamRepository) GetAcceptTeamsByEventId(ctx context.Context, db *gorm.DB, id uuid.UUID) ([]team.Team, error) {
+	const op = "repostiory.TeamReposiory.GetAcceptTeamsByEventId"
+
+	var result []team.Team
+	err := db.WithContext(ctx).Where(team.Team{EventID: id, Status: team.AcceptStatus}).Find(&result).Error
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return result, nil
+}

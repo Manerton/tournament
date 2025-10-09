@@ -19,8 +19,10 @@ import (
 type TeamRepositoryInterface interface {
 	GetByID(context.Context, *gorm.DB, uuid.UUID) (team.Team, error)
 	GetByEventID(context.Context, *gorm.DB, uuid.UUID) ([]team.Team, error)
+	GetAcceptTeamsByEventId(context.Context, *gorm.DB, uuid.UUID) ([]team.Team, error)
 
 	Create(context.Context, *gorm.DB, *team.Team) error
+	UpdateByID(context.Context, *gorm.DB, team.Team) error
 }
 
 type TeamParticipantRepositoryInterface interface {
@@ -82,12 +84,31 @@ func (s *TeamService) GetTeamsByEventId(ctx context.Context, eventId string) ([]
 	uid, err := uuid.Parse(eventId)
 	if err != nil {
 		log.Error("failed parse id to uuid", slog.String("id", eventId), logger.Err(err))
-		return nil, errs.ErrBadRequest
+		return nil, errs.ErrInvalidId
 	}
 
 	models, err := s.teamRepository.GetByEventID(ctx, s.db, uid)
 	if err != nil {
-		log.Error("failed get team by event id", logger.Err(err))
+		log.Error("failed get teams by event id", logger.Err(err))
+		return nil, errs.ErrInternalError
+	}
+	return team_mapper.ToTeamsDTO(models), nil
+}
+
+func (s *TeamService) GetAcceptTeamsByEventId(ctx context.Context, eventId string) ([]team_dto.TeamResponseDTO, error) {
+	const op = "service.TeamService.GetAcceptTeamsByEventId"
+
+	log := s.log.With(slog.String("op", op))
+
+	uid, err := uuid.Parse(eventId)
+	if err != nil {
+		log.Error("failed parse id to uuid", slog.String("id", eventId), logger.Err(err))
+		return nil, errs.ErrInvalidId
+	}
+
+	models, err := s.teamRepository.GetAcceptTeamsByEventId(ctx, s.db, uid)
+	if err != nil {
+		log.Error("failed get accept teams by event id", logger.Err(err))
 		return nil, errs.ErrInternalError
 	}
 	return team_mapper.ToTeamsDTO(models), nil
@@ -137,5 +158,31 @@ func (s *TeamService) RegisterTeam(ctx context.Context, dto team_dto.RegisterTea
 			return errs.ErrInternalError
 		}
 	}
+	return nil
+}
+
+func (s *TeamService) AcceptTeam(ctx context.Context, id string) error {
+	const op = "service.TeamService.AcceptTeam"
+
+	log := s.log.With(slog.String("op", op))
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		log.Error("failed parse id to uuid", slog.String("id", id), logger.Err(err))
+		return errs.ErrInvalidId
+	}
+
+	teamModel, err := s.teamRepository.GetByID(ctx, s.db, uid)
+	if err != nil {
+		log.Error("failed get team by id", slog.String("id", id), logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	teamModel.Status = team.AcceptStatus
+	err = s.teamRepository.UpdateByID(ctx, s.db, teamModel)
+	if err != nil {
+		log.Error("failed update status team", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
 	return nil
 }
