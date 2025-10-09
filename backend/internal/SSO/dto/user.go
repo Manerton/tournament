@@ -3,14 +3,14 @@ package sso_dto
 import "github.com/google/uuid"
 
 // DTO для создания пользователя
-type CreateUserDTO struct {
+type UserResponceDTO struct {
 	Login    string `json:"login" validate:"required"`
 	Password string `json:"password" validate:"required"`
 }
 
 // DTO для обновления пользователя
 type UpdateUserDTO struct {
-	Id 		 string `json:"-"`
+	Id       string `json:"-"`
 	Login    string `json:"login,omitempty"`
 	Password string `json:"password,omitempty"`
 }

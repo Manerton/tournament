@@ -28,6 +28,8 @@ import (
 	"net/http"
 	"time"
 
+	auth_verification "main/internal/pkg/middleware/authVerification"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 )
@@ -64,13 +66,17 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	sessionHandler := session_handler.NewSessionHandler(ssoService)
 	userHandler := user_handler.NewUserHandler(ssoService)
 
+	//init auth
+	// init auth middleware
+	authMiddleware := auth_verification.NewAuthMiddleware(sessionRepository, storage)
+
 	var app = &App{
 		log: log,
 	}
 
 	// init router
 	router := chi.NewRouter()
-	app.initRoutes(router, teamHandler, eventHandler, userHandler, sessionHandler)
+	app.initRoutes(router, teamHandler, eventHandler, userHandler, sessionHandler, authMiddleware)
 
 	app.server = &http.Server{
 		Addr:    cfg.GetAddress(),
@@ -80,38 +86,40 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	return app
 }
 
-func (a *App) initRoutes(router *chi.Mux, teamHandler *team_handler.TeamHandler, eventHandler *event_handler.EventHandler, userHandler *user_handler.UserHandler, sessionHandler *session_handler.SessionHandler) {
+func (a *App) initRoutes(router *chi.Mux, teamHandler *team_handler.TeamHandler, eventHandler *event_handler.EventHandler, userHandler *user_handler.UserHandler, sessionHandler *session_handler.SessionHandler, authMiddleware *auth_verification.AuthMiddleware) {
 
 	// Группа маршрутов для аутентификации и сессий
-	router.Route("/backend/sessions", func(r chi.Router) {
-		r.Post("/login", sessionHandler.Login)        // POST /backend/sessions/login
-		r.Post("/refresh", sessionHandler.Refresh)    // POST /backend/sessions/refresh
-		r.Post("/logout/{id}", sessionHandler.Logout) // POST /backend/sessions/logout/{id}
-		r.Get("/{id}", sessionHandler.GetSessionByID) // GET /backend/sessions/{id}
-		r.Get("/", sessionHandler.ListSessions)       // GET /backend/sessions
-		// r.Put("/{id}", sessionHandler.UpdateSession)  // PUT /backend/sessions/{id} (закомментирован)
+	router.Route("/api/sessions", func(r chi.Router) {
+		r.Post("/login", sessionHandler.Login)        // POST /api/sessions/login
+		r.Post("/refresh", sessionHandler.Refresh)    // POST /api/sessions/refresh
+		r.Post("/logout/{id}", sessionHandler.Logout) // POST /api/sessions/logout/{id}
+		r.Get("/{id}", sessionHandler.GetSessionByID) // GET /api/sessions/{id}
+
+		// Применяем middleware только к конкретному роуту
+		r.With(authMiddleware.AuthVerify).Get("/", sessionHandler.ListSessions) // GET /api/sessions
+		// r.Put("/{id}", sessionHandler.UpdateSession)  // PUT /api/sessions/{id}
 	})
 
 	// Группа маршрутов для пользователей
-	router.Route("/backend/users", func(r chi.Router) {
-		r.Post("/", userHandler.CreateUser)       // POST /backend/users
-		r.Get("/{id}", userHandler.GetUserByID)   // GET /backend/users/{id}
-		r.Get("/", userHandler.ListUsers)         // GET /backend/users
-		r.Put("/{id}", userHandler.UpdateUser)    // PUT /backend/users/{id}
-		r.Delete("/{id}", userHandler.DeleteUser) // DELETE /backend/users/{id}
+	router.Route("/api/users", func(r chi.Router) {
+		r.Post("/", userHandler.CreateUser)       // POST /api/users
+		r.Get("/{id}", userHandler.GetUserByID)   // GET /api/users/{id}
+		r.Get("/", userHandler.ListUsers)         // GET /api/users
+		r.Put("/{id}", userHandler.UpdateUser)    // PUT /api/users/{id}
+		r.Delete("/{id}", userHandler.DeleteUser) // DELETE /api/users/{id}
 	})
 
 	// Группа маршрутов для команд
-	router.Route("/backend/teams", func(r chi.Router) {
-		r.Post("/register", teamHandler.RegisterTeam)       // POST /backend/teams/register
-		r.Get("/event/{id}", teamHandler.GetTeamsByEventId) // GET /backend/teams/event/{id}
+	router.Route("/api/teams", func(r chi.Router) {
+		r.Post("/register", teamHandler.RegisterTeam)       // POST /api/teams/register
+		r.Get("/event/{id}", teamHandler.GetTeamsByEventId) // GET /api/teams/event/{id}
 	})
 
 	// Группа маршрутов для событий
-	router.Route("/backend/events", func(r chi.Router) {
-		r.Post("/", eventHandler.Create)                           // POST /backend/events
-		r.Get("/actual", eventHandler.GetActualEvents)             // GET /backend/events/actual
-		r.Get("/{id}/stages", eventHandler.GetAllStagesByParentId) // GET /backend/events/{id}/stages
+	router.Route("/api/events", func(r chi.Router) {
+		r.Post("/", eventHandler.Create)                           // POST /api/events
+		r.Get("/actual", eventHandler.GetActualEvents)             // GET /api/events/actual
+		r.Get("/{id}/stages", eventHandler.GetAllStagesByParentId) // GET /api/events/{id}/stages
 	})
 }
 

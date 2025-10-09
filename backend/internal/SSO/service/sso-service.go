@@ -29,6 +29,7 @@ type UserRepository interface {
 type UserSessionRepository interface {
 	Create(ctx context.Context, db *gorm.DB, session *session_storage.UserSession) error
 	GetByID(ctx context.Context, db *gorm.DB, id uuid.UUID) (session_storage.UserSession, error)
+	GetByUserID(ctx context.Context, db *gorm.DB, userID uuid.UUID) (session_storage.UserSession, error)
 	GetByToken(ctx context.Context, db *gorm.DB, token string) (session_storage.UserSession, error)
 	GetAll(ctx context.Context, db *gorm.DB) ([]session_storage.UserSession, error)
 	Update(ctx context.Context, db *gorm.DB, session session_storage.UserSession) error
@@ -57,7 +58,7 @@ func New(db *gorm.DB, log *slog.Logger, userRepo UserRepository, sessionRepo Use
 
 // ----------------- Работа с пользователями -----------------
 
-func (s *SsoService) CreateUser(ctx context.Context, dto sso_dto.CreateUserDTO) (uuid.UUID, error) {
+func (s *SsoService) CreateUser(ctx context.Context, dto sso_dto.UserResponceDTO) (uuid.UUID, error) {
 	const op = "services.SSOService.CreateUser"
 	log := s.log.With(
 		slog.String("op", op),
@@ -292,7 +293,20 @@ func (s *SsoService) Login(ctx context.Context, login, password string) (uuid.UU
 	sessionToken := utils.GenerateToken(10)
 	csrfToken := utils.GenerateToken(10)
 
-	// 4. Создаем новую сессию
+	//4 Проверяем есть ли уже сессия у пользователя, если есть, удаляем её
+	existingSession, err := s.sessionRepository.GetByUserID(ctx, s.db, userEntity.ID)
+
+	if err == nil {
+		// Session exists, delete it
+		if err := s.sessionRepository.DeleteByID(ctx, s.db, existingSession.ID); err != nil {
+			return uuid.Nil, "", "", fmt.Errorf("login: failed to delete existing session: %w", err)
+		}
+	} else if err != gorm.ErrRecordNotFound {
+		// Unexpected error
+		return uuid.Nil, "", "", fmt.Errorf("login: failed to get existing session: %w", err)
+	}
+
+	// 5. Создаем новую сессию
 	session := session_storage.UserSession{
 		UserId:       userEntity.ID,
 		SessionToken: sessionToken,
@@ -310,16 +324,16 @@ func (s *SsoService) Login(ctx context.Context, login, password string) (uuid.UU
 	return session.ID, sessionToken, csrfToken, nil
 }
 
-func (s *SsoService) Refresh(ctx context.Context, token string) (string, string, error) {
+func (s *SsoService) Refresh(ctx context.Context, token string) (uuid.UUID, string, string, error) {
 	// 1. Проверяем существование сессии
 	sessionEntity, err := s.sessionRepository.GetByToken(ctx, s.db, token)
 	if err != nil {
-		return "", "", fmt.Errorf("refresh: session not found: %w", err)
+		return uuid.UUID{}, "", "", fmt.Errorf("refresh: session not found: %w", err)
 	}
 
 	// 2. Проверяем не истекла ли сессия
 	if time.Now().After(sessionEntity.ExpiresAt) {
-		return "", "", fmt.Errorf("refresh: session expired")
+		return uuid.UUID{}, "", "", fmt.Errorf("refresh: session expired")
 	}
 
 	// 3. Генерируем новые токены
@@ -334,10 +348,10 @@ func (s *SsoService) Refresh(ctx context.Context, token string) (string, string,
 
 	// 5. Сохраняем обновленную сессию
 	if err := s.sessionRepository.Update(ctx, s.db, sessionEntity); err != nil {
-		return "", "", fmt.Errorf("refresh: failed to update session: %w", err)
+		return uuid.UUID{}, "", "", fmt.Errorf("refresh: failed to update session: %w", err)
 	}
 
-	return sessionToken, csrfToken, nil
+	return sessionEntity.UserId, sessionToken, csrfToken, nil
 }
 
 func (s *SsoService) Logout(ctx context.Context, sessionToken string) error {

@@ -15,7 +15,7 @@ import (
 
 // Интерфейс сервиса для работы с пользователями
 type UserServiceInterface interface {
-	CreateUser(ctx context.Context, dto sso_dto.CreateUserDTO) (uuid.UUID, error)
+	CreateUser(ctx context.Context, dto sso_dto.UserResponceDTO) (uuid.UUID, error)
 	GetUserByID(ctx context.Context, id string) (sso_dto.UserResponseDTO, error)
 	GetUserByLogin(ctx context.Context, login string) (sso_dto.UserResponseDTO, error)
 	ListUsers(ctx context.Context) ([]sso_dto.UserResponseDTO, error)
@@ -34,7 +34,7 @@ func NewUserHandler(service UserServiceInterface) *UserHandler {
 // POST /users
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var createDTO sso_dto.CreateUserDTO
+	var createDTO sso_dto.UserResponceDTO
 
 	if err := render.DecodeJSON(r.Body, &createDTO); err != nil {
 		render.Status(r, http.StatusBadRequest)

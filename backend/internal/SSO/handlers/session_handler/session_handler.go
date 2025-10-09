@@ -26,7 +26,7 @@ type SessionServiceInterface interface {
 	DeleteSessionByToken(ctx context.Context, token string) error
 	DeleteExpiredSessions(ctx context.Context) error
 	Login(ctx context.Context, login, password string) (uuid.UUID, string, string, error)
-	Refresh(ctx context.Context, token string) (string, string, error)
+	Refresh(ctx context.Context, token string) (uuid.UUID, string, string, error)
 	Logout(ctx context.Context, sessionID string) error
 }
 
@@ -41,7 +41,7 @@ func NewSessionHandler(service SessionServiceInterface) *SessionHandler {
 // POST /sessions/login
 func (h *SessionHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var dto sso_dto.CreateUserDTO
+	var dto sso_dto.UserResponceDTO
 
 	if err := render.DecodeJSON(r.Body, &dto); err != nil {
 		render.Status(r, http.StatusBadRequest)
@@ -95,7 +95,7 @@ func (h *SessionHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Вызываем сервис для обновления токенов
-	sessionToken, csrfToken, err := h.service.Refresh(ctx, cookie.Value)
+	userId, sessionToken, csrfToken, err := h.service.Refresh(ctx, cookie.Value)
 	if err != nil {
 		render.Status(r, http.StatusInternalServerError)
 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError.Wrap(err.Error())))
@@ -121,8 +121,11 @@ func (h *SessionHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	})
 
 	render.JSON(w, r, response.ApiResponse{
-		Status: response.StatusOK,
-		Data:   map[string]string{"message": "tokens refreshed successfully"},
+		Status:     response.StatusOK,
+		StatusCode: http.StatusOK,
+		Data: map[string]string{
+			"user_id": userId.String(),
+		},
 	})
 }
 
