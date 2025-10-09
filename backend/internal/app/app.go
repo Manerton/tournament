@@ -13,6 +13,7 @@ import (
 	"main/internal/game/repository/game_repository"
 	"main/internal/game/service/game_service"
 	"main/internal/leaderboard/repository/leaderboard_repository"
+	"main/internal/leaderboard/service/leaderboard_service"
 
 	"main/internal/config"
 	"main/internal/event/handler/event_handler"
@@ -55,9 +56,10 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	sessionRepository := session_repository.New()
 
 	// init service
-	gameService := game_service.New(log, storage, gameRepository, leaderboardRepository, gameParticpantRepository, teamParticipantRepository)
+	leaderboardService := leaderboard_service.New(log, storage, leaderboardRepository, teamRepository)
+	gameService := game_service.New(log, storage, gameRepository, leaderboardRepository, gameParticpantRepository, teamParticipantRepository, leaderboardService)
 	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, log, storage)
-	eventService := event_service.New(eventRepository, log, storage, gameService)
+	eventService := event_service.New(eventRepository, log, storage, gameService, leaderboardService)
 	ssoService := sso_service.New(storage, log, userRepository, sessionRepository)
 
 	// init handler
@@ -109,10 +111,16 @@ func (a *App) initRoutes(router *chi.Mux, teamHandler *team_handler.TeamHandler,
 		r.Delete("/{id}", userHandler.DeleteUser) // DELETE /api/users/{id}
 	})
 
+	// router.Route("/api/locations", func(r chi.Router)  {
+	// 	r.Get("/district", )
+	// })
+
 	// Группа маршрутов для команд
 	router.Route("/api/teams", func(r chi.Router) {
-		r.Post("/register", teamHandler.RegisterTeam)       // POST /api/teams/register
-		r.Get("/event/{id}", teamHandler.GetTeamsByEventId) // GET /api/teams/event/{id}
+		r.Post("/register", teamHandler.RegisterTeam)                    // POST /api/teams/register
+		r.Get("/event/{id}", teamHandler.GetTeamsByEventId)              // GET /api/teams/event/{id}
+		r.Get("/accept/event/{id}", teamHandler.GetAcceptTeamsByEventId) // GET /api/teams/accept/event/{id}
+
 	})
 
 	// Группа маршрутов для событий

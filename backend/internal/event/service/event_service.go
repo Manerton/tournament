@@ -29,6 +29,10 @@ type EventRepositoryInterface interface {
 	DeleteByID(ctx context.Context, db *gorm.DB, id uuid.UUID) error
 }
 
+type LeaderboardServiceInterface interface {
+	InitForTeams(ctx context.Context, transactionDB *gorm.DB, eventID uuid.UUID) error
+}
+
 type GameServiceInterface interface {
 	AllGamesIsFinished(ctx context.Context, eventId uuid.UUID) (bool, error)
 }
@@ -38,15 +42,19 @@ type EventService struct {
 	repository EventRepositoryInterface
 	log        *slog.Logger
 
-	gameService GameServiceInterface
+	gameService        GameServiceInterface
+	leaderboardService LeaderboardServiceInterface
 }
 
-func New(repository EventRepositoryInterface, log *slog.Logger, db *gorm.DB, gameService GameServiceInterface) *EventService {
+func New(repository EventRepositoryInterface, log *slog.Logger, db *gorm.DB, gameService GameServiceInterface, leaderboardService LeaderboardServiceInterface) *EventService {
 	return &EventService{
-		db:          db,
-		log:         log,
-		repository:  repository,
-		gameService: gameService,
+		db:  db,
+		log: log,
+
+		repository: repository,
+
+		gameService:        gameService,
+		leaderboardService: leaderboardService,
 	}
 }
 
@@ -189,6 +197,34 @@ func (s *EventService) createTour(ctx context.Context, transactionDB *gorm.DB, p
 	}
 
 	return newTour.ID, nil
+}
+
+func (s *EventService) StartTournament(ctx context.Context, eventId string) error {
+	const op = "service.EventService.StartTournament"
+	log := s.log.With(slog.String("op", op))
+
+	uid, err := uuid.Parse(eventId)
+	if err != nil {
+		log.Error("failed parse id to uuid", slog.String("id", eventId), logger.Err(err))
+		return errs.ErrInvalidId
+	}
+
+	transactionDB := s.db.Begin()
+	err = s.leaderboardService.InitForTeams(ctx, transactionDB, uid)
+	if err != nil {
+		transactionDB.Rollback()
+		log.Error("failed init leaderboard", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	_, err = s.createTour(ctx, transactionDB, uid)
+	if err != nil {
+		transactionDB.Rollback()
+		log.Error("failed create first tour", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	return nil
 }
 
 func (s *EventService) FinishedTour(ctx context.Context, id string) error {
