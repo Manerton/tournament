@@ -290,8 +290,8 @@ func (s *SsoService) Login(ctx context.Context, login, password string) (uuid.UU
 	}
 
 	// 3. Генерируем токены
-	sessionToken := utils.GenerateToken(10)
-	csrfToken := utils.GenerateToken(10)
+	sessionToken := utils.GenerateToken(16)
+	csrfToken := utils.GenerateToken(16)
 
 	//4 Проверяем есть ли уже сессия у пользователя, если есть, удаляем её
 	existingSession, err := s.sessionRepository.GetByUserID(ctx, s.db, userEntity.ID)

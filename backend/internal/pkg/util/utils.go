@@ -18,11 +18,16 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 func GenerateToken(length int) string {
-	// Генерация случайного токена
+	// Создаём буфер для случайных байт
 	tokenBytes := make([]byte, length)
-	_, err := rand.Read(tokenBytes)
-	if err != nil {
+
+	// Заполняем случайными данными
+	if _, err := rand.Read(tokenBytes); err != nil {
 		return ""
 	}
-	return base64.URLEncoding.EncodeToString(tokenBytes)
+
+	// Кодируем в base64 (URL-safe, без '=' на конце)
+	token := base64.RawURLEncoding.EncodeToString(tokenBytes)
+
+	return token
 }
