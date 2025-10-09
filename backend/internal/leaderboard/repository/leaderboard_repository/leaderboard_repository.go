@@ -27,3 +27,13 @@ func (r *LeaderboardRepostiory) GetByEventId(ctx context.Context, db *gorm.DB, e
 	}
 	return leaderboards, nil
 }
+
+func (r *LeaderboardRepostiory) GetByTeamId(ctx context.Context, db *gorm.DB, teamId uuid.UUID) (leaderboard.Leaderboard, error) {
+	const op = "repository.LeaderboardRepository.GetByTeamId"
+	var result leaderboard.Leaderboard
+	err := db.WithContext(ctx).Where(leaderboard.Leaderboard{TeamID: teamId}).First(&result).Error
+	if err != nil {
+		return leaderboard.Leaderboard{}, fmt.Errorf("%s: %w", op, err)
+	}
+	return result, nil
+}
