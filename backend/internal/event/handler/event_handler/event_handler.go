@@ -16,6 +16,8 @@ type EventServiceInterface interface {
 	GetActualEvents(context.Context) ([]event_dto.EventDTOResponse, error)
 	GetByPreviousEventID(context.Context, string) ([]event_dto.EventDTOResponse, error)
 
+	StartTournament(ctx context.Context, eventId string) error
+
 	Create(context.Context, event_dto.EventDTOCreate) (uuid.UUID, error)
 }
 
@@ -75,6 +77,25 @@ func (h *EventHandler) GetAllStagesByParentId(w http.ResponseWriter, r *http.Req
 		StatusCode: http.StatusOK,
 		Data:       events,
 	})
+}
+
+func (h *EventHandler) StartTournament(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := chi.URLParam(r, "id")
+	err := h.eventService.StartTournament(ctx, id)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("success started"))
 }
 
 func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
