@@ -209,6 +209,8 @@ func (s *EventService) StartTournament(ctx context.Context, eventId string) erro
 		return errs.ErrInvalidId
 	}
 
+	// TODO!! teams != 0
+
 	transactionDB := s.db.Begin()
 	err = s.leaderboardService.InitForTeams(ctx, transactionDB, uid)
 	if err != nil {
@@ -223,7 +225,7 @@ func (s *EventService) StartTournament(ctx context.Context, eventId string) erro
 		log.Error("failed create first tour", logger.Err(err))
 		return errs.ErrInternalError
 	}
-
+	transactionDB.Commit()
 	return nil
 }
 
@@ -243,6 +245,11 @@ func (s *EventService) FinishedTour(ctx context.Context, id string) error {
 		return errs.ErrInternalError
 	}
 
+	if eventModel.Type != event.StageType {
+		log.Error("uncorrent method use, this event is not stage")
+		return errs.ErrBadRequest
+	}
+
 	ok, err := s.gameService.AllGamesIsFinished(ctx, eventModel.ID)
 	if err != nil {
 		log.Error("failed check all games is finished", logger.Err(err))
@@ -250,6 +257,7 @@ func (s *EventService) FinishedTour(ctx context.Context, id string) error {
 	}
 
 	if !ok {
+		// TODO new error
 		return fmt.Errorf("not all games is finished")
 	}
 

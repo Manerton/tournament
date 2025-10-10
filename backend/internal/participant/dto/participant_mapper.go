@@ -16,7 +16,7 @@ func ToParticipantModel(dto ParticipantCreateDTO) *participant.Participant {
 }
 
 func ToManyParticipantModels(dtos []ParticipantCreateDTO) []participant.Participant {
-	models := make([]participant.Participant, len(dtos))
+	models := make([]participant.Participant, 0, len(dtos))
 	for i, dto := range dtos {
 		models[i] = *ToParticipantModel(dto)
 	}
@@ -34,7 +34,7 @@ func ToParticipantResponseDTO(model *participant.Participant) ParticipantRespons
 }
 
 func ToParticipantsResponseDTO(models []participant.Participant) []ParticipantResponseDTO {
-	dtos := make([]ParticipantResponseDTO, len(models))
+	dtos := make([]ParticipantResponseDTO, 0, len(models))
 	for i, m := range models {
 		dtos[i] = ToParticipantResponseDTO(&m)
 	}

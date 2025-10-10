@@ -8,7 +8,7 @@ import (
 )
 
 type Participant struct {
-	ID  uuid.UUID `gorm:"type:uuid;defaul:gen_random_uuid();primaryKey"`
+	ID  uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 	FIO string    `gorm:"type:varchar(255);not null"`
 	// Birthdate  time.Time     `gorm:"type:date;not null"`
 	Class    int           `gorm:"type:smallint;not null"`

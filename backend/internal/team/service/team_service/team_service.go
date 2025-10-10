@@ -158,6 +158,7 @@ func (s *TeamService) RegisterTeam(ctx context.Context, dto team_dto.RegisterTea
 			return errs.ErrInternalError
 		}
 	}
+	transactionDb.Commit()
 	return nil
 }
 

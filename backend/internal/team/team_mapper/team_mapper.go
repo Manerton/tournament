@@ -22,8 +22,9 @@ func ToTeamModel(dto team_dto.TeamCreateDTO) (team.Team, error) {
 		Name:             dto.TeamName,
 		EventID:          eventId,
 		ResponsibleName:  dto.ResponsibleName,
-		ResponsiblePhone: dto.ResponsibleName,
+		ResponsiblePhone: dto.ResponsibleNumber,
 		SchoolID:         shcoolId,
+		Status:           team.ReviewStatus,
 	}, nil
 }
 
@@ -39,7 +40,7 @@ func ToTeamDTO(model team.Team) team_dto.TeamResponseDTO {
 }
 
 func ToTeamsDTO(models []team.Team) []team_dto.TeamResponseDTO {
-	dtos := make([]team_dto.TeamResponseDTO, len(models))
+	dtos := make([]team_dto.TeamResponseDTO, 0, len(models))
 	for _, model := range models {
 		dtos = append(dtos, ToTeamDTO(model))
 	}

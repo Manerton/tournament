@@ -44,6 +44,7 @@ func (h *TeamHandler) RegisterTeam(w http.ResponseWriter, r *http.Request) {
 		if apiErr, ok := errs.IsApiError(err); ok {
 			render.Status(r, apiErr.HttpCode)
 			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
 		}
 
 		render.Status(r, http.StatusInternalServerError)
