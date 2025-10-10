@@ -1,8 +1,7 @@
 export interface UserAuth {
   id: string;
-  email: string;
+  email?: string;
 }
-
 
 export interface LoginResponse {
   status: string;

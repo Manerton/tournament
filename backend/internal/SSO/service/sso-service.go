@@ -229,6 +229,21 @@ func (s *SsoService) GetSessionByID(ctx context.Context, id string) (session_sto
 	return s.sessionRepository.GetByID(ctx, s.db, uid)
 }
 
+func (s *SsoService) GetSessionByUserID(ctx context.Context, id string) (session_storage.UserSession, error) {
+
+	const op = "services.SSOService.GetSessionByUserID"
+	log := s.log.With(
+		slog.String("op", op),
+	)
+
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		log.Error("failed parse id to uuid", logger.Err(err))
+		return session_storage.UserSession{}, errs.ErrBadRequest.Wrap("failed parse uuid")
+	}
+	return s.sessionRepository.GetByUserID(ctx, s.db, uid)
+}
+
 func (s *SsoService) GetSessionByToken(ctx context.Context, token string) (session_storage.UserSession, error) {
 	return s.sessionRepository.GetByToken(ctx, s.db, token)
 }

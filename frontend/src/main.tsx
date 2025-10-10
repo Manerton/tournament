@@ -4,9 +4,13 @@ import './index.css'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import App from './App.tsx'
+import { AuthProvider } from './components/helpers/AuthContext.tsx';
+import { ThemeProvider } from './components/helpers/ThemeContext.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ThemeProvider> 
+          <App />
+    </ThemeProvider>
   </StrictMode>,
 )

@@ -19,6 +19,7 @@ import (
 type SessionServiceInterface interface {
 	CreateSession(ctx context.Context, userId string) (uuid.UUID, error)
 	GetSessionByID(ctx context.Context, id string) (session_storage.UserSession, error)
+	GetSessionByUserID(ctx context.Context, id string) (session_storage.UserSession, error)
 	GetSessionByToken(ctx context.Context, token string) (session_storage.UserSession, error)
 	ListSessions(ctx context.Context) ([]session_storage.UserSession, error)
 	//UpdateSession(ctx context.Context, token string, dto sso_dto.UpdateUserSessionDTO) error
@@ -163,11 +164,11 @@ func (h *SessionHandler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /sessions/{id}
-func (h *SessionHandler) GetSessionByID(w http.ResponseWriter, r *http.Request) {
+func (h *SessionHandler) GetSessionByUserID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := chi.URLParam(r, "id")
 
-	session, err := h.service.GetSessionByID(ctx, id)
+	session, err := h.service.GetSessionByUserID(ctx, id)
 	if err != nil {
 		render.Status(r, http.StatusNotFound)
 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrNotFound.Wrap(err.Error())))

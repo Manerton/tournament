@@ -92,6 +92,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 
 	// init router
 	router := chi.NewRouter()
+	app.initCors(router, cfg.FrontendURL)
 	app.initRoutes(router, teamHandler, eventHandler, userHandler, sessionHandler, locationHandler, gameHandler, authMiddleware)
 
 	app.server = &http.Server{
@@ -114,10 +115,10 @@ func (a *App) initRoutes(router *chi.Mux,
 
 	// Группа маршрутов для аутентификации и сессий
 	router.Route("/api/sessions", func(r chi.Router) {
-		r.Post("/login", sessionHandler.Login)        // POST /api/sessions/login
-		r.Post("/refresh", sessionHandler.Refresh)    // POST /api/sessions/refresh
-		r.Post("/logout/{id}", sessionHandler.Logout) // POST /api/sessions/logout/{id}
-		r.Get("/{id}", sessionHandler.GetSessionByID) // GET /api/sessions/{id}
+		r.Post("/login", sessionHandler.Login)            // POST /api/sessions/login
+		r.Post("/refresh", sessionHandler.Refresh)        // POST /api/sessions/refresh
+		r.Post("/logout/{id}", sessionHandler.Logout)     // POST /api/sessions/logout/{id}
+		r.Get("/{id}", sessionHandler.GetSessionByUserID) // GET /api/sessions/{id}
 
 		// Применяем middleware только к конкретному роуту
 		r.With(authMiddleware.AuthVerify).Get("/", sessionHandler.ListSessions) // GET /api/sessions
@@ -160,6 +161,7 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Get("/actual", eventHandler.GetActualEvents)             // GET /api/events/actual
 		r.Get("/{id}/stages", eventHandler.GetAllStagesByParentId) // GET /api/events/{id}/stages
 	})
+
 }
 
 func (a *App) initCors(router *chi.Mux, frontedUrl string) {

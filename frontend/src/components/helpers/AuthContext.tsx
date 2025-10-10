@@ -23,7 +23,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserAuth | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [expires, setExpires] = useState<number | undefined>(undefined);
-  const navigate = useNavigate();
 
   /**
    * Авторизация пользователя
@@ -34,12 +33,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userId = response.data.data.user_id;
 
       // Получаем полную информацию о сессии
-      const userSession = await axiosGetSessionById(userId);
-      const session = userSession.data.data;
+      // const userSession = await axiosGetSessionById(userId);
+      // const session = userSession.data.data;
 
       setUser({
-        id: session.user_id,
-        email: session.email ?? login,
+        id: userId,
+        email: login,
       });
 
       // задаём срок жизни токена (30 минут, как на сервере)
@@ -54,35 +53,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * Обновление session_token и csrf_token
    */
   const refresh = async (): Promise<UserAuth | null> => {
-    try {
-      console.log("Refreshing session...");
-      const response = await axiosRefreshSession();
-      console.log("Session refreshed:", response.data.data);
+  try {
+    console.log("Refreshing session...");
+    const response = await axiosRefreshSession();
+    const refreshedUserId = response.data.data.message;
 
-      // задаём новое время истечения (ещё +30 минут)
-      setExpires(Date.now() + 30 * 60 * 1000);
+    console.log("Session refreshed:", refreshedUserId);
 
-      // обновляем пользователя, если он уже есть
-      if (user) {
-        const userSession = await axiosGetSessionById(user.id);
-        const session = userSession.data.data;
-        const updatedUser = {
-          id: session.user_id,
-          email: session.email ?? "",
-        };
-        setUser(updatedUser);
-        return updatedUser;
-      }
+    setExpires(Date.now() + 30 * 60 * 1000);
 
-      return null;
-    } catch (err) {
-      console.error("Session refresh failed:", err);
-      setUser(null);
-      return null;
-    } finally {
-      setInitialized(true);
-    }
-  };
+    // Загружаем актуальную сессию по user_id из ответа
+    // const userSession = await axiosGetSessionById(refreshedUserId);
+    // const session = userSession.data.data;
+
+    const updatedUser = {
+      id: refreshedUserId,
+      email: "",
+    };
+    setUser(updatedUser);
+
+    return updatedUser;
+  } catch (err) {
+    console.error("Session refresh failed:", err);
+    setUser(null);
+    return null;
+  } finally {
+    setInitialized(true);
+  }
+};
+
 
   /**
    * Выход из системы
@@ -96,7 +95,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Logout failed:", err);
     } finally {
       setUser(null);
-      navigate("/login");
     }
   };
 
