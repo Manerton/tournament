@@ -9,11 +9,17 @@ import (
 	session_repository "main/internal/SSO/repository/session-repository"
 	user_repository "main/internal/SSO/repository/user-repository"
 	sso_service "main/internal/SSO/service"
+	"main/internal/game/handler/game_handler"
 	"main/internal/game/repository/game_participant_repository"
 	"main/internal/game/repository/game_repository"
 	"main/internal/game/service/game_service"
 	"main/internal/leaderboard/repository/leaderboard_repository"
 	"main/internal/leaderboard/service/leaderboard_service"
+	"main/internal/location/handler/location_handler"
+	"main/internal/location/repository/district_repository"
+	"main/internal/location/repository/school_repository"
+	"main/internal/location/service/district_service"
+	"main/internal/location/service/school_service"
 
 	"main/internal/config"
 	"main/internal/event/handler/event_handler"
@@ -45,6 +51,9 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	storage := postgresql.MustPostgreSQL(cfg.GetDSN())
 
 	// init repository
+	schoolRepository := school_repository.New()
+	distrcitRepository := district_repository.New()
+
 	gameRepository := game_repository.New()
 	gameParticpantRepository := game_participant_repository.New()
 	teamRepository := team_repository.New()
@@ -56,6 +65,9 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	sessionRepository := session_repository.New()
 
 	// init service
+	schoolService := school_service.New(log, storage, schoolRepository)
+	districtService := district_service.New(log, storage, distrcitRepository)
+
 	leaderboardService := leaderboard_service.New(log, storage, leaderboardRepository, teamRepository)
 	gameService := game_service.New(log, storage, gameRepository, leaderboardRepository, gameParticpantRepository, teamParticipantRepository, leaderboardService)
 	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, log, storage)
@@ -63,6 +75,8 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	ssoService := sso_service.New(storage, log, userRepository, sessionRepository)
 
 	// init handler
+	locationHandler := location_handler.New(districtService, schoolService)
+	gameHandler := game_handler.New(gameService)
 	teamHandler := team_handler.New(teamService)
 	eventHandler := event_handler.New(eventService)
 	sessionHandler := session_handler.NewSessionHandler(ssoService)
@@ -78,7 +92,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 
 	// init router
 	router := chi.NewRouter()
-	app.initRoutes(router, teamHandler, eventHandler, userHandler, sessionHandler, authMiddleware)
+	app.initRoutes(router, teamHandler, eventHandler, userHandler, sessionHandler, locationHandler, gameHandler, authMiddleware)
 
 	app.server = &http.Server{
 		Addr:    cfg.GetAddress(),
@@ -88,7 +102,15 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	return app
 }
 
-func (a *App) initRoutes(router *chi.Mux, teamHandler *team_handler.TeamHandler, eventHandler *event_handler.EventHandler, userHandler *user_handler.UserHandler, sessionHandler *session_handler.SessionHandler, authMiddleware *auth_verification.AuthMiddleware) {
+func (a *App) initRoutes(router *chi.Mux,
+	teamHandler *team_handler.TeamHandler,
+	eventHandler *event_handler.EventHandler,
+	userHandler *user_handler.UserHandler,
+	sessionHandler *session_handler.SessionHandler,
+	locationHandler *location_handler.LocationHandler,
+	gameHandler *game_handler.GameHandler,
+
+	authMiddleware *auth_verification.AuthMiddleware) {
 
 	// Группа маршрутов для аутентификации и сессий
 	router.Route("/api/sessions", func(r chi.Router) {
@@ -111,21 +133,30 @@ func (a *App) initRoutes(router *chi.Mux, teamHandler *team_handler.TeamHandler,
 		r.Delete("/{id}", userHandler.DeleteUser) // DELETE /api/users/{id}
 	})
 
-	// router.Route("/api/locations", func(r chi.Router)  {
-	// 	r.Get("/district", )
-	// })
+	// Группа маршрутов для локаций
+	router.Route("/api/locations", func(r chi.Router) {
+		r.Get("/districts", locationHandler.GetAllDistrict)
+		r.Get("/districts/{id}/schools", locationHandler.GetSchoolsByDistrictId)
+	})
 
 	// Группа маршрутов для команд
 	router.Route("/api/teams", func(r chi.Router) {
 		r.Post("/register", teamHandler.RegisterTeam)                    // POST /api/teams/register
 		r.Get("/event/{id}", teamHandler.GetTeamsByEventId)              // GET /api/teams/event/{id}
 		r.Get("/accept/event/{id}", teamHandler.GetAcceptTeamsByEventId) // GET /api/teams/accept/event/{id}
+	})
 
+	// Группа маршрутов для игр
+	router.Route("/api/games", func(r chi.Router) {
+		r.Post("/{id}/tours", gameHandler.GetByEventId)
+		r.Post("/{id}/finish", gameHandler.FinisheTour)
 	})
 
 	// Группа маршрутов для событий
 	router.Route("/api/events", func(r chi.Router) {
-		r.Post("/", eventHandler.Create)                           // POST /api/events
+		r.Post("/", eventHandler.Create) // POST /api/events
+		r.Post("/{id}/start", eventHandler.StartTournament)
+
 		r.Get("/actual", eventHandler.GetActualEvents)             // GET /api/events/actual
 		r.Get("/{id}/stages", eventHandler.GetAllStagesByParentId) // GET /api/events/{id}/stages
 	})
