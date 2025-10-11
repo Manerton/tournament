@@ -1,294 +1,294 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Container, Row, Col, Form, Button, Card, Table, Modal } from "react-bootstrap";
+import { Container, Row, Col, Form, Button, Card, Table, Modal, Spinner, Alert } from "react-bootstrap";
+import Select from "react-select";
 
-// ----------------------------
-// Типы данных
-// ----------------------------
+// ------------------------------------
+// Типы DTO (согласно новому ТЗ)
+// ------------------------------------
+interface ApiResponse<T> {
+  status: string;
+  status_code: number;
+  data: T;
+  message?: string;
+}
+
 interface DistrictDTOResponse {
-  ID: string;
-  Name: string;
-  RegionID: string;
+  id: string;
+  name: string;
+  region_id: string;
 }
 
 interface SchoolDTOResponse {
-  ID: string;
-  Name: string;
-  DistrictID: string;
+  id: string;
+  name: string;
+  district_id: string;
 }
 
-interface Participant {
-  id: string;
-  fio: string;
-  gender: number;
-  class: number;
+interface TeamCreateDTO {
+  team_name: string;
+  responsible_name: string;
+  responsible_number: string;
+  event_id: string;
   school_id: string;
 }
 
 interface ParticipantCreateDTO {
   FIO: string;
-  Gender: number;
-  Class: number;
-  SchoolID: string;
-}
-
-interface Team {
-  team_name: string;
-  responsible_name: string;
-  responsible_number: string;
+  gender: number;
+  class: number;
   school_id: string;
-  event_id: string;
 }
 
 interface RegisterTeamRequestDTO {
-  TeamName: string;
-  ResponsibleName: string;
-  ResponsibleNumber: string;
-  EventID: string;
-  SchoolID: string;
-  Participants: ParticipantCreateDTO[];
+  team_name: string;
+  responsible_name: string;
+  responsible_number: string;
+  event_id: string;
+  school_id: string;
+  participants: ParticipantCreateDTO[];
 }
 
-interface ParticipantName {
-  lastName: string;
-  firstName: string;
-  middleName: string;
-}
-
-// ----------------------------
-// Компонент страницы регистрации
-// ----------------------------
+// ------------------------------------
+// Компонент регистрации команды
+// ------------------------------------
 export default function TeamInitialize() {
   const { id } = useParams<{ id: string }>();
 
-  const [team, setTeam] = useState<Team>({
+  const [districts, setDistricts] = useState<DistrictDTOResponse[]>([]);
+  const [schools, setSchools] = useState<SchoolDTOResponse[]>([]);
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [loadingSchools, setLoadingSchools] = useState(false);
+
+  const [team, setTeam] = useState<TeamCreateDTO>({
     team_name: "",
     responsible_name: "",
     responsible_number: "",
-    school_id: "",
     event_id: id || "",
+    school_id: "",
   });
 
-  const [municipalities, setMunicipalities] = useState<DistrictDTOResponse[]>([]);
-  const [selectedMunicipality, setSelectedMunicipality] = useState<string>("");
-  const [schools, setSchools] = useState<SchoolDTOResponse[]>([]);
-  const [loadingSchools, setLoadingSchools] = useState<boolean>(false);
-
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [participants, setParticipants] = useState<ParticipantCreateDTO[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [currentParticipantName, setCurrentParticipantName] = useState<ParticipantName>({
-    lastName: "",
-    firstName: "",
-    middleName: "",
-  });
-  const [currentParticipantDetails, setCurrentParticipantDetails] = useState({
-    gender: 0,
-    class: 0,
-  });
   const [editIndex, setEditIndex] = useState<number | null>(null);
 
-  // ----------------------------
+  const [participant, setParticipant] = useState<ParticipantCreateDTO>({
+    FIO: "",
+    gender: 1,
+    class: 0,
+    school_id: "",
+  });
+
+  const [submitting, setSubmitting] = useState(false);
+  const [notify, setNotify] = useState<{ variant: "success" | "danger"; text: string } | null>(null);
+
+  // ------------------------------------
   // Загрузка муниципалитетов
-  // ----------------------------
+  // ------------------------------------
   useEffect(() => {
-    const loadMunicipalities = async () => {
+    const loadDistricts = async () => {
+      setLoadingDistricts(true);
       try {
         const res = await fetch("http://localhost:8080/api/locations/districts");
-        if (!res.ok) throw new Error("Ошибка при загрузке муниципалитетов");
-
-        const apiResponse = await res.json() as { status: string; data: DistrictDTOResponse[] };
-        if (!apiResponse.data) throw new Error("Пустой ответ");
-
-        setMunicipalities(apiResponse.data);
-      } catch (error) {
-        console.error(error);
-        setMunicipalities([]);
+        const json: ApiResponse<DistrictDTOResponse[]> = await res.json();
+        if (res.ok) {
+          setDistricts(json.data);
+        } else {
+          throw new Error(json.message || "Ошибка при загрузке муниципалитетов");
+        }
+      } catch (err) {
+        console.error(err);
+        setNotify({ variant: "danger", text: "Не удалось загрузить муниципалитеты" });
+      } finally {
+        setLoadingDistricts(false);
       }
     };
-    loadMunicipalities();
+    loadDistricts();
   }, []);
 
-  // ----------------------------
-  // Загрузка школ по муниципалитету
-  // ----------------------------
+  // ------------------------------------
+  // Загрузка школ по выбранному муниципалитету
+  // ------------------------------------
   useEffect(() => {
     const loadSchools = async () => {
-      if (!selectedMunicipality) {
+      if (!selectedDistrict) {
         setSchools([]);
-        setTeam(prev => ({ ...prev, school_id: "" }));
+        setTeam((prev) => ({ ...prev, school_id: "" }));
         return;
       }
 
       setLoadingSchools(true);
       try {
-        const res = await fetch(`http://localhost:8080/api/locations/districts/${selectedMunicipality}/schools`);
-        if (!res.ok) throw new Error("Ошибка при загрузке школ");
-
-        const apiResponse = await res.json() as { status: string; data: SchoolDTOResponse[] };
-        if (!apiResponse.data) throw new Error("Пустой ответ");
-
-        setSchools(apiResponse.data);
-        setTeam(prev => ({ ...prev, school_id: "" }));
-      } catch (error) {
-        console.error(error);
-        setSchools([]);
+        const res = await fetch(`http://localhost:8080/api/locations/districts/${selectedDistrict}/schools`);
+        const json: ApiResponse<SchoolDTOResponse[]> = await res.json();
+        if (res.ok) {
+          setSchools(json.data);
+        } else {
+          throw new Error(json.message || "Ошибка при загрузке школ");
+        }
+      } catch (err) {
+        console.error(err);
+        setNotify({ variant: "danger", text: "Не удалось загрузить школы" });
       } finally {
         setLoadingSchools(false);
       }
     };
     loadSchools();
-  }, [selectedMunicipality]);
+  }, [selectedDistrict]);
 
-  // ----------------------------
-  // Помощники для ФИО
-  // ----------------------------
-  const combineFIO = (name: ParticipantName): string => `${name.lastName} ${name.firstName} ${name.middleName}`.trim();
-  const splitFIO = (fio: string): ParticipantName => {
-    const parts = fio.split(" ");
-    return { lastName: parts[0] || "", firstName: parts[1] || "", middleName: parts[2] || "" };
-  };
-
-  const handleMunicipalityChange = (municipalityId: string) => setSelectedMunicipality(municipalityId);
-
-  // ----------------------------
+  // ------------------------------------
   // Работа с участниками
-  // ----------------------------
-  const handleAddParticipant = () => {
-    if (!team.school_id) return alert("Сначала выберите школу команды!");
-    if (!currentParticipantName.lastName.trim() || !currentParticipantName.firstName.trim()) return alert("Заполните фамилию и имя участника!");
+  // ------------------------------------
+  const handleAddOrEditParticipant = () => {
+    if (!participant.FIO.trim()) return "Введите ФИО участника";
+    if (!participant.class) return "Укажите класс участника";
 
-    const participantId = editIndex !== null ? participants[editIndex].id : crypto.randomUUID();
-
-    const participant: Participant = {
-      id: participantId,
-      fio: combineFIO(currentParticipantName),
-      gender: currentParticipantDetails.gender,
-      class: currentParticipantDetails.class,
-      school_id: team.school_id,
-    };
+    const data = { ...participant, school_id: team.school_id };
 
     if (editIndex !== null) {
       const updated = [...participants];
-      updated[editIndex] = participant;
+      updated[editIndex] = data;
       setParticipants(updated);
       setEditIndex(null);
     } else {
-      setParticipants([...participants, participant]);
+      setParticipants([...participants, data]);
     }
 
-    setCurrentParticipantName({ lastName: "", firstName: "", middleName: "" });
-    setCurrentParticipantDetails({ gender: 0, class: 0 });
+    setParticipant({ FIO: "", gender: 1, class: 0, school_id: "" });
     setShowModal(false);
   };
 
-  const handleEditParticipant = (index: number) => {
-    const participant = participants[index];
-    setCurrentParticipantName(splitFIO(participant.fio));
-    setCurrentParticipantDetails({ gender: participant.gender, class: participant.class });
+  const handleEdit = (index: number) => {
+    setParticipant(participants[index]);
     setEditIndex(index);
     setShowModal(true);
   };
 
-  const handleDeleteParticipant = (index: number) => setParticipants(participants.filter((_, i) => i !== index));
+  const handleDelete = (index: number) => {
+    setParticipants(participants.filter((_, i) => i !== index));
+  };
 
-  // ----------------------------
-  // Отправка команды на сервер
-  // ----------------------------
+  // ------------------------------------
+  // Отправка команды
+  // ------------------------------------
   const handleSubmit = async () => {
-    if (!team.school_id) return alert("Выберите школу!");
-    if (!participants.length) return alert("Добавьте хотя бы одного участника!");
-    if (!team.event_id) return alert("Событие не указано!");
+    if (!team.team_name.trim()) return "Введите название команды";
+    if (!team.school_id) return "Выберите школу";
+    if (!participants.length) return "Добавьте хотя бы одного участника";
 
     const dto: RegisterTeamRequestDTO = {
-      TeamName: team.team_name,
-      ResponsibleName: team.responsible_name,
-      ResponsibleNumber: team.responsible_number,
-      EventID: team.event_id,
-      SchoolID: team.school_id,
-      Participants: participants.map(p => ({
-        FIO: p.fio,
-        Gender: p.gender,
-        Class: p.class,
-        SchoolID: p.school_id,
-      })),
+      ...team,
+      participants,
     };
 
     try {
-      const res = await fetch("http://localhost:8080/register", {
+      setSubmitting(true);
+      const res = await fetch("http://localhost:8080/api/teams/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dto),
       });
 
-      const apiResponse = await res.json() as { status: string; data?: any; message?: string };
-
-      if (res.ok && apiResponse.status === "OK") {
-        alert("Заявка успешно отправлена!");
-        setTeam({ team_name: "", responsible_name: "", responsible_number: "", school_id: "", event_id: team.event_id });
+      const json = await res.json();
+      if (res.ok) {
+        setNotify({ variant: "success", text: "Команда успешно зарегистрирована!" });
+        setTeam({ ...team, team_name: "", responsible_name: "", responsible_number: "", school_id: "" });
         setParticipants([]);
       } else {
-        throw new Error(apiResponse.message || "Ошибка при отправке заявки");
+        throw new Error(json.message || "Ошибка при регистрации");
       }
-    } catch (error) {
-      console.error(error);
-      alert("Произошла ошибка при отправке заявки");
+    } catch (err) {
+      console.error(err);
+      setNotify({ variant: "danger", text: "Ошибка при отправке данных" });
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // ----------------------------
+  // ------------------------------------
   // JSX
-  // ----------------------------
+  // ------------------------------------
   return (
     <Container className="my-4">
       <h2 className="text-center mb-4">Регистрация команды</h2>
 
-      {/* Данные команды */}
+      {notify && <Alert variant={notify.variant}>{notify.text}</Alert>}
+
       <Card className="mb-4 shadow-sm">
         <Card.Body>
           <h5 className="mb-3">Информация о команде</h5>
           <Form>
-            <Row>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Form.Label>Название команды</Form.Label>
-                  <Form.Control type="text" value={team.team_name} onChange={e => setTeam({ ...team, team_name: e.target.value })} />
-                </Form.Group>
-              </Col>
-            </Row>
+            <Form.Group className="mb-3">
+              <Form.Label>Название команды *</Form.Label>
+              <Form.Control
+                value={team.team_name}
+                onChange={(e) => setTeam({ ...team, team_name: e.target.value })}
+                placeholder="Например: Лидеры будущего"
+              />
+            </Form.Group>
 
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>ФИО ответственного</Form.Label>
-                  <Form.Control type="text" value={team.responsible_name} onChange={e => setTeam({ ...team, responsible_name: e.target.value })} />
+                  <Form.Control
+                    value={team.responsible_name}
+                    onChange={(e) => setTeam({ ...team, responsible_name: e.target.value })}
+                  />
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Телефон ответственного</Form.Label>
-                  <Form.Control type="text" value={team.responsible_number} onChange={e => setTeam({ ...team, responsible_number: e.target.value })} />
+                  <Form.Control
+                    value={team.responsible_number}
+                    onChange={(e) => setTeam({ ...team, responsible_number: e.target.value })}
+                    placeholder="+7..."
+                  />
                 </Form.Group>
               </Col>
             </Row>
 
             <Form.Group className="mb-3">
               <Form.Label>Муниципалитет *</Form.Label>
-              <Form.Select value={selectedMunicipality} onChange={e => handleMunicipalityChange(e.target.value)}>
-                <option value="">Выберите муниципалитет</option>
-                {municipalities.map(m => <option key={m.ID} value={m.ID}>{m.Name}</option>)}
-              </Form.Select>
+              <Select
+                isDisabled={loadingDistricts}
+                isLoading={loadingDistricts}
+                placeholder="Выберите муниципалитет..."
+                options={districts.map((d) => ({ value: d.id, label: d.name }))}
+                value={districts
+                  .filter((d) => d.id === selectedDistrict)
+                  .map((d) => ({ value: d.id, label: d.name }))[0] || null}
+                onChange={(opt) => {
+                  setSelectedDistrict(opt ? opt.value : "");
+                  setTeam((prev) => ({ ...prev, school_id: "" }));
+                }}
+                styles={customSelectStyles}
+              />
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label>Школа *</Form.Label>
-              <Form.Select value={team.school_id} onChange={e => setTeam({ ...team, school_id: e.target.value })} disabled={!selectedMunicipality || loadingSchools}>
-                <option value="">
-                  {loadingSchools ? "Загрузка школ..." : !selectedMunicipality ? "Сначала выберите муниципалитет" : "Выберите школу"}
-                </option>
-                {schools.map(s => <option key={s.ID} value={s.ID}>{s.Name}</option>)}
-              </Form.Select>
-              {loadingSchools && <Form.Text className="text-muted">Загружаем список школ...</Form.Text>}
+              <Select
+                isDisabled={!selectedDistrict || loadingSchools}
+                isLoading={loadingSchools}
+                placeholder={
+                  loadingSchools
+                    ? "Загрузка школ..."
+                    : !selectedDistrict
+                      ? "Сначала выберите муниципалитет"
+                      : "Выберите школу..."
+                }
+                options={schools.map((s) => ({ value: s.id, label: s.name }))}
+                value={schools
+                  .filter((s) => s.id === team.school_id)
+                  .map((s) => ({ value: s.id, label: s.name }))[0] || null}
+                onChange={(opt) => setTeam({ ...team, school_id: opt ? opt.value : "" })}
+               styles={customSelectStyles}
+              />
             </Form.Group>
+
           </Form>
         </Card.Body>
       </Card>
@@ -298,10 +298,12 @@ export default function TeamInitialize() {
         <Card.Body>
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5>Участники</h5>
-            <Button onClick={() => setShowModal(true)} disabled={!team.school_id}>+ Добавить</Button>
+            <Button onClick={() => setShowModal(true)} disabled={!team.school_id}>
+              + Добавить участника
+            </Button>
           </div>
 
-          <Table striped bordered hover>
+          <Table striped bordered hover responsive>
             <thead>
               <tr>
                 <th>ФИО</th>
@@ -311,20 +313,25 @@ export default function TeamInitialize() {
               </tr>
             </thead>
             <tbody>
-              {participants.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.fio}</td>
-                  <td>{p.gender === 1 ? "Мужской" : "Женский"}</td>
-                  <td>{p.class}</td>
-                  <td>
-                    <Button size="sm" variant="outline-primary" className="me-2" onClick={() => handleEditParticipant(participants.findIndex(part => part.id === p.id))}>Редактировать</Button>
-                    <Button size="sm" variant="outline-danger" onClick={() => handleDeleteParticipant(participants.findIndex(part => part.id === p.id))}>Удалить</Button>
-                  </td>
-                </tr>
-              ))}
-              {participants.length === 0 && (
+              {participants.length > 0 ? (
+                participants.map((p, i) => (
+                  <tr key={i}>
+                    <td>{p.FIO}</td>
+                    <td>{p.gender === 1 ? "Мужской" : "Женский"}</td>
+                    <td>{p.class}</td>
+                    <td>
+                      <Button size="sm" variant="outline-primary" className="me-2" onClick={() => handleEdit(i)}>
+                        Редактировать
+                      </Button>
+                      <Button size="sm" variant="outline-danger" onClick={() => handleDelete(i)}>
+                        Удалить
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
-                  <td colSpan={4} className="text-center">Участников пока нет</td>
+                  <td colSpan={4} className="text-center">Нет участников</td>
                 </tr>
               )}
             </tbody>
@@ -332,58 +339,110 @@ export default function TeamInitialize() {
         </Card.Body>
       </Card>
 
-      {/* Кнопка отправки */}
       <div className="text-center">
-        <Button size="lg" onClick={handleSubmit} disabled={!team.school_id || !team.event_id || !participants.length}>Отправить заявку</Button>
+        <Button
+          size="lg"
+          onClick={handleSubmit}
+          disabled={submitting || !team.school_id || !participants.length}
+        >
+          {submitting ? <Spinner animation="border" size="sm" /> : "Отправить заявку"}
+        </Button>
       </div>
 
-      {/* Модалка участника */}
+      {/* Модальное окно участника */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>{editIndex !== null ? "Редактировать участника" : "Добавить участника"}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Фамилия *</Form.Label>
-                  <Form.Control type="text" value={currentParticipantName.lastName} onChange={e => setCurrentParticipantName({ ...currentParticipantName, lastName: e.target.value })} placeholder="Иванов" />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Имя *</Form.Label>
-                  <Form.Control type="text" value={currentParticipantName.firstName} onChange={e => setCurrentParticipantName({ ...currentParticipantName, firstName: e.target.value })} placeholder="Иван" />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Отчество</Form.Label>
-                  <Form.Control type="text" value={currentParticipantName.middleName} onChange={e => setCurrentParticipantName({ ...currentParticipantName, middleName: e.target.value })} placeholder="Иванович" />
-                </Form.Group>
-              </Col>
-            </Row>
+            <Form.Group className="mb-3">
+              <Form.Label>ФИО *</Form.Label>
+              <Form.Control
+                value={participant.FIO}
+                onChange={(e) => setParticipant({ ...participant, FIO: e.target.value })}
+                placeholder="Иванов Иван Иванович"
+              />
+            </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Пол</Form.Label>
-              <Form.Select value={currentParticipantDetails.gender} onChange={e => setCurrentParticipantDetails({ ...currentParticipantDetails, gender: parseInt(e.target.value) })}>
-                <option value={0}>Женский</option>
+              <Form.Label>Пол *</Form.Label>
+              <Form.Select
+                value={participant.gender}
+                onChange={(e) => setParticipant({ ...participant, gender: parseInt(e.target.value) })}
+              >
+                <option value={2}>Женский</option>
                 <option value={1}>Мужской</option>
               </Form.Select>
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Класс</Form.Label>
-              <Form.Control type="number" value={currentParticipantDetails.class} onChange={e => setCurrentParticipantDetails({ ...currentParticipantDetails, class: parseInt(e.target.value) || 0 })} />
+              <Form.Label>Класс *</Form.Label>
+              <Form.Control
+                type="number"
+                min={1}
+                max={11}
+                value={participant.class}
+                onChange={(e) => {
+                  let value = parseInt(e.target.value) || 0;
+                  if (value > 11) value = 11;
+                  if (value < 1) value = 1;
+                  setParticipant({ ...participant, class: value });
+                }}
+              />
             </Form.Group>
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>Отмена</Button>
-          <Button onClick={handleAddParticipant}>{editIndex !== null ? "Сохранить" : "Добавить"}</Button>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Отмена
+          </Button>
+          <Button variant="primary" onClick={handleAddOrEditParticipant}>
+            {editIndex !== null ? "Сохранить" : "Добавить"}
+          </Button>
         </Modal.Footer>
       </Modal>
     </Container>
   );
+
+  
 }
+
+
+const customSelectStyles = {
+  control: (base: any) => ({
+    ...base,
+    borderRadius: "8px",
+    backgroundColor: "#fff", // фон всегда белый
+    color: "#000",           // текст всегда черный
+    borderColor: "#ced4da",
+    boxShadow: "none",
+    "&:hover": {
+      borderColor: "#86b7fe",
+    },
+  }),
+  menu: (base: any) => ({
+    ...base,
+    backgroundColor: "#fff",
+    color: "#000",
+    zIndex: 9999,
+  }),
+  singleValue: (base: any) => ({
+    ...base,
+    color: "#000",
+  }),
+  input: (base: any) => ({
+    ...base,
+    color: "#000",
+  }),
+  placeholder: (base: any) => ({
+    ...base,
+    color: "#666",
+  }),
+  option: (base: any, state: any) => ({
+    ...base,
+    backgroundColor: state.isFocused ? "#e9ecef" : "#fff",
+    color: "#000",
+    cursor: "pointer",
+  }),
+};
