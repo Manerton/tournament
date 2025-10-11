@@ -48,7 +48,7 @@ func (s *ParticipantService) Create(ctx context.Context, createDTO participant_d
 	const op = "services.participant_service.Create"
 
 	entityPtr := participant_dto.ToParticipantModel(createDTO)
-	err := s.participantRepository.Create(ctx, s.db, entityPtr)
+	err := s.participantRepository.Create(ctx, s.db, &entityPtr)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -69,7 +69,7 @@ func (s *ParticipantService) GetByID(ctx context.Context, id string) (participan
 		return participant_dto.ParticipantResponseDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return participant_dto.ToParticipantResponseDTO(&entity), nil
+	return participant_dto.ToParticipantResponseDTO(entity), nil
 }
 
 // GetAll

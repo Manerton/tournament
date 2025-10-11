@@ -50,8 +50,8 @@ func ToDTOEvent(model event.Event) event_dto.EventDTOResponse {
 
 func ToDTOEvents(models []event.Event) []event_dto.EventDTOResponse {
 	dtos := make([]event_dto.EventDTOResponse, 0, len(models))
-	for i, model := range models {
-		dtos[i] = ToDTOEvent(model)
+	for _, model := range models {
+		dtos = append(dtos, ToDTOEvent(model))
 	}
 	return dtos
 }

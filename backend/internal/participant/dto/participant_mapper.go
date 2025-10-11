@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
-func ToParticipantModel(dto ParticipantCreateDTO) *participant.Participant {
-	return &participant.Participant{
+func ToParticipantModel(dto ParticipantCreateDTO) participant.Participant {
+	return participant.Participant{
 		FIO:      dto.FIO,
 		Gender:   dto.Gender,
 		SchoolID: dto.SchoolID,
@@ -17,13 +17,13 @@ func ToParticipantModel(dto ParticipantCreateDTO) *participant.Participant {
 
 func ToManyParticipantModels(dtos []ParticipantCreateDTO) []participant.Participant {
 	models := make([]participant.Participant, 0, len(dtos))
-	for i, dto := range dtos {
-		models[i] = *ToParticipantModel(dto)
+	for _, dto := range dtos {
+		models = append(models, ToParticipantModel(dto))
 	}
 	return models
 }
 
-func ToParticipantResponseDTO(model *participant.Participant) ParticipantResponseDTO {
+func ToParticipantResponseDTO(model participant.Participant) ParticipantResponseDTO {
 	return ParticipantResponseDTO{
 		ID:       model.ID,
 		FIO:      model.FIO,
@@ -35,8 +35,8 @@ func ToParticipantResponseDTO(model *participant.Participant) ParticipantRespons
 
 func ToParticipantsResponseDTO(models []participant.Participant) []ParticipantResponseDTO {
 	dtos := make([]ParticipantResponseDTO, 0, len(models))
-	for i, m := range models {
-		dtos[i] = ToParticipantResponseDTO(&m)
+	for _, model := range models {
+		dtos = append(dtos, ToParticipantResponseDTO(model))
 	}
 	return dtos
 }

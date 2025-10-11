@@ -11,4 +11,4 @@ HTTP_SERVER_INFO:
   host: "localhost"
   port: "8080"
 
-FRONTEND_INFO: "http://localhost:5173" 
+FRONTEND_INFO: "http://127.0.0.1:5173" 
