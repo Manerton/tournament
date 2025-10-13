@@ -210,7 +210,7 @@ export default function TeamInitialize() {
   // JSX
   // ------------------------------------
   return (
-    <Container className="my-4">
+    <Container className="">
       <h2 className="text-center mb-4">Регистрация команды</h2>
 
       {notify && <Alert variant={notify.variant}>{notify.text}</Alert>}

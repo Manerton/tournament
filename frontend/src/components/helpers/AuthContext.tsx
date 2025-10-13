@@ -49,11 +49,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+
+  const hasCookies = (): boolean => {
+  return document.cookie.length > 0;
+};
+
   /**
    * Обновление session_token и csrf_token
    */
   const refresh = async (): Promise<UserAuth | null> => {
-  try {
+  
+    if (!hasCookies()) {
+    console.log("No cookies found, skipping token refresh");
+    setInitialized(true);
+    return null;
+  }
+    
+    try {
     console.log("Refreshing session...");
     const response = await axiosRefreshSession();
     const refreshedUserId = response.data.data.message;

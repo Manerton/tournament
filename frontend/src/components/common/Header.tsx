@@ -7,9 +7,9 @@ import ThemeToggleButton from "../helpers/ThemeToggleButton";
 import { useAuth } from "../helpers/AuthContext";
 
 function Header() {
-  //const { user, logout, initialized } = useAuth();
-  const [visible, setVisible] = useState(true); // состояние для скрытия/показа Navbar
-    const initialized=true;
+  const { user, logout, initialized } = useAuth();
+  const [visible, setVisible] = useState(false); // состояние для скрытия/показа Navbar
+    //const initialized=true;
   if (!initialized) {
     return (
       <Navbar className="bg-body-tertiary border border-1">
@@ -41,13 +41,12 @@ function Header() {
         <Container fluid="lg" className="mx-auto">
           <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
             <img
-                src="/favicon.png"
+                src="/src/assets/favicon.png"
                 alt="Логотип"
                 width="32"
                 height="32"
                 className="d-inline-block align-top me-2"
             />
-            ВСОШ
                 </Navbar.Brand>
 
           <Navbar.Toggle aria-controls="main-navbar" />
@@ -84,9 +83,9 @@ function Header() {
                     <Dropdown.Item as={Link} to="/profile">
                       <PersonCircle className="me-2" /> Мой профиль
                     </Dropdown.Item>
-                    {/* <Dropdown.Item onClick={logout}>
+                    { <Dropdown.Item onClick={logout}>
                       <BoxArrowInRight className="me-2" /> Выйти
-                    </Dropdown.Item> */}
+                    </Dropdown.Item> }
                   </Dropdown.Menu>
                 </Dropdown>
               ) : (

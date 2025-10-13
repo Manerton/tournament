@@ -10,7 +10,9 @@ import { ThemeProvider } from './components/helpers/ThemeContext.tsx';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider> 
+      <AuthProvider>
           <App />
+      </AuthProvider>
     </ThemeProvider>
   </StrictMode>,
 )
