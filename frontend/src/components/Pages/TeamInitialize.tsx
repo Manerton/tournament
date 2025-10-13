@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Container, Row, Col, Form, Button, Card, Table, Modal, Spinner, Alert } from "react-bootstrap";
 import Select from "react-select";
+import { Backend } from "../../config/routes";
 
 // ------------------------------------
 // Типы DTO (согласно новому ТЗ)
@@ -90,7 +91,7 @@ export default function TeamInitialize() {
     const loadDistricts = async () => {
       setLoadingDistricts(true);
       try {
-        const res = await fetch("http://localhost:8080/api/locations/districts");
+        const res = await fetch(`${Backend}/api/locations/districts`);
         const json: ApiResponse<DistrictDTOResponse[]> = await res.json();
         if (res.ok) {
           setDistricts(json.data);
@@ -120,7 +121,7 @@ export default function TeamInitialize() {
 
       setLoadingSchools(true);
       try {
-        const res = await fetch(`http://localhost:8080/api/locations/districts/${selectedDistrict}/schools`);
+        const res = await fetch(`${Backend}/api/locations/districts/${selectedDistrict}/schools`);
         const json: ApiResponse<SchoolDTOResponse[]> = await res.json();
         if (res.ok) {
           setSchools(json.data);
@@ -184,7 +185,7 @@ export default function TeamInitialize() {
 
     try {
       setSubmitting(true);
-      const res = await fetch("http://localhost:8080/api/teams/register", {
+      const res = await fetch(`${Backend}/api/teams/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dto),

@@ -4,6 +4,8 @@ export const API_CONFIG = {
     AUTH: `${API_URL}/api/users`,
 };
 
+export const Backend = "http://172.16.1.39:8080"
+
 export const AUTH = {
     login: `${API_URL}/api/sessions/login`,
     logout: `${API_URL}/api/sessions/logout`,
