@@ -10,6 +10,7 @@ import (
 )
 
 const configPath = "config-yaml/local.yaml"
+const prodPath = "config-yaml/prod.yaml"
 
 func main() {
 	// init config

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/joho/godotenv"
 )
 
 type DBConfig struct {
@@ -34,6 +35,15 @@ type Config struct {
 	DBConfig     `yaml:"DB_INFO"`
 	ServerConfig `yaml:"HTTP_SERVER_INFO"`
 	FrontendURL  string `yaml:"FRONTEND_INFO"`
+}
+
+func init() {
+	// Загружаем .env файл (если есть)
+	if err := godotenv.Load(); err != nil {
+		log.Println("⚠️ .env файл не найден, используем системные переменные")
+	} else {
+		log.Println("✅ .env файл загружен")
+	}
 }
 
 func MustConfig(path string) *Config {

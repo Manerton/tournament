@@ -6,6 +6,7 @@ import (
 	"os"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 )
@@ -14,6 +15,15 @@ const (
 	UP   = "up"
 	DOWN = "down"
 )
+
+func init() {
+	// Загружаем .env файл (если есть)
+	if err := godotenv.Load(); err != nil {
+		log.Println("⚠️ .env файл не найден, используем системные переменные")
+	} else {
+		log.Println("✅ .env файл загружен")
+	}
+}
 
 func main() {
 
