@@ -1,15 +1,18 @@
-import React from 'react';
-import { Container } from 'react-bootstrap';
-import Header from './Header';
-import { Outlet } from 'react-router-dom';
+// src/components/Layout.tsx
+import React from "react";
+import { Container } from "react-bootstrap";
+import Header from "./Header";
+import { Outlet } from "react-router-dom";
+import BackgroundParticles from "./BackgroundParticles";
 
 const Layout: React.FC = () => {
   return (
     <>
       <Header />
-      <div className="d-flex flex-column min-vh-100">
+      <BackgroundParticles />
+      <div className="d-flex flex-column min-vh-100 position-relative">
         <Container fluid="lg" className="flex-grow-1">
-          <main className="py-4">
+          <main className="py-4 position-relative" style={{ zIndex: 1 }}>
             <Outlet />
           </main>
         </Container>

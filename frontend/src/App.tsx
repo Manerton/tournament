@@ -6,6 +6,7 @@ import MainPage from './components/Pages/MainPage';
 import Layout from './components/common/Layout';
 import TeamInitialize from './components/Pages/TeamInitialize';
 import RegisterFormLayout from './components/common/RegisterFormLayout';
+import LoginPage from './components/Pages/login';
 
 function App() {
  
@@ -15,7 +16,7 @@ function App() {
       <Routes>
           <Route element={<Layout />}>
           <Route path="/" element={<MainPage />} />
-          
+          <Route path="/login" element={<LoginPage />} />
           </Route>
           <Route element={<RegisterFormLayout />}>
             <Route path="/tournament/registerTeam/:id" element={<TeamInitialize/>} />

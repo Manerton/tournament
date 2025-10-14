@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Navbar, Nav, Dropdown, Container, Button } from "react-bootstrap";
 import { LinkContainer } from "react-router-bootstrap";
 import { Link } from "react-router-dom";
@@ -8,7 +8,7 @@ import { useAuth } from "../helpers/AuthContext";
 
 function Header() {
   const { user, logout, initialized } = useAuth();
-  const [visible, setVisible] = useState(false); // состояние для скрытия/показа Navbar
+  const [visible, setVisible] = useState(true); // состояние для скрытия/показа Navbar
     //const initialized=true;
   if (!initialized) {
     return (
@@ -18,7 +18,7 @@ function Header() {
     );
   }
 
-  const isAuthenticated = true;
+  const isAuthenticated = user;
 
   if (!visible) {
     return (
@@ -80,8 +80,8 @@ function Header() {
                   </Dropdown.Toggle>
 
                   <Dropdown.Menu>
-                    <Dropdown.Item as={Link} to="/profile">
-                      <PersonCircle className="me-2" /> Мой профиль
+                    <Dropdown.Item as={Link} to="/login">
+                      <PersonCircle className="me-2" /> Авторизация
                     </Dropdown.Item>
                     { <Dropdown.Item onClick={logout}>
                       <BoxArrowInRight className="me-2" /> Выйти

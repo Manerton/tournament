@@ -7,11 +7,14 @@ import {
   axiosRefreshSession,
   axiosGetSessionById,
 } from "../../requests/sessionRequests";
+import { setAuthContext } from "../../requests/globalAuth.ts";
 
-interface AuthContextType {
-  user: UserAuth | null;
-  initialized: boolean;
-  expires?: number;
+
+export interface AuthContextType {
+  user: UserAuth | null;            // Текущий пользователь
+  initialized: boolean;             // Флаг, что контекст инициализирован
+  expires?: number;                 // Время истечения сессии (timestamp)
+  csrfToken?: string | null;        // Текущий CSRF-токен
   login: (login: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<UserAuth | null>;
@@ -21,12 +24,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserAuth | null>(null);
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [expires, setExpires] = useState<number | undefined>(undefined);
 
-  /**
-   * Авторизация пользователя
-   */
+  useEffect(() => {
+    // Подключаем контекст к axios
+    setAuthContext({
+      user,
+      initialized,
+      expires,
+      csrfToken,
+      login,
+      logout,
+      refresh,
+    });
+  }, [user, csrfToken, initialized, expires]);
+
   const login = async (login: string, password: string) => {
     try {
       const response = await axiosLoginSession(login, password);

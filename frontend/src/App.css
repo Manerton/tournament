@@ -5,6 +5,11 @@
   text-align: center;
 }
 
+html, body {
+  transition: background-color 0.8s ease-in-out, color 0.8s ease-in-out;
+}
+
+
 .logo {
   height: 6em;
   padding: 1.5em;
