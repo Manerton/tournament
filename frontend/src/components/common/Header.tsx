@@ -8,8 +8,8 @@ import { useAuth } from "../helpers/AuthContext";
 
 function Header() {
   const { user, logout, initialized } = useAuth();
-  const [visible, setVisible] = useState(true); // состояние для скрытия/показа Navbar
-    //const initialized=true;
+  const [visible, setVisible] = useState(true);
+
   if (!initialized) {
     return (
       <Navbar className="bg-body-tertiary border border-1">
@@ -18,7 +18,7 @@ function Header() {
     );
   }
 
-  const isAuthenticated = user;
+  const isAuthenticated = !!user; // Use !! to ensure boolean if user is an object
 
   if (!visible) {
     return (
@@ -28,6 +28,7 @@ function Header() {
           size="sm"
           onClick={() => setVisible(true)}
           className="d-inline-flex align-items-center"
+          aria-label="Показать панель"
         >
           <ChevronDown className="me-1" /> Показать панель
         </Button>
@@ -41,13 +42,13 @@ function Header() {
         <Container fluid="lg" className="mx-auto">
           <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
             <img
-                src="/src/assets/favicon.png"
-                alt="Логотип"
-                width="32"
-                height="32"
-                className="d-inline-block align-top me-2"
+              src="/src/assets/favicon.png"
+              alt="Логотип"
+              width="32"
+              height="32"
+              className="d-inline-block align-top me-2"
             />
-                </Navbar.Brand>
+          </Navbar.Brand>
 
           <Navbar.Toggle aria-controls="main-navbar" />
           <Navbar.Collapse id="main-navbar">
@@ -75,17 +76,18 @@ function Header() {
                   >
                     <PersonCircle size={24} className="me-2" />
                     <span className="text-body">
-                      {/* {user?.email || "Пользователь"} */}
+                      {user?.email || "Пользователь"}
                     </span>
                   </Dropdown.Toggle>
 
                   <Dropdown.Menu>
+                    { }
                     <Dropdown.Item as={Link} to="/login">
-                      <PersonCircle className="me-2" /> Авторизация
+                      <PersonCircle className="me-2" /> Профиль
                     </Dropdown.Item>
-                    { <Dropdown.Item onClick={logout}>
+                    <Dropdown.Item onClick={logout}>
                       <BoxArrowInRight className="me-2" /> Выйти
-                    </Dropdown.Item> }
+                    </Dropdown.Item>
                   </Dropdown.Menu>
                 </Dropdown>
               ) : (
@@ -99,13 +101,13 @@ function Header() {
         </Container>
       </Navbar>
 
-      {/* Кнопка для сворачивания Navbar */}
       <div className="text-center mt-2">
         <Button
           variant="outline-secondary"
           size="sm"
           onClick={() => setVisible(false)}
           className="d-inline-flex align-items-center"
+          aria-label="Скрыть панель"
         >
           <ChevronUp className="me-1" /> Скрыть панель
         </Button>

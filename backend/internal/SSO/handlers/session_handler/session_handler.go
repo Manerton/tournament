@@ -62,17 +62,20 @@ func (h *SessionHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Name:     "session_token",
 		Value:    sessionToken,
 		Expires:  time.Now().Add(30 * time.Minute),
-		HttpOnly: true, // запрещает доступ из JS
-		Secure:   true, // включить в проде (https)
-		SameSite: http.SameSiteNoneMode,
+		Path:     "/",
+		HttpOnly: true,  // запрещает доступ из JS
+		Secure:   false, // включить в проде (https)
+		SameSite: http.SameSiteLaxMode,
 	})
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "csrf_token",
 		Value:    csrfToken,
 		Expires:  time.Now().Add(30 * time.Minute),
-		SameSite: http.SameSiteNoneMode,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
 		HttpOnly: false, // запрещает доступ из JS
+		Secure:   false, // включить в проде (https)
 	})
 
 	render.JSON(w, r, response.ApiResponse{
@@ -104,22 +107,25 @@ func (h *SessionHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Устанавливаем новые cookies
+	// Ставим session_token в HttpOnly cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
 		Value:    sessionToken,
+		Expires:  time.Now().Add(30 * time.Minute),
 		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		Expires:  time.Now().Add(30 * time.Minute), // или ваш срок
+		HttpOnly: true,  // запрещает доступ из JS
+		Secure:   false, // включить в проде (https)
+		SameSite: http.SameSiteLaxMode,
 	})
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "csrf_token",
 		Value:    csrfToken,
+		Expires:  time.Now().Add(30 * time.Minute),
 		Path:     "/",
-		Expires:  time.Now().Add(30 * time.Minute), // или ваш срок
-		HttpOnly: false,                            // доступен для JS
+		SameSite: http.SameSiteLaxMode,
+		HttpOnly: false, // запрещает доступ из JS
+		Secure:   false, // включить в проде (https)
 	})
 
 	render.JSON(w, r, response.ApiResponse{

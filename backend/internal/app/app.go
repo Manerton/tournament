@@ -178,6 +178,7 @@ func (a *App) initCors(router *chi.Mux, frontedUrl string) {
 		ExposedHeaders: []string{
 			"Link",
 			"Content-Length",
+			"X-CSRF-Token",
 			"Access-Control-Allow-Origin",
 			"Access-Control-Allow-Credentials",
 		},
