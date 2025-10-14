@@ -64,13 +64,14 @@ func (h *SessionHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Now().Add(30 * time.Minute),
 		HttpOnly: true, // запрещает доступ из JS
 		Secure:   true, // включить в проде (https)
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteNoneMode,
 	})
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "csrf_token",
 		Value:    csrfToken,
 		Expires:  time.Now().Add(30 * time.Minute),
+		SameSite: http.SameSiteNoneMode,
 		HttpOnly: false, // запрещает доступ из JS
 	})
 

@@ -6,9 +6,9 @@ import type {
   SessionResponse,
 } from "../types/sessionTypes";
 
-import type {
-  AUTH
-} from "../config/routes.ts"
+// import type {
+//   AUTH
+// } from "../config/routes.ts"
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
