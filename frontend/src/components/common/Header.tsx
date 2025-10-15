@@ -18,7 +18,7 @@ function Header() {
     );
   }
 
-  const isAuthenticated = !!user; // Use !! to ensure boolean if user is an object
+  const isAuthenticated = !!user; 
 
   if (!visible) {
     return (
@@ -38,14 +38,12 @@ function Header() {
 
   return (
     <>
-      <Navbar expand="lg" sticky="top" className="bg-body-tertiary border border-1 shadow-sm">
+      <Navbar expand="lg" sticky="top" className="bg-body-tertiary border border-1 shadow-sm rounded">
         <Container fluid="lg" className="mx-auto">
           <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
             <img
               src="/src/assets/favicon.png"
               alt="Логотип"
-              width="32"
-              height="32"
               className="d-inline-block align-top me-2"
             />
           </Navbar.Brand>

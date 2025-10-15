@@ -5,7 +5,7 @@ import "../../assets/MainPage.css";
 
 const MainPage: React.FC = () => {
   return (
-    <div className="mainpage-content text-center">
+    <div className="mainpage-content">
       <Container>
         <h1 className="fade-in display-3 fw-bold mb-3 text">
           Турнирная система РШТ

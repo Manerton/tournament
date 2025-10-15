@@ -353,24 +353,64 @@ export default function TeamInitialize() {
       {/* Модальное окно участника */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
-          <Modal.Title>{editIndex !== null ? "Редактировать участника" : "Добавить участника"}</Modal.Title>
+          <Modal.Title>
+            {editIndex !== null ? "Редактировать участника" : "Добавить участника"}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>ФИО *</Form.Label>
-              <Form.Control
-                value={participant.FIO}
-                onChange={(e) => setParticipant({ ...participant, FIO: e.target.value })}
-                placeholder="Иванов Иван Иванович"
-              />
-            </Form.Group>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Фамилия *</Form.Label>
+                  <Form.Control
+                    value={participant.FIO.split(" ")[0] || ""}
+                    onChange={(e) => {
+                      const parts = participant.FIO.split(" ");
+                      parts[0] = e.target.value;
+                      setParticipant({ ...participant, FIO: parts.join(" ").trim() });
+                    }}
+                    placeholder="Иванов"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Имя *</Form.Label>
+                  <Form.Control
+                    value={participant.FIO.split(" ")[1] || ""}
+                    onChange={(e) => {
+                      const parts = participant.FIO.split(" ");
+                      parts[1] = e.target.value;
+                      setParticipant({ ...participant, FIO: parts.join(" ").trim() });
+                    }}
+                    placeholder="Иван"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Отчество</Form.Label>
+                  <Form.Control
+                    value={participant.FIO.split(" ")[2] || ""}
+                    onChange={(e) => {
+                      const parts = participant.FIO.split(" ");
+                      parts[2] = e.target.value;
+                      setParticipant({ ...participant, FIO: parts.join(" ").trim() });
+                    }}
+                    placeholder="Иванович"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
 
             <Form.Group className="mb-3">
               <Form.Label>Пол *</Form.Label>
               <Form.Select
                 value={participant.gender}
-                onChange={(e) => setParticipant({ ...participant, gender: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setParticipant({ ...participant, gender: parseInt(e.target.value) })
+                }
               >
                 <option value={2}>Женский</option>
                 <option value={1}>Мужской</option>
@@ -403,6 +443,7 @@ export default function TeamInitialize() {
           </Button>
         </Modal.Footer>
       </Modal>
+
     </Container>
   );
 

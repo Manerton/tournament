@@ -13,11 +13,14 @@
   z-index: 0;
 }
 
+/* src/assets/MainPage.css */
 .mainpage-content {
-  position: relative;
-  z-index: 1;
-  top: 50%;
-  transform: translateY(-50%);
+  display: flex;
+  justify-content: center; /* горизонтально */
+  align-items: center;     /* вертикально */
+  flex-direction: column;
+  height: 70vh;           
+  text-align: center;
 }
 
 /* Анимация появления */
@@ -34,3 +37,5 @@
 .delay-1 {
   animation-delay: 0.5s;
 }
+
+

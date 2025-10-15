@@ -1,0 +1,12 @@
+.tournament-card {
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+  background-color: #ffffff;
+  border-radius: 75px;
+}
+
+.tournament-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0.75rem 1.25rem rgba(0, 0, 0, 0.2);
+  background-color: #f8f9fa; /* немного темнее белого */
+}
