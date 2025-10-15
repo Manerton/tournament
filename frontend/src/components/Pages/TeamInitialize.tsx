@@ -51,6 +51,37 @@ interface RegisterTeamRequestDTO {
 }
 
 // ------------------------------------
+// Валидационные функции
+// ------------------------------------
+const validatePhoneNumber = (phone: string): string | null => {
+  if (!phone.trim()) return null; // Пустое поле - допустимо (не обязательное поле)
+  
+  // Удаляем все нецифровые символы кроме +
+  const cleaned = phone.replace(/[^\d+]/g, '');
+  
+  // Проверяем российский формат: +7XXXXXXXXXX или 8XXXXXXXXXX
+  const russianRegex = /^(\+7|8)\d{10}$/;
+  
+  if (!russianRegex.test(cleaned)) {
+    return "Номер должен быть в формате: +7XXXXXXXXXX или 8XXXXXXXXXX";
+  }
+  
+  return null;
+};
+
+const validateClass = (classNum: number): string | null => {
+  if (!classNum || classNum === 0) {
+    return "Класс обязателен для заполнения";
+  }
+  
+  if (classNum < 1 || classNum > 11) {
+    return "Класс должен быть от 1 до 11";
+  }
+  
+  return null;
+};
+
+// ------------------------------------
 // Компонент регистрации команды
 // ------------------------------------
 export default function TeamInitialize() {
@@ -83,6 +114,12 @@ export default function TeamInitialize() {
 
   const [submitting, setSubmitting] = useState(false);
   const [notify, setNotify] = useState<{ variant: "success" | "danger"; text: string } | null>(null);
+  
+  // Состояния для ошибок валидации
+  const [validationErrors, setValidationErrors] = useState<{
+    phone?: string;
+    participantClass?: string;
+  }>({});
 
   // ------------------------------------
   // Загрузка муниципалитетов
@@ -139,11 +176,51 @@ export default function TeamInitialize() {
   }, [selectedDistrict]);
 
   // ------------------------------------
+  // Обработчики изменений с валидацией
+  // ------------------------------------
+  const handlePhoneChange = (phone: string) => {
+    setTeam({ ...team, responsible_number: phone });
+    
+    // Валидация телефона
+    const phoneError = validatePhoneNumber(phone);
+    setValidationErrors(prev => ({
+      ...prev,
+      phone: phoneError || undefined
+    }));
+  };
+
+  const handleParticipantClassChange = (classNum: number) => {
+    // Ограничиваем значение от 1 до 11
+    let value = classNum;
+    if (value > 11) value = 11;
+    if (value < 1) value = 1;
+    
+    setParticipant({ ...participant, class: value });
+    
+    // Валидация класса
+    const classError = validateClass(value);
+    setValidationErrors(prev => ({
+      ...prev,
+      participantClass: classError || undefined
+    }));
+  };
+
+  // ------------------------------------
   // Работа с участниками
   // ------------------------------------
   const handleAddOrEditParticipant = () => {
-    if (!participant.FIO.trim()) return "Введите ФИО участника";
-    if (!participant.class) return "Укажите класс участника";
+    if (!participant.FIO.trim()) {
+      setNotify({ variant: "danger", text: "Введите ФИО участника" });
+      return;
+    }
+
+    // Проверяем валидность класса
+    const classError = validateClass(participant.class);
+    if (classError) {
+      setValidationErrors(prev => ({ ...prev, participantClass: classError }));
+      setNotify({ variant: "danger", text: classError });
+      return;
+    }
 
     const data = { ...participant, school_id: team.school_id };
 
@@ -157,6 +234,7 @@ export default function TeamInitialize() {
     }
 
     setParticipant({ FIO: "", gender: 1, class: 0, school_id: "" });
+    setValidationErrors(prev => ({ ...prev, participantClass: undefined }));
     setShowModal(false);
   };
 
@@ -174,9 +252,29 @@ export default function TeamInitialize() {
   // Отправка команды
   // ------------------------------------
   const handleSubmit = async () => {
-    if (!team.team_name.trim()) return "Введите название команды";
-    if (!team.school_id) return "Выберите школу";
-    if (!participants.length) return "Добавьте хотя бы одного участника";
+    // Проверяем обязательные поля
+    if (!team.team_name.trim()) {
+      setNotify({ variant: "danger", text: "Введите название команды" });
+      return;
+    }
+    if (!team.school_id) {
+      setNotify({ variant: "danger", text: "Выберите школу" });
+      return;
+    }
+    if (!participants.length) {
+      setNotify({ variant: "danger", text: "Добавьте хотя бы одного участника" });
+      return;
+    }
+
+    // Проверяем валидность телефона (если он заполнен)
+    if (team.responsible_number.trim()) {
+      const phoneError = validatePhoneNumber(team.responsible_number);
+      if (phoneError) {
+        setValidationErrors(prev => ({ ...prev, phone: phoneError }));
+        setNotify({ variant: "danger", text: phoneError });
+        return;
+      }
+    }
 
     const dto: RegisterTeamRequestDTO = {
       ...team,
@@ -196,6 +294,7 @@ export default function TeamInitialize() {
         setNotify({ variant: "success", text: "Команда успешно зарегистрирована!" });
         setTeam({ ...team, team_name: "", responsible_name: "", responsible_number: "", school_id: "" });
         setParticipants([]);
+        setValidationErrors({});
       } else {
         throw new Error(json.message || "Ошибка при регистрации");
       }
@@ -205,6 +304,24 @@ export default function TeamInitialize() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // ------------------------------------
+  // Форматирование телефона при вводе
+  // ------------------------------------
+  const formatPhoneNumber = (value: string): string => {
+    // Удаляем все нецифровые символы кроме +
+    const numbers = value.replace(/[^\d+]/g, '');
+    
+    if (numbers.startsWith('+7')) {
+      return `+7${numbers.slice(2, 12)}`;
+    } else if (numbers.startsWith('8')) {
+      return `8${numbers.slice(1, 11)}`;
+    } else if (numbers.startsWith('7')) {
+      return `+7${numbers.slice(1, 11)}`;
+    }
+    
+    return numbers;
   };
 
   // ------------------------------------
@@ -226,7 +343,11 @@ export default function TeamInitialize() {
                 value={team.team_name}
                 onChange={(e) => setTeam({ ...team, team_name: e.target.value })}
                 placeholder="Например: Лидеры будущего"
+                isInvalid={!team.team_name.trim()}
               />
+              <Form.Control.Feedback type="invalid">
+                Название команды обязательно
+              </Form.Control.Feedback>
             </Form.Group>
 
             <Row>
@@ -244,9 +365,19 @@ export default function TeamInitialize() {
                   <Form.Label>Телефон ответственного</Form.Label>
                   <Form.Control
                     value={team.responsible_number}
-                    onChange={(e) => setTeam({ ...team, responsible_number: e.target.value })}
-                    placeholder="+7..."
+                    onChange={(e) => {
+                      const formatted = formatPhoneNumber(e.target.value);
+                      handlePhoneChange(formatted);
+                    }}
+                    placeholder="+7XXXXXXXXXX или 8XXXXXXXXXX"
+                    isInvalid={!!validationErrors.phone}
                   />
+                  <Form.Control.Feedback type="invalid">
+                    {validationErrors.phone}
+                  </Form.Control.Feedback>
+                  <Form.Text className="text-muted">
+                    Формат: +7XXXXXXXXXX или 8XXXXXXXXXX
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>
@@ -286,7 +417,7 @@ export default function TeamInitialize() {
                   .filter((s) => s.id === team.school_id)
                   .map((s) => ({ value: s.id, label: s.name }))[0] || null}
                 onChange={(opt) => setTeam({ ...team, school_id: opt ? opt.value : "" })}
-               styles={customSelectStyles}
+                styles={customSelectStyles}
               />
             </Form.Group>
 
@@ -423,14 +554,16 @@ export default function TeamInitialize() {
                 type="number"
                 min={1}
                 max={11}
-                value={participant.class}
+                value={participant.class || ""}
                 onChange={(e) => {
-                  let value = parseInt(e.target.value) || 0;
-                  if (value > 11) value = 11;
-                  if (value < 1) value = 1;
-                  setParticipant({ ...participant, class: value });
+                  const value = parseInt(e.target.value) || 0;
+                  handleParticipantClassChange(value);
                 }}
+                isInvalid={!!validationErrors.participantClass}
               />
+              <Form.Control.Feedback type="invalid">
+                {validationErrors.participantClass}
+              </Form.Control.Feedback>
             </Form.Group>
           </Form>
         </Modal.Body>
@@ -438,7 +571,11 @@ export default function TeamInitialize() {
           <Button variant="secondary" onClick={() => setShowModal(false)}>
             Отмена
           </Button>
-          <Button variant="primary" onClick={handleAddOrEditParticipant}>
+          <Button 
+            variant="primary" 
+            onClick={handleAddOrEditParticipant}
+            disabled={!!validationErrors.participantClass}
+          >
             {editIndex !== null ? "Сохранить" : "Добавить"}
           </Button>
         </Modal.Footer>
@@ -446,17 +583,14 @@ export default function TeamInitialize() {
 
     </Container>
   );
-
-  
 }
-
 
 const customSelectStyles = {
   control: (base: any) => ({
     ...base,
     borderRadius: "8px",
-    backgroundColor: "#fff", // фон всегда белый
-    color: "#000",           // текст всегда черный
+    backgroundColor: "#fff",
+    color: "#000",
     borderColor: "#ced4da",
     boxShadow: "none",
     "&:hover": {

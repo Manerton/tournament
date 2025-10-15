@@ -53,14 +53,14 @@ const TournamentsPage: React.FC = () => {
               onClick={() => navigate(`/tournament/registerTeam/${t.id}`)}
             >
               <Card.Body className="py-4">
-                <Card.Title className="fw-bold mb-3 fs-1">
+                <Card.Title className="text fw-bold mb-3 fs-1">
                   {t.name}
                 </Card.Title>
-                <Card.Text className="text-muted fs-3 mb-2">
+                <Card.Text className="text text-muted fs-3 mb-2">
                   {new Date(t.start_date).toLocaleDateString()} —{" "}
                   {new Date(t.end_date).toLocaleDateString()}
                 </Card.Text>
-                <Card.Text className="fs-3">
+                <Card.Text className="text fs-3">
                   Статус:{" "}
                   <span
                     className={
