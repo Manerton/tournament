@@ -42,7 +42,7 @@ function Header() {
         <Container fluid="lg" className="mx-auto">
           <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
             <img
-              src="/src/assets/favicon.png"
+              src="/favicon.png"
               alt="Логотип"
               className="d-inline-block align-top me-2"
             />
