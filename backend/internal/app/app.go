@@ -144,7 +144,7 @@ func (a *App) initRoutes(router *chi.Mux,
 	router.Route("/api/teams", func(r chi.Router) {
 		r.Post("/register", teamHandler.RegisterTeam)                    // POST /api/teams/register
 		r.Get("/event/{id}", teamHandler.GetTeamsByEventId)              // GET /api/teams/event/{id}
-		r.Get("/accept/event/{id}", teamHandler.GetAcceptTeamsByEventId) // GET /api/teams/accept/event/{id}
+		r.Get("/event/{id}/accept", teamHandler.GetAcceptTeamsByEventId) // GET /api/teams/accept/event/{id}
 	})
 
 	// Группа маршрутов для игр
@@ -157,7 +157,9 @@ func (a *App) initRoutes(router *chi.Mux,
 	router.Route("/api/events", func(r chi.Router) {
 		r.Post("/", eventHandler.Create) // POST /api/events
 		r.Post("/{id}/start", eventHandler.StartTournament)
+		r.Post("/{id}/finish", eventHandler.FinishEvent)
 
+		r.Get("/", eventHandler.GetAll)
 		r.Get("/actual", eventHandler.GetActualEvents)             // GET /api/events/actual
 		r.Get("/{id}/stages", eventHandler.GetAllStagesByParentId) // GET /api/events/{id}/stages
 	})

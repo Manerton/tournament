@@ -17,8 +17,7 @@ import (
 )
 
 type EventRepositoryInterface interface {
-	Create(ctx context.Context, db *gorm.DB, _ *event.Event) error
-	UpdateByID(ctx context.Context, db *gorm.DB, _ event.Event) error
+	GetAll(ctx context.Context, db *gorm.DB) ([]event.Event, error)
 	GetByID(ctx context.Context, db *gorm.DB, id uuid.UUID) (event.Event, error)
 	GetByPreviousEventID(ctx context.Context, db *gorm.DB, previousEventID uuid.UUID) ([]event.Event, error)
 	GetByFilter(ctx context.Context, db *gorm.DB, filter event.Event) ([]event.Event, error)
@@ -26,6 +25,8 @@ type EventRepositoryInterface interface {
 	GetLastTour(ctx context.Context, db *gorm.DB, parentId uuid.UUID) (event.Event, error)
 	GetNumLastTour(ctx context.Context, db *gorm.DB, parentId uuid.UUID) (int, error)
 
+	Create(ctx context.Context, db *gorm.DB, _ *event.Event) error
+	UpdateByID(ctx context.Context, db *gorm.DB, _ event.Event) error
 	DeleteByID(ctx context.Context, db *gorm.DB, id uuid.UUID) error
 }
 
@@ -56,6 +57,20 @@ func New(repository EventRepositoryInterface, log *slog.Logger, db *gorm.DB, gam
 		gameService:        gameService,
 		leaderboardService: leaderboardService,
 	}
+}
+
+func (s *EventService) GetAll(ctx context.Context) ([]event_dto.EventDTOResponse, error) {
+	const op = "service.EventService.GetAll"
+
+	log := s.log.With(slog.String("op", op))
+
+	eventsModel, err := s.repository.GetAll(ctx, s.db)
+	if err != nil {
+		log.Error("failed get all evens", logger.Err(err))
+		return nil, errs.ErrInternalError
+	}
+
+	return event_mapper.ToDTOEvents(eventsModel), nil
 }
 
 func (s *EventService) GetByID(ctx context.Context, id string) (event_dto.EventDTOResponse, error) {
@@ -229,8 +244,8 @@ func (s *EventService) StartTournament(ctx context.Context, eventId string) erro
 	return nil
 }
 
-func (s *EventService) FinishedTour(ctx context.Context, id string) error {
-	const op = "service.EventService.FinishedTour"
+func (s *EventService) FinishEvent(ctx context.Context, id string) error {
+	const op = "service.EventService.FinishEvent"
 	log := s.log.With(slog.String("op", op))
 
 	uid, err := uuid.Parse(id)
@@ -245,10 +260,42 @@ func (s *EventService) FinishedTour(ctx context.Context, id string) error {
 		return errs.ErrInternalError
 	}
 
-	if eventModel.Type != event.StageType {
-		log.Error("uncorrent method use, this event is not stage")
-		return errs.ErrBadRequest
+	if eventModel.Type == event.StageType {
+		return s.finishTour(ctx, eventModel)
 	}
+	return s.finishTournament(ctx, eventModel)
+}
+
+func (s *EventService) finishTournament(ctx context.Context, eventModel event.Event) error {
+	const op = "service.EventService.finishTournament"
+	log := s.log.With(slog.String("op", op))
+
+	eventChilds, err := s.repository.GetByPreviousEventID(ctx, s.db, eventModel.ID)
+	if err != nil {
+		log.Error("failed get child events (tours)", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	for _, eventChild := range eventChilds {
+		if eventChild.Status == event.ActiveStatus {
+			log.Warn("failed finish tour", slog.String("event", eventModel.Name))
+			return errs.ErrFinishedEvent.Wrap(fmt.Sprintf("%s: не завершён", eventChild.Name))
+		}
+	}
+
+	eventModel.Status = event.FinishedStatus
+	err = s.repository.UpdateByID(ctx, s.db, eventModel)
+	if err != nil {
+		log.Error("failed update event status")
+		return errs.ErrInternalError
+	}
+
+	return nil
+}
+
+func (s *EventService) finishTour(ctx context.Context, eventModel event.Event) error {
+	const op = "service.EventService.finishTour"
+	log := s.log.With(slog.String("op", op))
 
 	ok, err := s.gameService.AllGamesIsFinished(ctx, eventModel.ID)
 	if err != nil {
@@ -257,8 +304,8 @@ func (s *EventService) FinishedTour(ctx context.Context, id string) error {
 	}
 
 	if !ok {
-		// TODO new error
-		return fmt.Errorf("not all games is finished")
+		log.Warn("not all game is finished")
+		return errs.ErrFinishedEvent.Wrap("не все игры завершены")
 	}
 
 	eventModel.Status = event.FinishedStatus

@@ -35,3 +35,12 @@ var (
 	ErrNotFound      = &ApiError{Code: "RECORD_NOT_FOUND", HttpCode: http.StatusNotFound, Message: "record not found"}
 	ErrInvalidId     = &ApiError{Code: "INVALID_ID", HttpCode: http.StatusBadRequest, Message: "Invalid ID"}
 )
+
+// Team errors
+var (
+	ErrTeamExist = &ApiError{Code: "TEAM ALREADY EXIST", HttpCode: http.StatusConflict, Message: "team already exist"}
+)
+
+var (
+	ErrFinishedEvent = &ApiError{Code: "EVENT CAN`T FINISHED", HttpCode: http.StatusConflict, Message: "event cant finished"}
+)

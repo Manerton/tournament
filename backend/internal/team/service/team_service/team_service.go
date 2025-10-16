@@ -2,6 +2,8 @@ package team_service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	participant_dto "main/internal/participant/dto"
 	"main/internal/participant/model/participant"
@@ -134,6 +136,11 @@ func (s *TeamService) RegisterTeam(ctx context.Context, dto team_dto.RegisterTea
 	}()
 
 	err = s.teamRepository.Create(ctx, transactionDb, &teamModel)
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		transactionDb.Rollback()
+		log.Error("team already exist", slog.String("team name", teamModel.Name), logger.Err(err))
+		return errs.ErrTeamExist.Wrap(fmt.Sprintf("Команда: %s, уже существует", teamModel.Name))
+	}
 	if err != nil {
 		transactionDb.Rollback()
 		log.Error("failed to create team", slog.Any("teamModel", teamModel), logger.Err(err))

@@ -13,10 +13,12 @@ import (
 )
 
 type EventServiceInterface interface {
+	GetAll(context.Context) ([]event_dto.EventDTOResponse, error)
 	GetActualEvents(context.Context) ([]event_dto.EventDTOResponse, error)
 	GetByPreviousEventID(context.Context, string) ([]event_dto.EventDTOResponse, error)
 
 	StartTournament(ctx context.Context, eventId string) error
+	FinishEvent(ctx context.Context, eventId string) error
 
 	Create(context.Context, event_dto.EventDTOCreate) (uuid.UUID, error)
 }
@@ -29,6 +31,29 @@ func New(eventService EventServiceInterface) *EventHandler {
 	return &EventHandler{
 		eventService: eventService,
 	}
+}
+
+func (h *EventHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	events, err := h.eventService.GetAll(ctx)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.StatusOK,
+		StatusCode: http.StatusOK,
+		Data:       events,
+	})
 }
 
 func (h *EventHandler) GetActualEvents(w http.ResponseWriter, r *http.Request) {
@@ -96,6 +121,25 @@ func (h *EventHandler) StartTournament(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, response.SuccessResponse("success started"))
+}
+
+func (h *EventHandler) FinishEvent(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := chi.URLParam(r, "id")
+	err := h.eventService.FinishEvent(ctx, id)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("success finished"))
 }
 
 func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {

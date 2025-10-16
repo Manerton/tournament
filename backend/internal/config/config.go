@@ -48,24 +48,18 @@ func init() {
 
 func MustConfig(path string) *Config {
 	envPath := os.Getenv("CONFIG_PATH")
-	log.Printf("env init")
 	if envPath == "" {
 		envPath = path
 		if envPath == "" {
 			log.Fatalf("config path is not set")
 		}
 	}
-	log.Printf("env prev stat")
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		log.Fatalf("config file does not exist: %s", envPath)
 	}
-
-	log.Printf("env prev read")
 	var myConfig Config
 	if err := cleanenv.ReadConfig(envPath, &myConfig); err != nil {
 		log.Fatalf("failed read config - %s: %v", envPath, err)
 	}
-	log.Printf("env return config")
-
 	return &myConfig
 }
