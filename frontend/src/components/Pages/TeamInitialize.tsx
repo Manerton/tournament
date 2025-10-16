@@ -3,69 +3,29 @@ import { useParams } from "react-router-dom";
 import { Container, Row, Col, Form, Button, Card, Table, Modal, Spinner, Alert } from "react-bootstrap";
 import Select from "react-select";
 import { API_URL } from "../../config/routes";
+import type { DistrictDTOResponse, SchoolDTOResponse } from "../../types/locationTypes";
+import type { RegisterTeamRequestDTO, TeamCreateDTO } from "../../types/teamType";
+import type { ParticipantCreateDTO } from "../../types/participantTypes";
+import type { ApiResponse } from "../../types/responseTypes";
+import { GetDistricts, GetSchools, RegisterTeam } from "../../requests/teamRequests";
 
-// ------------------------------------
-// Типы DTO (согласно новому ТЗ)
-// ------------------------------------
-interface ApiResponse<T> {
-  status: string;
-  status_code: number;
-  data: T;
-  message?: string;
-}
-
-interface DistrictDTOResponse {
-  id: string;
-  name: string;
-  region_id: string;
-}
-
-interface SchoolDTOResponse {
-  id: string;
-  name: string;
-  district_id: string;
-}
-
-interface TeamCreateDTO {
-  team_name: string;
-  responsible_name: string;
-  responsible_number: string;
-  event_id: string;
-  school_id: string;
-}
-
-interface ParticipantCreateDTO {
-  FIO: string;
-  gender: number;
-  class: number;
-  school_id: string;
-}
-
-interface RegisterTeamRequestDTO {
-  team_name: string;
-  responsible_name: string;
-  responsible_number: string;
-  event_id: string;
-  school_id: string;
-  participants: ParticipantCreateDTO[];
-}
 
 // ------------------------------------
 // Валидационные функции
 // ------------------------------------
 const validatePhoneNumber = (phone: string): string | null => {
   if (!phone.trim()) return null; // Пустое поле - допустимо (не обязательное поле)
-  
+
   // Удаляем все нецифровые символы кроме +
   const cleaned = phone.replace(/[^\d+]/g, '');
-  
+
   // Проверяем российский формат: +7XXXXXXXXXX или 8XXXXXXXXXX
   const russianRegex = /^(\+7|8)\d{10}$/;
-  
+
   if (!russianRegex.test(cleaned)) {
     return "Номер должен быть в формате: +7XXXXXXXXXX или 8XXXXXXXXXX";
   }
-  
+
   return null;
 };
 
@@ -73,11 +33,11 @@ const validateClass = (classNum: number): string | null => {
   if (!classNum || classNum === 0) {
     return "Класс обязателен для заполнения";
   }
-  
+
   if (classNum < 1 || classNum > 11) {
     return "Класс должен быть от 1 до 11";
   }
-  
+
   return null;
 };
 
@@ -114,7 +74,7 @@ export default function TeamInitialize() {
 
   const [submitting, setSubmitting] = useState(false);
   const [notify, setNotify] = useState<{ variant: "success" | "danger"; text: string } | null>(null);
-  
+
   // Состояния для ошибок валидации
   const [validationErrors, setValidationErrors] = useState<{
     phone?: string;
@@ -128,16 +88,12 @@ export default function TeamInitialize() {
     const loadDistricts = async () => {
       setLoadingDistricts(true);
       try {
-        const res = await fetch(`${API_URL}/api/locations/districts`);
-        const json: ApiResponse<DistrictDTOResponse[]> = await res.json();
-        if (res.ok) {
-          setDistricts(json.data);
-        } else {
-          throw new Error(json.message || "Ошибка при загрузке муниципалитетов");
-        }
+        const res: DistrictDTOResponse[] = await GetDistricts();
+        setDistricts(res);
       } catch (err) {
-        console.error(err);
-        setNotify({ variant: "danger", text: "Не удалось загрузить муниципалитеты" });
+        const message = err instanceof Error ? err.message : "Не удалось загрузить муниципалитеты";
+        setNotify({ variant: "danger", text: message });
+        console.error("Ошибка при загрузке муниципалитет:", err);
       } finally {
         setLoadingDistricts(false);
       }
@@ -158,16 +114,12 @@ export default function TeamInitialize() {
 
       setLoadingSchools(true);
       try {
-        const res = await fetch(`${API_URL}/api/locations/districts/${selectedDistrict}/schools`);
-        const json: ApiResponse<SchoolDTOResponse[]> = await res.json();
-        if (res.ok) {
-          setSchools(json.data);
-        } else {
-          throw new Error(json.message || "Ошибка при загрузке школ");
-        }
+        const res: SchoolDTOResponse[] = await GetSchools(selectedDistrict)
+        setSchools(res)
       } catch (err) {
-        console.error(err);
-        setNotify({ variant: "danger", text: "Не удалось загрузить школы" });
+        const message = err instanceof Error ? err.message : "Не удалось загрузить школы";
+        setNotify({ variant: "danger", text: message });
+        console.error("Ошибка при загрузке школ:", err);
       } finally {
         setLoadingSchools(false);
       }
@@ -180,7 +132,6 @@ export default function TeamInitialize() {
   // ------------------------------------
   const handlePhoneChange = (phone: string) => {
     setTeam({ ...team, responsible_number: phone });
-    
     // Валидация телефона
     const phoneError = validatePhoneNumber(phone);
     setValidationErrors(prev => ({
@@ -193,10 +144,10 @@ export default function TeamInitialize() {
     // Ограничиваем значение от 1 до 11
     let value = classNum;
     if (value > 11) value = 11;
-    if (value < 1) value = 1;
-    
+    if (value < 1) value = 0;
+
     setParticipant({ ...participant, class: value });
-    
+
     // Валидация класса
     const classError = validateClass(value);
     setValidationErrors(prev => ({
@@ -283,24 +234,18 @@ export default function TeamInitialize() {
 
     try {
       setSubmitting(true);
-      const res = await fetch(`${API_URL}/api/teams/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dto),
-      });
+      await RegisterTeam(dto)
 
-      const json = await res.json();
-      if (res.ok) {
-        setNotify({ variant: "success", text: "Команда успешно зарегистрирована!" });
-        setTeam({ ...team, team_name: "", responsible_name: "", responsible_number: "", school_id: "" });
-        setParticipants([]);
-        setValidationErrors({});
-      } else {
-        throw new Error(json.message || "Ошибка при регистрации");
-      }
+      setNotify({ variant: "success", text: "Команда успешно зарегистрирована!" });
+      setTeam({ ...team, team_name: "", responsible_name: "", responsible_number: "", school_id: "" });
+      setParticipants([]);
+      setValidationErrors({});
+
     } catch (err) {
-      console.error(err);
-      setNotify({ variant: "danger", text: "Ошибка при отправке данных" });
+      const message = err instanceof Error ? err.message : "Не удалось зарегестрировать команду";
+      setNotify({ variant: "danger", text: message });
+      console.error("Ошибка при загрузке регистарации команды:", err);
+
     } finally {
       setSubmitting(false);
     }
@@ -312,7 +257,7 @@ export default function TeamInitialize() {
   const formatPhoneNumber = (value: string): string => {
     // Удаляем все нецифровые символы кроме +
     const numbers = value.replace(/[^\d+]/g, '');
-    
+
     if (numbers.startsWith('+7')) {
       return `+7${numbers.slice(2, 12)}`;
     } else if (numbers.startsWith('8')) {
@@ -320,7 +265,7 @@ export default function TeamInitialize() {
     } else if (numbers.startsWith('7')) {
       return `+7${numbers.slice(1, 11)}`;
     }
-    
+
     return numbers;
   };
 
@@ -551,13 +496,14 @@ export default function TeamInitialize() {
             <Form.Group className="mb-3">
               <Form.Label>Класс *</Form.Label>
               <Form.Control
-                type="number"
-                min={1}
-                max={11}
+                type="text"
+                inputMode="numeric"   // открывает цифровую клавиатуру на телефоне
+                pattern="[0-9]*"      // подсказывает, что нужны цифры
                 value={participant.class || ""}
                 onChange={(e) => {
-                  const value = parseInt(e.target.value) || 0;
-                  handleParticipantClassChange(value);
+                  const raw = e.target.value.replace(/\D/g, ""); // оставляем только цифры
+                  const num = parseInt(raw, 10);
+                  handleParticipantClassChange(isNaN(num) ? 0 : num);
                 }}
                 isInvalid={!!validationErrors.participantClass}
               />
@@ -571,8 +517,8 @@ export default function TeamInitialize() {
           <Button variant="secondary" onClick={() => setShowModal(false)}>
             Отмена
           </Button>
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={handleAddOrEditParticipant}
             disabled={!!validationErrors.participantClass}
           >

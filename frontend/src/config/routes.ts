@@ -16,6 +16,4 @@ export const SCHOOLS = {
     byId: `${API_URL}/schools/`,
 };
 
-
-
 export default { API_CONFIG};
