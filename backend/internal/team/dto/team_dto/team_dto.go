@@ -17,6 +17,7 @@ type TeamResponseDTO struct {
 	ResponsiblePhone string `json:"responsible_phone"`
 	EventID          string `json:"event_id"`
 	SchoolID         string `json:"school_id"`
+	Status           int    `json:"status"`
 }
 
 type RegisterTeamRequestDTO struct {

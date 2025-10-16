@@ -36,6 +36,7 @@ func ToTeamDTO(model team.Team) team_dto.TeamResponseDTO {
 		ResponsiblePhone: model.ResponsiblePhone,
 		EventID:          model.EventID.String(),
 		SchoolID:         model.SchoolID.String(),
+		Status:           model.Status,
 	}
 }
 

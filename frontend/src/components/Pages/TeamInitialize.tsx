@@ -414,17 +414,20 @@ export default function TeamInitialize() {
             </tbody>
           </Table>
         </Card.Body>
+
+        <div className="justify-content-center">
+          <Button
+            size="lg"
+            onClick={handleSubmit}
+            disabled={submitting || !team.school_id || !participants.length}
+          >
+            {submitting ? <Spinner animation="border" size="sm" /> : "Отправить заявку"}
+          </Button>
+        </div>
+
       </Card>
 
-      <div className="text-center">
-        <Button
-          size="lg"
-          onClick={handleSubmit}
-          disabled={submitting || !team.school_id || !participants.length}
-        >
-          {submitting ? <Spinner animation="border" size="sm" /> : "Отправить заявку"}
-        </Button>
-      </div>
+
 
       {/* Модальное окно участника */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
