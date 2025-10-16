@@ -43,7 +43,7 @@ export async function RegisterTeam(dto: RegisterTeamRequestDTO) {
 }
 
 export async function GetTeamsByEvent(Id: string) {
-    const res = await fetch(`${API_URL}/api/teams/event${Id}`);
+    const res = await fetch(`${API_URL}/api/teams/event/${Id}`);
     const json: ApiResponse<TeamResponceDTO[]> = await res.json();
     if (!res.ok) {
         throw new Error(json.message || "Ошибка при загрузке команд");
