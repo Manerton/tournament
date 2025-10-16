@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Container, Row, Col, Form, Button, Card, Table, Modal, Spinner, Alert } from "react-bootstrap";
 import Select from "react-select";
-import { API_URL } from "../../config/routes";
 import type { DistrictDTOResponse, SchoolDTOResponse } from "../../types/locationTypes";
 import type { RegisterTeamRequestDTO, TeamCreateDTO } from "../../types/teamType";
 import type { ParticipantCreateDTO } from "../../types/participantTypes";
-import type { ApiResponse } from "../../types/responseTypes";
 import { GetDistricts, GetSchools, RegisterTeam } from "../../requests/teamRequests";
 
 
