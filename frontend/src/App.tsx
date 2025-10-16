@@ -9,6 +9,7 @@ import LoginPage from './components/Pages/login';
 import TournamentsPage from './components/Pages/TournamentsPage';
 import AdminLayout from './components/Admin/AdminLayout';
 import AdminPanel from './components/Admin/AdminPanel';
+import TeamApplicationsPage from './components/Admin/TeamsApplications';
 
 function App() {
  
@@ -23,7 +24,7 @@ function App() {
           </Route>
            <Route element={<AdminLayout />}>
             <Route path="/AdminPanel" element={<AdminPanel />} />
-            
+            <Route path='/TeamsApplications' element={<TeamApplicationsPage/>} />
            </Route>
 
           <Route element={<RegisterFormLayout />}>

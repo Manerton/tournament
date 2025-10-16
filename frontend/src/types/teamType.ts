@@ -16,3 +16,12 @@ export interface RegisterTeamRequestDTO {
   school_id: string;
   participants: ParticipantCreateDTO[];
 }
+
+export interface TeamResponceDTO {
+  team_name: string;
+  responsible_name: string;
+  responsible_number: string;
+  event_id: string;
+  school_id: string;
+  status:    number; //2 принято, 1 - на рассмотрении
+}

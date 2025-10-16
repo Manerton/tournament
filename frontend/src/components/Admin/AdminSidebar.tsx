@@ -88,40 +88,23 @@ const AdminSidebar: React.FC = () => {
           {/* Админские ссылки */}
           {user && (
             <>
+
+                <Nav.Link
+                as={Link}
+                to="/TeamsApplications"
+                className="text-white d-flex align-items-center"
+              >
+                <FileText className="me-2" />
+                {!collapsed && "Заявки команд"}
+              </Nav.Link>
+
               <Nav.Link
                 as={Link}
-                to="/olymp-admin/user/index"
+                to="/participants"
                 className="text-white d-flex align-items-center"
               >
                 <People className="me-2" />
                 {!collapsed && "Пользователи"}
-              </Nav.Link>
-
-              {/*<Nav.Link*/}
-              {/*  as={Link}*/}
-              {/*  to="/olymp-admin/participant/index"*/}
-              {/*  className="text-white d-flex align-items-center"*/}
-              {/*>*/}
-              {/*  <PersonBadge className="me-2" />*/}
-              {/*  {!collapsed && "Участники"}*/}
-              {/*</Nav.Link>*/}
-
-              <Nav.Link
-                as={Link}
-                to="/olymp-admin/school/index"
-                className="text-white d-flex align-items-center"
-              >
-                <FileEarmarkText className="me-2" />
-                {!collapsed && "Школы"}
-              </Nav.Link>
-
-              <Nav.Link
-                as={Link}
-                to="/olymp-admin/report/index"
-                className="text-white d-flex align-items-center"
-              >
-                <CreditCard className="me-2" />
-                {!collapsed && "Отчеты"}
               </Nav.Link>
 
               <Nav.Link
@@ -130,36 +113,48 @@ const AdminSidebar: React.FC = () => {
                 className="text-white d-flex align-items-center"
               >
                 <CalendarCheck className="me-2" />
-                {!collapsed && "Олимпиады"}
+                {!collapsed && "Турниры"}
               </Nav.Link>
 
               <Nav.Link
                 as={Link}
-                to="/olymp-admin/application/index"
+                to="/schools"
                 className="text-white d-flex align-items-center"
               >
-                <FileText className="me-2" />
-                {!collapsed && "Заявки"}
+                <FileEarmarkText className="me-2" />
+                {!collapsed && "Школы"}
               </Nav.Link>
+
+              <Nav.Link
+                as={Link}
+                to="/report"
+                className="text-white d-flex align-items-center"
+              >
+                <CreditCard className="me-2" />
+                {!collapsed && "Отчеты"}
+              </Nav.Link>
+
+            
             </>
           )}
         </Nav>
       </div>
+          
+      <div className="d-flex flex-column pb-3 justify-content-center align-items-start">
+          <div className="mb-2">
+            <ThemeToggleButton />
+          </div>
 
-      {/* Нижняя часть: Тема и выход */}
-      <div className="pb-3">
-        <div className="mb-2 px-2">
-          <ThemeToggleButton />
+          <Nav.Link
+            onClick={logout}
+            className="text-danger align-items-center px-2"
+          >
+            <BoxArrowLeft className="me-2" />
+            {!collapsed && "Выйти"}
+          </Nav.Link>
         </div>
 
-        <Nav.Link
-          onClick={logout}
-          className="text-danger d-flex align-items-center px-2"
-        >
-          <BoxArrowLeft className="me-2" />
-          {!collapsed && "Выйти"}
-        </Nav.Link>
-      </div>
+
     </div>
   );
 };

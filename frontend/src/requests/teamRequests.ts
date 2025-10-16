@@ -1,7 +1,7 @@
 import { API_URL } from "../config/routes";
 import type { DistrictDTOResponse, SchoolDTOResponse } from "../types/locationTypes";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
-import type { RegisterTeamRequestDTO } from "../types/teamType";
+import type { RegisterTeamRequestDTO, TeamResponceDTO } from "../types/teamType";
 
 
 export async function GetDistricts() {
@@ -40,4 +40,15 @@ export async function RegisterTeam(dto: RegisterTeamRequestDTO) {
     } else if (json.status == ResponseStatus.Error) {
         throw new Error(json.message);
     }
+}
+
+export async function GetTeamsByEvent(Id: string) {
+    const res = await fetch(`${API_URL}/api/teams/event${Id}`);
+    const json: ApiResponse<TeamResponceDTO[]> = await res.json();
+    if (!res.ok) {
+        throw new Error(json.message || "Ошибка при загрузке команд");
+    } else if (json.status == ResponseStatus.Error) {
+        throw new Error(json.message);
+    }
+    return json.data
 }
