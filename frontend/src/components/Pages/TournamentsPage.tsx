@@ -47,31 +47,27 @@ const TournamentsPage: React.FC = () => {
       ) : (
         <div className="d-flex flex-column gap-4">
           {tournaments.map((t) => (
-            <Card
-              key={t.id}
-              className="tournament-card shadow-sm text-center"
-              onClick={() => navigate(`/tournament/registerTeam/${t.id}`)}
-            >
-              <Card.Body className="py-4">
-                <Card.Title className="text fw-bold mb-3 fs-1">
-                  {t.name}
-                </Card.Title>
-                <Card.Text className="text text-muted fs-3 mb-2">
-                  {new Date(t.start_date).toLocaleDateString()} —{" "}
-                  {new Date(t.end_date).toLocaleDateString()}
-                </Card.Text>
-                <Card.Text className="text fs-3">
-                  Статус:{" "}
-                  <span
-                    className={
-                      t.status === 1 ? "text-success" : "text-secondary"
-                    }
-                  >
-                    {t.status === 1 ? "Активен" : "Завершён"}
-                  </span>
-                </Card.Text>
-              </Card.Body>
-            </Card>
+          <Card
+            key={t.id}
+            className="tournament-card shadow-sm"
+            onClick={() => navigate(`/tournament/registerTeam/${t.id}`)}
+          >
+            <Card.Body className="py-4">
+              <Card.Title className="fw-bold mb-3 fs-1 text-body">
+                {t.name}
+              </Card.Title>
+              <Card.Text className="fs-3 mb-2 text-body-secondary">
+                {new Date(t.start_date).toLocaleDateString()} —{" "}
+                {new Date(t.end_date).toLocaleDateString()}
+              </Card.Text>
+              <Card.Text className="fs-3 text-body">
+                Статус:{" "}
+                <span className={t.status === 1 ? "text-success" : "text-body-secondary"}>
+                  {t.status === 1 ? "Активен" : "Завершён"}
+                </span>
+              </Card.Text>
+            </Card.Body>
+        </Card>
           ))}
         </div>
       )}

@@ -1,4 +1,3 @@
-// src/components/BackgroundParticles.tsx
 import React, { useEffect, useState, useContext } from "react";
 import Particles, { initParticlesEngine } from "@tsparticles/react";
 import { loadFull } from "tsparticles";
@@ -24,7 +23,7 @@ const BackgroundParticles: React.FC = () => {
     const particleColor = isDark ? "#ffffff" : "#000000";
 
     const newOptions: ISourceOptions = {
-      fullScreen: { enable: true, zIndex: 0 },
+      fullScreen: { enable: true, zIndex: -1 }, // ✅ Фон на весь экран, под контентом
       background: { color: { value: backgroundColor } },
       fpsLimit: 60,
       interactivity: {
@@ -64,17 +63,12 @@ const BackgroundParticles: React.FC = () => {
   return (
     <>
       {particlesReady && options && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 0,
-            opacity: particlesReady ? 1 : 0,
-            transition: "opacity 0.6s ease-in-out",
-          }}
-        >
-          <Particles id="tsparticles" key={theme} options={options} />
-        </div>
+        <Particles
+          id="tsparticles"
+          key={theme}
+          options={options}
+          style={{ pointerEvents: "none" }} // ✅ чтобы не мешал кликам
+        />
       )}
     </>
   );

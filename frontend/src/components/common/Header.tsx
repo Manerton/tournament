@@ -43,6 +43,8 @@ function Header() {
           <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
             <img
               src="/favicon.png"
+              height={32}
+              width={80}
               alt="Логотип"
               className="d-inline-block align-top me-2"
             />
@@ -56,7 +58,7 @@ function Header() {
               </LinkContainer>
 
               {isAuthenticated && (
-                <LinkContainer to="/admin">
+                <LinkContainer to="/AdminPanel">
                   <Nav.Link>Админ панель</Nav.Link>
                 </LinkContainer>
               )}
