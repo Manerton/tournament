@@ -169,8 +169,8 @@ func (s *TeamService) RegisterTeam(ctx context.Context, dto team_dto.RegisterTea
 	return nil
 }
 
-func (s *TeamService) AcceptTeam(ctx context.Context, id string) error {
-	const op = "service.TeamService.AcceptTeam"
+func (s *TeamService) SwitchTeamStatus(ctx context.Context, id string) error {
+	const op = "service.TeamService.SwitchTeamStatus"
 
 	log := s.log.With(slog.String("op", op))
 	uid, err := uuid.Parse(id)
@@ -184,8 +184,11 @@ func (s *TeamService) AcceptTeam(ctx context.Context, id string) error {
 		log.Error("failed get team by id", slog.String("id", id), logger.Err(err))
 		return errs.ErrInternalError
 	}
-
-	teamModel.Status = team.AcceptStatus
+	if teamModel.Status == team.ReviewStatus {
+		teamModel.Status = team.AcceptStatus
+	} else {
+		teamModel.Status = team.ReviewStatus
+	}
 	err = s.teamRepository.UpdateByID(ctx, s.db, teamModel)
 	if err != nil {
 		log.Error("failed update status team", logger.Err(err))

@@ -145,6 +145,7 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Post("/register", teamHandler.RegisterTeam)                    // POST /api/teams/register
 		r.Get("/event/{id}", teamHandler.GetTeamsByEventId)              // GET /api/teams/event/{id}
 		r.Get("/event/{id}/accept", teamHandler.GetAcceptTeamsByEventId) // GET /api/teams/accept/event/{id}
+		r.Post("/{id}/switch", teamHandler.SwitchTeamStatus)
 	})
 
 	// Группа маршрутов для игр

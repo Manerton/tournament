@@ -13,7 +13,7 @@ import (
 
 type TeamServiceInterface interface {
 	RegisterTeam(ctx context.Context, dto team_dto.RegisterTeamRequestDTO) error
-	AcceptTeam(ctx context.Context, id string) error
+	SwitchTeamStatus(ctx context.Context, id string) error
 	GetTeamsByEventId(ctx context.Context, eventID string) ([]team_dto.TeamResponseDTO, error)
 	GetAcceptTeamsByEventId(ctx context.Context, eventId string) ([]team_dto.TeamResponseDTO, error)
 }
@@ -101,11 +101,11 @@ func (h *TeamHandler) GetAcceptTeamsByEventId(w http.ResponseWriter, r *http.Req
 	})
 }
 
-func (h *TeamHandler) AcceptTeam(w http.ResponseWriter, r *http.Request) {
+func (h *TeamHandler) SwitchTeamStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	id := chi.URLParam(r, "id")
-	err := h.teamService.AcceptTeam(ctx, id)
+	err := h.teamService.SwitchTeamStatus(ctx, id)
 	if err != nil {
 		if apiErr, ok := errs.IsApiError(err); ok {
 			render.Status(r, apiErr.HttpCode)

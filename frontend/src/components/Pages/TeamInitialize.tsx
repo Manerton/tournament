@@ -39,10 +39,17 @@ const validateClass = (classNum: number): string | null => {
   return null;
 };
 
+
+
+interface Props {
+  
+}
+
+
 // ------------------------------------
 // Компонент регистрации команды
 // ------------------------------------
-export default function TeamInitialize() {
+const  TeamInitialize: React.FC<Props> = () => {
   const { id } = useParams<{ id: string }>();
 
   const [districts, setDistricts] = useState<DistrictDTOResponse[]>([]);
@@ -272,11 +279,17 @@ export default function TeamInitialize() {
   // ------------------------------------
   return (
     <Container className="">
-      <h2 className="text-center mb-4">Регистрация команды</h2>
+      <Card className="mb-4 shadow-sm">
+        <Card.Body>
+          <h5 className="mb-3"></h5>
+        </Card.Body>
+
+      </Card>
 
       {notify && <Alert variant={notify.variant}>{notify.text}</Alert>}
 
       <Card className="mb-4 shadow-sm">
+         <h2 className="text-center mb-4">Регистрация команды</h2>
         <Card.Body>
           <h5 className="mb-3">Информация о команде</h5>
           <Form>
@@ -531,6 +544,8 @@ export default function TeamInitialize() {
     </Container>
   );
 }
+
+export default TeamInitialize
 
 const customSelectStyles = {
   control: (base: any) => ({
