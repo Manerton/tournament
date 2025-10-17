@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const response = await axiosRefreshSession();
-      const refreshedUserId = response.data.data.message;
+      const refreshedUserId = response.data.data.user_id;
 
       setExpires(Date.now() + 30 * 60 * 1000);
 

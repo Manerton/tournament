@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Form, Table, Spinner, Alert, Container } from "react-bootstrap";
+import { Form, Table, Spinner, Alert, Container, Button } from "react-bootstrap";
 import type { EventResponse } from "../../types/TournamentTypes";
 import type { TeamResponceDTO } from "../../types/teamType";
 import { axiosGetTournamentActive } from "../../requests/tournamentRequests";
 import { GetTeamsByEvent } from "../../requests/teamRequests";
-
+import { ChangeTeamStatus } from "../../requests/teamRequests"; // <-- импортируем функцию
 
 const TeamApplicationsPage: React.FC = () => {
   const [tournaments, setTournaments] = useState<EventResponse[]>([]);
@@ -46,6 +46,27 @@ const TeamApplicationsPage: React.FC = () => {
     fetchTeams();
   }, [selectedTournament]);
 
+  // 👉 Обработчик изменения статуса
+  const handleChangeStatus = async (teamId: string) => {
+    try {
+      await ChangeTeamStatus(teamId);
+
+      // После успешного запроса — локально обновляем статус
+      setTeams((prevTeams) =>
+        prevTeams.map((team) =>
+          team.id === teamId
+            ? {
+                ...team,
+                status: team.status === 1 ? 2 : 1, // Переключаем между "На рассмотрении" и "Принято"
+              }
+            : team
+        )
+      );
+    } catch (err: any) {
+      alert(err.message || "Ошибка при изменении статуса");
+    }
+  };
+
   return (
     <Container className="py-4">
       <h2 className="mb-4 text-center fw-bold">Список команд по турнирам</h2>
@@ -81,21 +102,31 @@ const TeamApplicationsPage: React.FC = () => {
               <th>Ответственный</th>
               <th>Телефон</th>
               <th>Статус</th>
+              <th>Действие</th>
             </tr>
           </thead>
           <tbody>
             {teams.map((team, idx) => (
-              <tr key={idx}>
+              <tr key={team.id}>
                 <td>{idx + 1}</td>
-                <td>{team.team_name}</td>
+                <td>{team.name}</td>
                 <td>{team.responsible_name}</td>
-                <td>{team.responsible_number}</td>
+                <td>{team.responsible_phone}</td>
                 <td>
                   {team.status === 2
                     ? "Принято"
                     : team.status === 1
                     ? "На рассмотрении"
                     : "Неизвестно"}
+                </td>
+                <td className="text-center">
+                  <Button
+                    variant={team.status === 2 ? "warning" : "success"}
+                    size="sm"
+                    onClick={() => handleChangeStatus(team.id)}
+                  >
+                    {team.status === 2 ? "Отклонить" : "Принять"}
+                  </Button>
                 </td>
               </tr>
             ))}

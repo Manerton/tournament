@@ -11,4 +11,4 @@ HTTP_SERVER_INFO:
   host: "0.0.0.0"
   port: "8080"
 
-FRONTEND_INFO: "http://172.16.1.39:5173" 
+FRONTEND_INFO: "http://172.16.0.196:5173" 

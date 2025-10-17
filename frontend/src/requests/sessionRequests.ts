@@ -32,7 +32,7 @@ export const axiosLoginSession = (login: string, password: string) => {
  * POST /sessions/refresh
  */
 export const axiosRefreshSession = () => {
-  return api.post<RefreshResponse>("/api/sessions/refresh");
+  return api.post<LoginResponse>("/api/sessions/refresh");
 };
 
 /**

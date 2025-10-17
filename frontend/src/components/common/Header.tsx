@@ -76,7 +76,7 @@ function Header() {
                   >
                     <PersonCircle size={24} className="me-2" />
                     <span className="text-body">
-                      {user?.email || "Пользователь"}
+                      {user?.email || user?.id}
                     </span>
                   </Dropdown.Toggle>
 

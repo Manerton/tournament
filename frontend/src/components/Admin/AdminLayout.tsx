@@ -19,7 +19,6 @@ const AdminLayout: React.FC = () => {
             <Outlet />
           </main>
         </Container>
-        <Footer />
       </div>
     </div>
   );

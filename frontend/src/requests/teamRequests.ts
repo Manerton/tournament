@@ -52,3 +52,18 @@ export async function GetTeamsByEvent(Id: string) {
     }
     return json.data
 }
+
+
+export async function ChangeTeamStatus(id: string) {
+    const res = await fetch(`${API_URL}/api/teams/${id}/switch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+    });
+
+    const json: ApiResponse<any> = await res.json();
+    if (!res.ok) {
+        throw new Error(json.message || "Ошибка при изменении статуса команды");
+    } else if (json.status == ResponseStatus.Error) {
+        throw new Error(json.message);
+    }
+}
