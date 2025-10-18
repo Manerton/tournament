@@ -1,6 +1,5 @@
 import React from 'react';
 import AdminSidebar from './AdminSidebar.tsx';
-import Footer from '../common/Footer.tsx';
 import { Container } from 'react-bootstrap';
 import { Outlet } from 'react-router-dom';
 import BackgroundParticles from '../common/BackgroundParticles.tsx';

@@ -1,7 +1,6 @@
 import axios from "axios";
 import type {
   LoginResponse,
-  RefreshResponse,
   LogoutResponse,
   SessionResponse,
 } from "../types/sessionTypes";
