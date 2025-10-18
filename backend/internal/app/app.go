@@ -160,6 +160,7 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Post("/{id}/start", eventHandler.StartTournament)
 		r.Post("/{id}/finish", eventHandler.FinishEvent)
 
+		r.Get("/{id}", eventHandler.GetByID)
 		r.Get("/", eventHandler.GetAll)
 		r.Get("/actual", eventHandler.GetActualEvents)             // GET /api/events/actual
 		r.Get("/{id}/stages", eventHandler.GetAllStagesByParentId) // GET /api/events/{id}/stages

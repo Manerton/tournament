@@ -19,9 +19,9 @@ const (
 func init() {
 	// Загружаем .env файл (если есть)
 	if err := godotenv.Load(); err != nil {
-		log.Println("⚠️ .env файл не найден, используем системные переменные")
+		log.Println(".env файл не найден, используем системные переменные")
 	} else {
-		log.Println("✅ .env файл загружен")
+		log.Println(".env файл загружен")
 	}
 }
 

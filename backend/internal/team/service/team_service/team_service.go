@@ -15,6 +15,7 @@ import (
 	"main/internal/team/team_mapper"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 )
 
@@ -136,13 +137,13 @@ func (s *TeamService) RegisterTeam(ctx context.Context, dto team_dto.RegisterTea
 	}()
 
 	err = s.teamRepository.Create(ctx, transactionDb, &teamModel)
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		transactionDb.Rollback()
-		log.Error("team already exist", slog.String("team name", teamModel.Name), logger.Err(err))
-		return errs.ErrTeamExist.Wrap(fmt.Sprintf("Команда: %s, уже существует", teamModel.Name))
-	}
 	if err != nil {
 		transactionDb.Rollback()
+		var pqErr *pgconn.PgError
+		if errors.As(err, &pqErr) && pqErr.Code == errs.DublicateError {
+			log.Error("team already exist", slog.String("team name", teamModel.Name), logger.Err(err))
+			return errs.ErrTeamExist.Wrap(fmt.Sprintf("Команда: %s - уже существует", teamModel.Name))
+		}
 		log.Error("failed to create team", slog.Any("teamModel", teamModel), logger.Err(err))
 		return errs.ErrInternalError
 	}

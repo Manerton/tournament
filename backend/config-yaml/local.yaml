@@ -8,7 +8,7 @@ DB_INFO:
   ssl_model: "disable"
 
 HTTP_SERVER_INFO:
-  host: "0.0.0.0"
+  host: "localhost"
   port: "8080"
 
-FRONTEND_INFO: "http://172.16.0.196:5173" 
+FRONTEND_INFO: "http://localhost:5173" 

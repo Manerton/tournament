@@ -13,6 +13,7 @@ import (
 )
 
 type EventServiceInterface interface {
+	GetByID(context.Context, string) (event_dto.EventDTOResponse, error)
 	GetAll(context.Context) ([]event_dto.EventDTOResponse, error)
 	GetActualEvents(context.Context) ([]event_dto.EventDTOResponse, error)
 	GetByPreviousEventID(context.Context, string) ([]event_dto.EventDTOResponse, error)
@@ -31,6 +32,30 @@ func New(eventService EventServiceInterface) *EventHandler {
 	return &EventHandler{
 		eventService: eventService,
 	}
+}
+
+func (h *EventHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := chi.URLParam(r, "id")
+	event, err := h.eventService.GetByID(ctx, id)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.StatusOK,
+		StatusCode: http.StatusOK,
+		Data:       event,
+	})
 }
 
 func (h *EventHandler) GetAll(w http.ResponseWriter, r *http.Request) {

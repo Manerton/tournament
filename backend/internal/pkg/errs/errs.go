@@ -28,6 +28,10 @@ func IsApiError(err error) (*ApiError, bool) {
 	return apiErr, ok
 }
 
+const (
+	DublicateError = "23505"
+)
+
 // Common errors
 var (
 	ErrInternalError = &ApiError{Code: "INTERNAL_SERVER_ERROR", HttpCode: http.StatusInternalServerError, Message: "Something was wrong"}
