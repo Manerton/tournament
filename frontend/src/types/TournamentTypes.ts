@@ -18,3 +18,7 @@ export interface EventResponse {
     stage:           number
 }
 
+export const EventStatus = {
+  Active: 1,
+  Closed: 2
+} as const

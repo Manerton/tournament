@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Container, Card, Spinner, Alert } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { axiosGetTournamentActive } from "../../requests/tournamentRequests";
-import type { EventResponse } from "../../types/TournamentTypes";
+import { EventStatus, type EventResponse } from "../../types/TournamentTypes";
 import "../../assets/TournamentPage.css";
 
 const TournamentsPage: React.FC = () => {
@@ -62,8 +62,8 @@ const TournamentsPage: React.FC = () => {
               </Card.Text>
               <Card.Text className="fs-3 text-body">
                 Статус:{" "}
-                <span className={t.status === 1 ? "text-success" : "text-body-secondary"}>
-                  {t.status === 1 ? "Активен" : "Завершён"}
+                <span className={t.status === EventStatus.Active ? "text-success" : "text-body-secondary"}>
+                  {t.status === EventStatus.Active ? "Активен" : "Завершён"}
                 </span>
               </Card.Text>
             </Card.Body>

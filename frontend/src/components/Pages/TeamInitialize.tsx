@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Container, Row, Col, Form, Button, Card, Table, Modal, Spinner, Alert } from "react-bootstrap";
 import Select from "react-select";
@@ -6,6 +6,8 @@ import type { DistrictDTOResponse, SchoolDTOResponse } from "../../types/locatio
 import type { RegisterTeamRequestDTO, TeamCreateDTO } from "../../types/teamType";
 import type { ParticipantCreateDTO } from "../../types/participantTypes";
 import { GetDistricts, GetSchools, RegisterTeam } from "../../requests/teamRequests";
+import { EventStatus, type EventResponse } from "../../types/TournamentTypes";
+import { axiosGetEventById } from "../../requests/tournamentRequests";
 
 
 // ------------------------------------
@@ -40,17 +42,17 @@ const validateClass = (classNum: number): string | null => {
 };
 
 
-
-interface Props {
-  
-}
-
-
 // ------------------------------------
 // Компонент регистрации команды
 // ------------------------------------
-const  TeamInitialize: React.FC<Props> = () => {
+const TeamInitialize: React.FC = () => {
+
+  const alertRef = useRef<HTMLDivElement | null>(null);
+
+
   const { id } = useParams<{ id: string }>();
+
+  const [event, setEvent] = useState<EventResponse>();
 
   const [districts, setDistricts] = useState<DistrictDTOResponse[]>([]);
   const [schools, setSchools] = useState<SchoolDTOResponse[]>([]);
@@ -131,6 +133,20 @@ const  TeamInitialize: React.FC<Props> = () => {
     };
     loadSchools();
   }, [selectedDistrict]);
+
+  useEffect(() => {
+    const loadMainEvent = async () => {
+      try {
+        const res: EventResponse = await axiosGetEventById(id!)
+        setEvent(res)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Не удалось загрузить турнир";
+        setNotify({ variant: "danger", text: message });
+        console.error("Ошибка при загрузке турнира:", err);
+      }
+    }
+    loadMainEvent()
+  }, [id])
 
   // ------------------------------------
   // Обработчики изменений с валидацией
@@ -274,22 +290,45 @@ const  TeamInitialize: React.FC<Props> = () => {
     return numbers;
   };
 
+  useEffect(() => {
+    if (notify && alertRef.current) {
+      alertRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [notify]);
+
+  if (event?.status != EventStatus.Active) {
+    return (
+      <Container>
+        <Card className="mb-4 shadow-sm">
+          <h2 >{event?.name}</h2>
+          <h5>Завершён</h5>
+        </Card>
+      </Container>
+    )
+  }
+
+
+
   // ------------------------------------
   // JSX
   // ------------------------------------
   return (
-    <Container className="">
+    <Container >
       <Card className="mb-4 shadow-sm">
         <Card.Body>
-          <h5 className="mb-3"></h5>
+          <h2>{event?.name}</h2>
         </Card.Body>
 
       </Card>
 
-      {notify && <Alert variant={notify.variant}>{notify.text}</Alert>}
+      {notify && (
+        <div ref={alertRef}>
+          <Alert variant={notify.variant}>{notify.text}</Alert>
+        </div>
+      )}
 
       <Card className="mb-4 shadow-sm">
-         <h2 className="text-center mb-4">Регистрация команды</h2>
+        <h2 className="text-center mb-4">Регистрация команды</h2>
         <Card.Body>
           <h5 className="mb-3">Информация о команде</h5>
           <Form>
