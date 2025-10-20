@@ -27,19 +27,21 @@ const Footer: React.FC = () => (
 
          {/* Логотип */}
             <Col md={4} className="d-flex justify-content-center justify-content-md-center">
-            <img src={logoRHT} alt="РШТ" style={{ height: "35px" }} />
+            <a href="https://schooltech.ru/" aria-label="Новости" className="opacity-75 hover-opacity-100">
+             <img src={logoRHT} alt="РШТ" style={{ height: "35px" }} />
+            </a>
             </Col>
 
 
         {/* Соцсети */}
         <Col md={4} className="d-flex justify-content-center justify-content-md-end gap-4">
-          <a href="#" aria-label="ВКонтакте" className="opacity-75 hover-opacity-100">
+          <a href="https://vk.com/schooltech" aria-label="ВКонтакте" className="opacity-75 hover-opacity-100">
             <img src={iconVK} alt="VK" style={{ height: "26px" }} />
           </a>
-          <a href="#" aria-label="Школьная сеть" className="opacity-75 hover-opacity-100">
+          <a href="https://ok.ru/schooltech" aria-label="Одноклассники" className="opacity-75 hover-opacity-100">
             <img src={iconOK} alt="OK" style={{ height: "26px" }} />
           </a>
-          <a href="#" aria-label="Telegram" className="opacity-75 hover-opacity-100">
+          <a href="https://t.me/schooltech30" aria-label="Telegram" className="opacity-75 hover-opacity-100">
             <img src={iconTelegram} alt="Telegram" style={{ height: "26px" }} />
           </a>
         </Col>
