@@ -17,7 +17,7 @@ export interface RegisterTeamRequestDTO {
   participants: ParticipantCreateDTO[];
 }
 
-export interface TeamResponceDTO {
+export interface TeamResponseDTO {
   id:   string;
   name: string;
   responsible_name: string;
@@ -25,4 +25,9 @@ export interface TeamResponceDTO {
   event_id: string;
   school_id: string;
   status:    number; //2 принято, 1 - на рассмотрении
+}
+
+export const TeamStatus = {
+  Accept: 2,
+  Review: 1,
 }

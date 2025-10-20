@@ -125,6 +125,20 @@ func (s *EventService) GetByPreviousEventID(ctx context.Context, id string) ([]e
 	return event_mapper.ToDTOEvents(models), nil
 }
 
+func (s *EventService) GetAllTournaments(ctx context.Context) ([]event_dto.EventDTOResponse, error) {
+	const op = "service.EventService.GetAllTournaments"
+
+	log := s.log.With(slog.String("op", op))
+
+	models, err := s.repository.GetByFilter(ctx, s.db, event.Event{Type: event.EventType})
+	if err != nil {
+		log.Error("failed get all tournaments", logger.Err(err))
+		return nil, errs.ErrInternalError
+	}
+
+	return event_mapper.ToDTOEvents(models), nil
+}
+
 func (s *EventService) Create(ctx context.Context, dto event_dto.EventDTOCreate) (uuid.UUID, error) {
 	const op = "service.EventService.Create"
 

@@ -7,6 +7,7 @@ import (
 	"main/internal/common/repository"
 	"main/internal/participant/model/participant"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -19,7 +20,7 @@ func New() *ParticipantRepository {
 }
 
 // Получить всех по id школы
-func (r *ParticipantRepository) GetAllBySchoolID(ctx context.Context, db *gorm.DB, schoolID string) ([]participant.Participant, error) {
+func (r *ParticipantRepository) GetAllBySchoolID(ctx context.Context, db *gorm.DB, schoolID uuid.UUID) ([]participant.Participant, error) {
 	const op = "repositories.ParticipantRepository.GetAllBySchoolID"
 	var participants []participant.Participant
 	err := db.WithContext(ctx).

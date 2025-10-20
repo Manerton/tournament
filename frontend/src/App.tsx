@@ -10,6 +10,7 @@ import TournamentsPage from './components/Pages/TournamentsPage';
 import AdminLayout from './components/Admin/AdminLayout';
 import AdminPanel from './components/Admin/AdminPanel';
 import TeamApplicationsPage from './components/Admin/TeamsApplications';
+import Tournaments from './components/Admin/Tournaments';
 
 function App() {
  
@@ -25,6 +26,7 @@ function App() {
            <Route element={<AdminLayout />}>
             <Route path="/AdminPanel" element={<AdminPanel />} />
             <Route path='/TeamsApplications' element={<TeamApplicationsPage/>} />
+            <Route path='/olymp-admin/event/index' element={<Tournaments/>}/>
            </Route>
 
           <Route element={<RegisterFormLayout />}>

@@ -6,3 +6,9 @@ export interface ParticipantCreateDTO {
 }
 
 
+export interface ParticipantResponseDTO {
+  id: string;
+  FIO: string;
+  gender: number;
+  class: number;
+}

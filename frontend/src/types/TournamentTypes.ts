@@ -7,15 +7,15 @@ export interface EventApiResponse {
 
 
 export interface EventResponse {
-    id:              string
-    name:            string
-    start_date:       string
-    end_date:         string
-    previous_event_id: string | null
-    status:          number
-    type:            number
-    type_draws:       number
-    stage:           number
+  id: string
+  name: string
+  start_date: string
+  end_date: string
+  previous_event_id: string | null
+  status: number
+  type: number
+  type_draws: number
+  stage: number
 }
 
 export const EventStatus = {

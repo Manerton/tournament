@@ -10,14 +10,17 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/google/uuid"
 )
 
 // Интерфейс сервиса, который будет использовать handler
 type ParticipantServiceInterface interface {
-	Create(ctx context.Context, createDTO dto.ParticipantCreateDTO) (string, error)
+	Create(ctx context.Context, createDTO dto.ParticipantCreateDTO) (uuid.UUID, error)
 	GetByID(ctx context.Context, id string) (dto.ParticipantResponseDTO, error)
 	GetAll(ctx context.Context) ([]dto.ParticipantResponseDTO, error)
 	GetAllBySchoolID(ctx context.Context, schoolID string) ([]dto.ParticipantResponseDTO, error)
+
+	GetAllByTeamID(ctx context.Context, id string) ([]dto.ParticipantResponseDTO, error)
 	Update(ctx context.Context, id string, updateDTO dto.UpdateParticipantDTO) error
 	Delete(ctx context.Context, id string) error
 }
@@ -50,7 +53,7 @@ func (h *ParticipantHandler) CreateParticipant(w http.ResponseWriter, r *http.Re
 
 	render.JSON(w, r, response.ApiResponse{
 		Status: response.StatusOK,
-		Data:   map[string]string{"id": id},
+		Data:   map[string]string{"id": id.String()},
 	})
 }
 
@@ -98,6 +101,29 @@ func (h *ParticipantHandler) GetParticipantsBySchoolID(w http.ResponseWriter, r 
 	if err != nil {
 		render.Status(r, http.StatusInternalServerError)
 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError.Wrap(err.Error())))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status: response.StatusOK,
+		Data:   participants,
+	})
+}
+
+func (h *ParticipantHandler) GetParticipantsByTeamId(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := chi.URLParam(r, "id")
+
+	participants, err := h.service.GetAllByTeamID(ctx, id)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
 		return
 	}
 

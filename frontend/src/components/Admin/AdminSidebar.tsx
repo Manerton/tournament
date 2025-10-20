@@ -18,7 +18,6 @@ import { useAuth } from "../helpers/AuthContext";
 const AdminSidebar: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
-
   const toggleSidebar = () => setCollapsed(!collapsed);
 
   return (
@@ -87,7 +86,6 @@ const AdminSidebar: React.FC = () => {
           {/* Админские ссылки */}
           {user && (
             <>
-
                 <Nav.Link
                 as={Link}
                 to="/TeamsApplications"
@@ -132,8 +130,6 @@ const AdminSidebar: React.FC = () => {
                 <CreditCard className="me-2" />
                 {!collapsed && "Отчеты"}
               </Nav.Link>
-
-            
             </>
           )}
         </Nav>
@@ -152,8 +148,6 @@ const AdminSidebar: React.FC = () => {
             {!collapsed && "Выйти"}
           </Nav.Link>
         </div>
-
-
     </div>
   );
 };

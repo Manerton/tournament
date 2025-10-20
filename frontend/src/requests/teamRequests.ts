@@ -1,7 +1,8 @@
 import { API_URL } from "../config/routes";
 import type { DistrictDTOResponse, SchoolDTOResponse } from "../types/locationTypes";
+import type { ParticipantResponseDTO } from "../types/participantTypes";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
-import type { RegisterTeamRequestDTO, TeamResponceDTO } from "../types/teamType";
+import type { RegisterTeamRequestDTO, TeamResponseDTO } from "../types/teamType";
 
 
 export async function GetDistricts() {
@@ -44,11 +45,22 @@ export async function RegisterTeam(dto: RegisterTeamRequestDTO) {
 
 export async function GetTeamsByEvent(Id: string) {
     const res = await fetch(`${API_URL}/api/teams/event/${Id}`);
-    const json: ApiResponse<TeamResponceDTO[]> = await res.json();
+    const json: ApiResponse<TeamResponseDTO[]> = await res.json();
     if (!res.ok) {
         throw new Error(json.message || "Ошибка при загрузке команд");
     } else if (json.status == ResponseStatus.Error) {
         throw new Error(json.message);
+    }
+    return json.data
+}
+
+export async function GetTeamMembers(id: string) {
+    const res = await fetch(`${API_URL}/api/participants/team/${id}`);
+    const json: ApiResponse<ParticipantResponseDTO[]> = await res.json();
+    if (!res.ok) {
+        throw new Error(json.message || "Ошибка при загрузке участников команды")
+    } else if (json.status == ResponseStatus.Error) {
+        throw new Error(json.message)
     }
     return json.data
 }

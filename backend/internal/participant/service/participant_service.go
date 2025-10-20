@@ -15,31 +15,33 @@ import (
 	"gorm.io/gorm"
 )
 
-type ParticipantRepository interface {
+type ParticipantRepositoryInterface interface {
 	Create(ctx context.Context, db *gorm.DB, participant *participant.Participant) error
 	GetByID(ctx context.Context, db *gorm.DB, id uuid.UUID) (participant.Participant, error)
 	GetAll(ctx context.Context, db *gorm.DB) ([]participant.Participant, error)
 	GetAllBySchoolID(ctx context.Context, db *gorm.DB, schoolID uuid.UUID) ([]participant.Participant, error)
-	Update(ctx context.Context, db *gorm.DB, participant participant.Participant) error
-	Delete(ctx context.Context, db *gorm.DB, id uuid.UUID) error
+	UpdateByID(ctx context.Context, db *gorm.DB, participant participant.Participant) error
+	DeleteByID(ctx context.Context, db *gorm.DB, id uuid.UUID) error
 }
 
-type TeamParticipantRepository interface {
+type TeamParticipantRepositoryInterface interface {
 	GetAllByTeamID(ctx context.Context, db *gorm.DB, teamID uuid.UUID) ([]team_participant.TeamParticipant, error)
 }
 
 // сервис
 type ParticipantService struct {
 	db                        *gorm.DB
-	participantRepository     ParticipantRepository
-	teamParticipantRepository TeamParticipantRepository
+	participantRepository     ParticipantRepositoryInterface
+	teamParticipantRepository TeamParticipantRepositoryInterface
 	log                       *slog.Logger
 }
 
-func NewParticipantService(db *gorm.DB, repo ParticipantRepository) *ParticipantService {
+func New(log *slog.Logger, db *gorm.DB, repo ParticipantRepositoryInterface, teamRepo TeamParticipantRepositoryInterface) *ParticipantService {
 	return &ParticipantService{
-		db:                    db,
-		participantRepository: repo,
+		log:                       log,
+		db:                        db,
+		participantRepository:     repo,
+		teamParticipantRepository: teamRepo,
 	}
 }
 
@@ -149,7 +151,7 @@ func (s *ParticipantService) Update(ctx context.Context, id string, updateDTO pa
 	updated := participant_dto.ConvertUpdateDTOToParticipant(uid, updateDTO, existing)
 
 	// Сохраняем обновленного участника
-	if err := s.participantRepository.Update(ctx, s.db, updated); err != nil {
+	if err := s.participantRepository.UpdateByID(ctx, s.db, updated); err != nil {
 		return fmt.Errorf("%s: failed to update participant: %w", op, err)
 	}
 
@@ -165,7 +167,7 @@ func (s *ParticipantService) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("%s: invalid uuid: %w", op, err)
 	}
 
-	if err := s.participantRepository.Delete(ctx, s.db, uid); err != nil {
+	if err := s.participantRepository.DeleteByID(ctx, s.db, uid); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil

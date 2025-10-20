@@ -25,7 +25,9 @@ import (
 	"main/internal/event/handler/event_handler"
 	event_repository "main/internal/event/repository"
 	event_service "main/internal/event/service"
+	participant_handler "main/internal/participant/handlers"
 	"main/internal/participant/repository/participant_repository"
+	participant_service "main/internal/participant/service"
 	"main/internal/pkg/logger"
 	"main/internal/storage/postgresql"
 	"main/internal/team/handler/team_handler"
@@ -73,6 +75,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, log, storage)
 	eventService := event_service.New(eventRepository, log, storage, gameService, leaderboardService)
 	ssoService := sso_service.New(storage, log, userRepository, sessionRepository)
+	participantService := participant_service.New(log, storage, participantRepository, teamParticipantRepository)
 
 	// init handler
 	locationHandler := location_handler.New(districtService, schoolService)
@@ -81,6 +84,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	eventHandler := event_handler.New(eventService)
 	sessionHandler := session_handler.NewSessionHandler(ssoService)
 	userHandler := user_handler.NewUserHandler(ssoService)
+	participantHandler := participant_handler.NewParticipantHandler(participantService)
 
 	//init auth
 	// init auth middleware
@@ -93,7 +97,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	// init router
 	router := chi.NewRouter()
 	app.initCors(router, cfg.FrontendURL)
-	app.initRoutes(router, teamHandler, eventHandler, userHandler, sessionHandler, locationHandler, gameHandler, authMiddleware)
+	app.initRoutes(router, teamHandler, eventHandler, userHandler, sessionHandler, locationHandler, gameHandler, participantHandler, authMiddleware)
 
 	app.server = &http.Server{
 		Addr:    cfg.GetAddress(),
@@ -110,6 +114,7 @@ func (a *App) initRoutes(router *chi.Mux,
 	sessionHandler *session_handler.SessionHandler,
 	locationHandler *location_handler.LocationHandler,
 	gameHandler *game_handler.GameHandler,
+	participantHandler *participant_handler.ParticipantHandler,
 
 	authMiddleware *auth_verification.AuthMiddleware) {
 
@@ -162,8 +167,13 @@ func (a *App) initRoutes(router *chi.Mux,
 
 		r.Get("/{id}", eventHandler.GetByID)
 		r.Get("/", eventHandler.GetAll)
+		r.Get("/tournaments", eventHandler.GetAllTournaments)
 		r.Get("/actual", eventHandler.GetActualEvents)             // GET /api/events/actual
 		r.Get("/{id}/stages", eventHandler.GetAllStagesByParentId) // GET /api/events/{id}/stages
+	})
+
+	router.Route("/api/participants", func(r chi.Router) {
+		r.Get("/team/{id}", participantHandler.GetParticipantsByTeamId)
 	})
 
 }

@@ -1,35 +1,51 @@
 import React, { useEffect, useState } from "react";
-import { Form, Table, Spinner, Alert, Container, Button } from "react-bootstrap";
+import {
+  Form,
+  Spinner,
+  Alert,
+  Container,
+  Button,
+  Card,
+  Collapse,
+} from "react-bootstrap";
 import type { EventResponse } from "../../types/TournamentTypes";
-import type { TeamResponceDTO } from "../../types/teamType";
+import { TeamStatus, type TeamResponseDTO } from "../../types/teamType";
 import { axiosGetTournamentActive } from "../../requests/tournamentRequests";
-import { GetTeamsByEvent } from "../../requests/teamRequests";
-import { ChangeTeamStatus } from "../../requests/teamRequests"; // <-- импортируем функцию
+import {
+  GetTeamsByEvent,
+  GetTeamMembers,
+  ChangeTeamStatus,
+} from "../../requests/teamRequests";
+import type { ParticipantResponseDTO } from "../../types/participantTypes";
 
 const TeamApplicationsPage: React.FC = () => {
   const [tournaments, setTournaments] = useState<EventResponse[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<string>("");
-  const [teams, setTeams] = useState<TeamResponceDTO[]>([]);
+  const [teams, setTeams] = useState<TeamResponseDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
+  const [teamMembers, setTeamMembers] = useState<
+    Record<string, ParticipantResponseDTO[]>
+  >({});
+  const [loadingMembers, setLoadingMembers] = useState<string | null>(null);
 
-  // Загружаем список турниров при монтировании
+  // Загружаем турниры при монтировании
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
         const res = await axiosGetTournamentActive();
         setTournaments(res.data.data || []);
-      } catch (err) {
+      } catch {
         setError("Не удалось загрузить список турниров");
       }
     };
     fetchTournaments();
   }, []);
 
-  // Когда выбран турнир — подгружаем команды
+  // Загружаем команды по выбранному турниру
   useEffect(() => {
     if (!selectedTournament) return;
-
     const fetchTeams = async () => {
       setLoading(true);
       setError(null);
@@ -42,22 +58,46 @@ const TeamApplicationsPage: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchTeams();
   }, [selectedTournament]);
 
-  // 👉 Обработчик изменения статуса
+  // Запрос на участников
+  const handleToggleMembers = async (teamId: string) => {
+    if (expandedTeam === teamId) {
+      setExpandedTeam(null);
+      return;
+    }
+
+    if (teamMembers[teamId]) {
+      setExpandedTeam(teamId);
+      return;
+    }
+
+    setLoadingMembers(teamId);
+    try {
+      const data = await GetTeamMembers(teamId);
+      setTeamMembers((prev) => ({ ...prev, [teamId]: data }));
+      setExpandedTeam(teamId);
+    } catch (err) {
+      console.error("Ошибка загрузки участников:", err);
+    } finally {
+      setLoadingMembers(null);
+    }
+  };
+
+  // Изменение статуса
   const handleChangeStatus = async (teamId: string) => {
     try {
       await ChangeTeamStatus(teamId);
-
-      // После успешного запроса — локально обновляем статус
-      setTeams((prevTeams) =>
-        prevTeams.map((team) =>
+      setTeams((prev) =>
+        prev.map((team) =>
           team.id === teamId
             ? {
                 ...team,
-                status: team.status === 1 ? 2 : 1, // Переключаем между "На рассмотрении" и "Принято"
+                status:
+                  team.status === TeamStatus.Review
+                    ? TeamStatus.Accept
+                    : TeamStatus.Review,
               }
             : team
         )
@@ -69,7 +109,7 @@ const TeamApplicationsPage: React.FC = () => {
 
   return (
     <Container className="py-4">
-      <h2 className="mb-4 text-center fw-bold">Список команд по турнирам</h2>
+      <h2 className="mb-4 fw-bold text-start">Список команд по турнирам</h2>
 
       {/* Селектор турниров */}
       <Form.Group className="mb-4">
@@ -88,54 +128,100 @@ const TeamApplicationsPage: React.FC = () => {
         </Form.Select>
       </Form.Group>
 
-      {/* Ошибки и загрузка */}
       {loading && <Spinner animation="border" />}
       {error && <Alert variant="danger">{error}</Alert>}
 
-      {/* Таблица команд */}
-      {teams.length > 0 && !loading && (
-        <Table striped bordered hover responsive>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Название команды</th>
-              <th>Ответственный</th>
-              <th>Телефон</th>
-              <th>Статус</th>
-              <th>Действие</th>
-            </tr>
-          </thead>
-          <tbody>
-            {teams.map((team, idx) => (
-              <tr key={team.id}>
-                <td>{idx + 1}</td>
-                <td>{team.name}</td>
-                <td>{team.responsible_name}</td>
-                <td>{team.responsible_phone}</td>
-                <td>
-                  {team.status === 2
-                    ? "Принято"
-                    : team.status === 1
-                    ? "На рассмотрении"
-                    : "Неизвестно"}
-                </td>
-                <td className="text-center">
+      {/* Список команд */}
+      <div className="d-flex flex-column gap-3">
+        {teams.map((team) => (
+          <Card key={team.id} className="shadow-sm border-0 rounded-3 p-0">
+            <Card.Body>
+              <div className="d-flex justify-content-between  flex-wrap">
+                <div className="text-start">
+                  <h5 className="fw-bold mb-1">{team.name}</h5>
+                  <div className="text-muted small">
+                    Ответственный: {team.responsible_name} • {" "}
+                    {team.responsible_phone}
+                  </div>
+                  <div className="mt-1">
+                    <span
+                      className={`badge ${
+                        team.status === TeamStatus.Accept
+                          ? "bg-success"
+                          : team.status === TeamStatus.Review
+                          ? "bg-warning text-dark"
+                          : "bg-secondary"
+                      }`}
+                    >
+                      {team.status === TeamStatus.Accept
+                        ? "Принято"
+                        : team.status === TeamStatus.Review
+                        ? "На рассмотрении"
+                        : "Неизвестно"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="d-flex gap-2 mt-2 mt-md-0">
                   <Button
-                    variant={team.status === 2 ? "warning" : "success"}
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={() => handleToggleMembers(team.id)}
+                    disabled={loadingMembers === team.id}
+                  >
+                    {loadingMembers === team.id ? (
+                      <Spinner animation="border" size="sm" />
+                    ) : expandedTeam === team.id ? (
+                      "Скрыть участников"
+                    ) : (
+                      "Показать участников"
+                    )}
+                  </Button>
+
+                  <Button
+                    variant={
+                      team.status === TeamStatus.Accept
+                        ? "outline-danger"
+                        : "outline-success"
+                    }
                     size="sm"
                     onClick={() => handleChangeStatus(team.id)}
                   >
-                    {team.status === 2 ? "Отклонить" : "Принять"}
+                    {team.status === TeamStatus.Accept
+                      ? "Отклонить"
+                      : "Принять"}
                   </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
+                </div>
+              </div>
+
+              <Collapse in={expandedTeam === team.id}>
+                <div className="mt-3 ps-3 border-start border-3 border-primary">
+                  {teamMembers[team.id] ? (
+                    teamMembers[team.id].length > 0 ? (
+                      <ul className="list-unstyled mb-0">
+                        {teamMembers[team.id].map((m) => (
+                          <li key={m.id} className="mb-1">
+                            <strong>{m.FIO}</strong> — {m.class} класс
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-muted">Нет участников</p>
+                    )
+                  ) : (
+                    <p className="text-muted">Загрузка...</p>
+                  )}
+                </div>
+              </Collapse>
+            </Card.Body>
+          </Card>
+        ))}
+      </div>
 
       {!loading && selectedTournament && teams.length === 0 && (
-        <Alert variant="info">Нет зарегистрированных команд.</Alert>
+        <Alert variant="info" className="mt-4">
+          Нет зарегистрированных команд.
+        </Alert>
       )}
     </Container>
   );
