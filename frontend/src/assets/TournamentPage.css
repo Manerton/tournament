@@ -12,29 +12,19 @@
   background-color: var(--bs-secondary-bg); /* Адаптивный ховер-фон */
 }
 
-.glass-card {
+.card-interactive {
   cursor: pointer;
   border-radius: 1rem;
   padding: 1rem;
-  color: var(--bs-body-color);
-  background-color: transparent;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.15); /* светлая рамка по умолчанию */
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-.glass-card:hover {
+.card-interactive:hover {
   transform: translateY(-4px);
   box-shadow: 0 0.75rem 1.25rem var(--bs-box-shadow);
-  border-color: rgba(0, 0, 0, 0.25);
 }
 
-/* Адаптация под data-bs-theme */
-[data-bs-theme="dark"] .glass-card {
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-[data-bs-theme="dark"] .glass-card:hover {
+/* Тёмная тема: чуть ярче рамка при наведении */
+[data-bs-theme="dark"] .card-interactive:hover {
   border-color: rgba(255, 255, 255, 0.35);
 }

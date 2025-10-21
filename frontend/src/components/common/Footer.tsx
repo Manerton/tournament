@@ -7,7 +7,7 @@ import iconOK from "/OK.svg";
 import iconTelegram from "/telegram.svg";
 
 const Footer: React.FC = () => (
-  <footer className="border-top bg-body-tertiary">
+  <footer className="dynamic-bg border border-2 shadow-lg">
     <Container fluid="lg" className="py-2">
       <Row className="align-items-center gy-3 text-center text-md-start">
         

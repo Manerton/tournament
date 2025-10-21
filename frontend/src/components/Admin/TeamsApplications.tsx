@@ -134,7 +134,7 @@ const TeamApplicationsPage: React.FC = () => {
       {/* Список команд */}
       <div className="d-flex flex-column gap-3">
         {teams.map((team) => (
-          <Card key={team.id} className="shadow-sm rounded-3 p-0 bg-transparent glass-card">
+          <Card key={team.id} className="shadow-sm rounded-3 p-0 liquid-glass-bg card-interactive">
             <Card.Body>
               <div className="d-flex justify-content-between  flex-wrap">
                 <div className="text-start">

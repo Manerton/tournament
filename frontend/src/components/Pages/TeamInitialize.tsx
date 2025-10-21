@@ -314,7 +314,7 @@ const TeamInitialize: React.FC = () => {
   // ------------------------------------
   return (
     <Container >
-      <Card className="mb-4 shadow-sm bg-transparent glass-card">
+      <Card className="mb-4 shadow-sm liquid-glass-bg card-interactive">
         <Card.Body>
           <h2>{event?.name}</h2>
         </Card.Body>
@@ -327,7 +327,7 @@ const TeamInitialize: React.FC = () => {
         </div>
       )}
 
-      <Card className="mb-4 shadow-sm bg-transparent glass-card">
+      <Card className="mb-4 shadow-sm liquid-glass-bg card-interactive">
         <h2 className="text-center mb-4">Регистрация команды</h2>
         <Card.Body>
           <h5 className="mb-3">Информация о команде</h5>
@@ -421,7 +421,7 @@ const TeamInitialize: React.FC = () => {
       </Card>
 
       {/* Участники */}
-      <Card className="mb-4 shadow-sm bg-transparent glass-card">
+      <Card className="mb-4 shadow-sm liquid-glass-bg card-interactive">
         <Card.Body>
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5>Участники</h5>

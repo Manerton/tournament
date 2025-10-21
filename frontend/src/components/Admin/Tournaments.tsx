@@ -30,7 +30,7 @@ const Tournaments: React.FC = () => {
             {notify && <Alert variant={notify.variant}>{notify.text}</Alert>}
 
             {tournaments && tournaments.map((tournament) => (
-                <Card key={tournament.id} className="rounded-3 mb-3 bg-transparent glass-card">
+                <Card key={tournament.id} className="rounded-3 mb-3 bg-transparent liquid-glass-bg card-interactive">
                     <div className="d-flex justify-content-between">
                         <div className="ms-3 text-start">
                             <h5>{tournament.name}</h5>

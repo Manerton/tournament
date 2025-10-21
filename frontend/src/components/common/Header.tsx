@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { PersonCircle, BoxArrowInRight, ChevronUp, ChevronDown } from "react-bootstrap-icons";
 import ThemeToggleButton from "../helpers/ThemeToggleButton";
 import { useAuth } from "../helpers/AuthContext";
+import { Background } from "@tsparticles/engine";
 
 function Header() {
   const { user, logout, initialized } = useAuth();
@@ -38,7 +39,7 @@ function Header() {
 
   return (
     <>
-      <Navbar expand="lg" sticky="top" className="bg-body-tertiary border border-1 shadow-sm rounded">
+      <Navbar expand="lg" sticky="top" className="border border-1 shadow-sm rounded dynamic-bg">
         <Container fluid="lg" className="mx-auto">
           <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
             <img

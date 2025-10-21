@@ -57,6 +57,33 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+.liquid-glass-bg {
+  background-color: transparent !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--bs-body-color);
+  transition: border-color 0.25s ease;
+}
+
+/* Тёмная тема */
+[data-bs-theme="dark"] .liquid-glass-bg {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+
+/* Тёмная тема */
+[data-bs-theme="light"] .dynamic-bg {
+  background-color: #e0e0e0 !important;
+}
+
+/* Тёмная тема */
+[data-bs-theme="dark"] .dynamic-bg {
+  background-color: #0d0d2b !important;
+}
+
+
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
