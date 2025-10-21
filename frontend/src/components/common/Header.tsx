@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 import { PersonCircle, BoxArrowInRight, ChevronUp, ChevronDown } from "react-bootstrap-icons";
 import ThemeToggleButton from "../helpers/ThemeToggleButton";
 import { useAuth } from "../helpers/AuthContext";
-import { Background } from "@tsparticles/engine";
 
 function Header() {
   const { user, logout, initialized } = useAuth();
