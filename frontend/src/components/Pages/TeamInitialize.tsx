@@ -417,13 +417,9 @@ const TeamInitialize: React.FC = () => {
             </Form.Group>
 
           </Form>
-        </Card.Body>
-      </Card>
 
-      {/* Участники */}
-      <Card className="mb-4 shadow-sm liquid-glass-bg card-interactive">
-        <Card.Body>
-          <div className="d-flex justify-content-between align-items-center mb-3">
+
+                     <div className="d-flex justify-content-between align-items-center mb-3">
             <h5>Участники</h5>
             <Button onClick={() => setShowModal(true)} disabled={!team.school_id}>
               + Добавить участника
@@ -462,10 +458,9 @@ const TeamInitialize: React.FC = () => {
                 </tr>
               )}
             </tbody>
-          </Table>
-        </Card.Body>
+          </Table>   
 
-        <div className="justify-content-center">
+          <div className="justify-content-center">
           <Button
             size="lg"
             onClick={handleSubmit}
@@ -475,10 +470,10 @@ const TeamInitialize: React.FC = () => {
           </Button>
         </div>
 
+        </Card.Body>
       </Card>
 
-
-
+  
       {/* Модальное окно участника */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
@@ -590,36 +585,39 @@ const customSelectStyles = {
   control: (base: any) => ({
     ...base,
     borderRadius: "8px",
-    backgroundColor: "#fff",
-    color: "#000",
-    borderColor: "#ced4da",
+    backgroundColor: "var(--select-bg)",
+    color: "var(--select-text)",
+    borderColor: "var(--select-border)",
     boxShadow: "none",
     "&:hover": {
-      borderColor: "#86b7fe",
+      borderColor: "var(--select-hover)",
     },
   }),
   menu: (base: any) => ({
     ...base,
-    backgroundColor: "#fff",
-    color: "#000",
+    backgroundColor: "var(--select-bg)",
+    color: "var(--select-text)",
     zIndex: 9999,
   }),
   singleValue: (base: any) => ({
     ...base,
-    color: "#000",
+    color: "var(--select-text)",
   }),
   input: (base: any) => ({
     ...base,
-    color: "#000",
+    color: "var(--select-text)",
   }),
   placeholder: (base: any) => ({
     ...base,
-    color: "#666",
+    color: "var(--select-text)",
+    opacity: 0.7,
   }),
   option: (base: any, state: any) => ({
     ...base,
-    backgroundColor: state.isFocused ? "#e9ecef" : "#fff",
-    color: "#000",
+    backgroundColor: state.isFocused
+      ? "var(--select-focus)"
+      : "var(--select-bg)",
+    color: "var(--select-text)",
     cursor: "pointer",
   }),
 };

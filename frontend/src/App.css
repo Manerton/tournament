@@ -4,6 +4,25 @@
   text-align: center;
 }
 
+:root {
+  --select-bg: #fff;
+  --select-text: #000;
+  --select-border: #ced4da;
+  --select-hover: #86b7fe;
+  --select-focus: #e9ecef;
+}
+
+/* Тёмная тема */
+[data-bs-theme="dark"] {
+  --select-bg: #1a1a3a;
+  --select-text: #fff;
+  --select-border: #444;
+  --select-hover: #6c63ff;
+  --select-focus: #2b2b4a;
+}
+
+
+
 html, body {
   transition: background-color 0.8s ease-in-out, color 0.8s ease-in-out;
 }
@@ -44,3 +63,5 @@ html, body {
 .read-the-docs {
   color: #888;
 }
+
+
