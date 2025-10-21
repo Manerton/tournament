@@ -109,7 +109,7 @@ const TeamApplicationsPage: React.FC = () => {
 
   return (
     <Container className="py-4">
-      <h2 className="mb-4 fw-bold text-start">Список команд по турнирам</h2>
+      <h2 className="mb-4 fw-bold text-start ">Список команд по турнирам</h2>
 
       {/* Селектор турниров */}
       <Form.Group className="mb-4">
@@ -134,7 +134,7 @@ const TeamApplicationsPage: React.FC = () => {
       {/* Список команд */}
       <div className="d-flex flex-column gap-3">
         {teams.map((team) => (
-          <Card key={team.id} className="shadow-sm border-0 rounded-3 p-0">
+          <Card key={team.id} className="shadow-sm rounded-3 p-0 bg-transparent glass-card">
             <Card.Body>
               <div className="d-flex justify-content-between  flex-wrap">
                 <div className="text-start">

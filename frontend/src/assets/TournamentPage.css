@@ -2,7 +2,6 @@
   cursor: pointer;
   transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
   background-color: var(--bs-body-bg); /* Адаптивный фон */
-  border-radius: 75px;
   border: 1px solid var(--bs-border-color); /* Адаптивная граница */
   color: var(--bs-body-color); /* Адаптивный цвет текста */
 }
@@ -11,4 +10,31 @@
   transform: translateY(-5px);
   box-shadow: 0 0.75rem 1.25rem var(--bs-box-shadow); /* Адаптивная тень */
   background-color: var(--bs-secondary-bg); /* Адаптивный ховер-фон */
+}
+
+.glass-card {
+  cursor: pointer;
+  border-radius: 1rem;
+  padding: 1rem;
+  color: var(--bs-body-color);
+  background-color: transparent;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.15); /* светлая рамка по умолчанию */
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 0.75rem 1.25rem var(--bs-box-shadow);
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+/* Адаптация под data-bs-theme */
+[data-bs-theme="dark"] .glass-card {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+[data-bs-theme="dark"] .glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.35);
 }

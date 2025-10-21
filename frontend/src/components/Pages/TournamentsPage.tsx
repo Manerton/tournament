@@ -49,7 +49,7 @@ const TournamentsPage: React.FC = () => {
           {tournaments.map((t) => (
           <Card
             key={t.id}
-            className="tournament-card shadow-sm"
+            className="tournament-card rounded-4 shadow-sm bg-transparent glass-card"
             onClick={() => navigate(`/tournament/registerTeam/${t.id}`)}
           >
             <Card.Body className="py-4">
