@@ -4,7 +4,12 @@ export interface EventApiResponse {
   data: EventResponse[];
 }
 
-
+export interface EventUpdate {
+  name: string
+  start_date: string
+  end_date: string
+  status: number
+}
 
 export interface EventResponse {
   id: string

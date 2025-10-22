@@ -24,6 +24,8 @@ type EventServiceInterface interface {
 	FinishEvent(ctx context.Context, eventId string) error
 
 	Create(context.Context, event_dto.EventDTOCreate) (uuid.UUID, error)
+	Update(context.Context, string, event_dto.EventDTOUpdate) error
+	Delete(context.Context, string) error
 }
 
 type EventHandler struct {
@@ -220,4 +222,53 @@ func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Status:     response.StatusOK,
 		Data:       id,
 	})
+}
+
+func (h *EventHandler) Update(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := chi.URLParam(r, "id")
+
+	var dto event_dto.EventDTOUpdate
+	err := render.DecodeJSON(r.Body, &dto)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap("failed decode dto")))
+		return
+	}
+
+	err = h.eventService.Update(ctx, id, dto)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("success update"))
+}
+
+func (h *EventHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := chi.URLParam(r, "id")
+	err := h.eventService.Delete(ctx, id)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("success delete"))
 }

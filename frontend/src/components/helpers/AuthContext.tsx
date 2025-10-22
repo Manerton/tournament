@@ -102,6 +102,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  useEffect(() => {
+  if (csrfToken) {
+    localStorage.setItem("csrfToken", csrfToken);
+  } else {
+    localStorage.removeItem("csrfToken");
+  }
+}, [csrfToken]);
+
   /**
    * Выход из системы
    */

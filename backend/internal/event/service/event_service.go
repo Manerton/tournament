@@ -332,6 +332,25 @@ func (s *EventService) finishTour(ctx context.Context, eventModel event.Event) e
 	return nil
 }
 
+func (s *EventService) Update(ctx context.Context, id string, dto event_dto.EventDTOUpdate) error {
+	const op = "service.EventService.Update"
+
+	log := s.log.With(slog.String("op", op))
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		log.Error("failed parse id to uuid", slog.String("id", id), logger.Err(err))
+		return errs.ErrInvalidId
+	}
+
+	updatedModel := event_mapper.ToModelUpdate(uid, dto)
+	err = s.repository.UpdateByID(ctx, s.db, updatedModel)
+	if err != nil {
+		log.Error("failed update event", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	return nil
+}
+
 func (s *EventService) Delete(ctx context.Context, id string) error {
 	const op = "service.EventService.Delete"
 

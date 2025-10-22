@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { EventApiResponse, EventResponse } from "../types/TournamentTypes";
+import type { EventApiResponse, EventResponse, EventUpdate } from "../types/TournamentTypes";
 import { API_URL } from "../config/routes";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
 
@@ -16,6 +16,14 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+api.interceptors.request.use((config) => {
+  const csrfToken =  localStorage.getItem("csrfToken");
+  if (csrfToken && config.headers) {
+    config.headers["X-CSRF-Token"] = csrfToken;
+  }
+  return config;
 });
 
 export const axiosGetTournamentActive = () => {
@@ -49,4 +57,35 @@ export async function axiosGetAllTournaments() {
   } catch (error: any) {
     throw new Error(error.response?.data?.message || "Ошибка при загрузке турниров");
   }
-} 
+}
+
+export async function axiosUpdateTournament(id: string, dto: EventUpdate) {
+  try {
+    const res = await api.put<ApiResponse<any>>(
+      `/api/events/${id}`,
+      dto
+    )
+
+    const json = res.data;
+    if (json.status === ResponseStatus.Error) {
+      throw new Error(json.message || "Ошибка при обновлении турнира");
+    }
+
+    return json.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Ошибка при обновлении турнира");
+  }
+}
+
+export async function axiosDeleteEvent(id:string) {
+  try {
+    const res = await api.delete<ApiResponse<any>>(
+      `/api/events/${id}`
+    )
+
+    const json = res.data
+    return json.data
+  } catch (error: any){
+    throw new Error(error.response?.data?.message || "Ошибка при удалении события");
+  }
+}
