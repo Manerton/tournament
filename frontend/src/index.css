@@ -82,6 +82,18 @@ button:focus-visible {
   background-color: #0d0d2b !important;
 }
 
+/* Тёмная тема */
+[data-bs-theme="light"] .dynamic-bg-modal {
+  background-color: #fff !important;
+}
+
+/* Тёмная тема */
+[data-bs-theme="dark"] .dynamic-bg-modal {
+  background-color: #0d0d2b !important;
+}
+
+
+
 .glass-dialog {
   background: transparent;
   backdrop-filter: blur(4px);
