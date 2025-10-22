@@ -421,7 +421,7 @@ const TeamInitialize: React.FC = () => {
 
                      <div className="d-flex justify-content-between align-items-center mb-3">
             <h5>Участники</h5>
-            <Button onClick={() => setShowModal(true)} disabled={!team.school_id}>
+            <Button variant="outline-primary" onClick={() => setShowModal(true)} disabled={!team.school_id}>
               + Добавить участника
             </Button>
           </div>
@@ -463,6 +463,7 @@ const TeamInitialize: React.FC = () => {
           <div className="justify-content-center">
           <Button
             size="lg"
+            variant="outline-primary"
             onClick={handleSubmit}
             disabled={submitting || !team.school_id || !participants.length}
           >
@@ -475,7 +476,13 @@ const TeamInitialize: React.FC = () => {
 
   
       {/* Модальное окно участника */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+      <Modal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        centered
+        contentClassName=""
+        dialogClassName="glass-dialog"
+      >
         <Modal.Header closeButton>
           <Modal.Title>
             {editIndex !== null ? "Редактировать участника" : "Добавить участника"}
@@ -562,11 +569,11 @@ const TeamInitialize: React.FC = () => {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
+          <Button variant="outline-secondary" onClick={() => setShowModal(false)}>
             Отмена
           </Button>
           <Button
-            variant="primary"
+            variant="outline-primary"
             onClick={handleAddOrEditParticipant}
             disabled={!!validationErrors.participantClass}
           >

@@ -82,6 +82,10 @@ button:focus-visible {
   background-color: #0d0d2b !important;
 }
 
+.glass-dialog {
+  background: transparent;
+  backdrop-filter: blur(4px);
+}
 
 
 @media (prefers-color-scheme: light) {

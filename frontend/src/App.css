@@ -21,6 +21,80 @@
   --select-focus: #2b2b4a;
 }
 
+/* Универсальные поля */
+input,
+textarea,
+select,
+.form-control {
+  background-color: var(--select-bg);
+  color: var(--select-text);
+  border-color: var(--select-border);
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+input:hover,
+textarea:hover,
+select:hover,
+.form-control:hover {
+  border-color: var(--select-hover);
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+.form-control:focus {
+  background-color: var(--select-focus);
+  color: var(--select-text);
+  border-color: var(--select-hover);
+  box-shadow: 0 0 0 0.2rem rgba(134,183,254,0.25);
+}
+
+/* Таблицы */
+table,
+.table {
+  --bs-table-bg: var(--select-bg);
+  --bs-table-color: var(--select-text);
+  --bs-table-border-color: var(--select-border);
+  background-color: var(--bs-table-bg) !important;
+  color: var(--bs-table-color) !important;
+  border-color: var(--bs-table-border-color) !important;
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+/* Hover эффект для строк таблицы */
+.table-hover tbody tr:hover {
+  background-color: var(--select-hover) !important;
+  color: var(--select-text) !important;
+}
+
+
+/* form-select (выпадающие списки) */
+.form-select {
+  --bs-form-select-bg: var(--select-bg);
+  --bs-form-select-color: var(--select-text);
+  --bs-form-select-border-color: var(--select-border);
+  --bs-form-select-focus-border-color: var(--select-hover);
+  --bs-form-select-focus-box-shadow: 0 0 0 0.2rem rgba(134,183,254,0.25);
+
+  background-color: var(--bs-form-select-bg) !important;
+  color: var(--bs-form-select-color) !important;
+  border-color: var(--bs-form-select-border-color) !important;
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+/* Hover и focus эффекты */
+.form-select:hover {
+  border-color: var(--select-hover);
+}
+
+.form-select:focus {
+  background-color: var(--select-focus);
+  color: var(--select-text);
+  border-color: var(--select-hover);
+  box-shadow: var(--bs-form-select-focus-box-shadow);
+}
+
+
 
 
 html, body {
