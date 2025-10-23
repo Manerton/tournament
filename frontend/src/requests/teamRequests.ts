@@ -1,9 +1,28 @@
+import axios from "axios";
 import { API_URL } from "../config/routes";
 import type { DistrictDTOResponse, SchoolDTOResponse } from "../types/locationTypes";
 import type { ParticipantResponseDTO } from "../types/participantTypes";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
 import type { RegisterTeamRequestDTO, TeamResponseDTO } from "../types/teamType";
+import { getCRFCookie } from "../components/helpers/AuthContext";
 
+
+
+const api = axios.create({
+    baseURL: API_URL,
+    withCredentials: true,
+    headers: {
+        "Content-Type": "application/json",
+    },
+});
+
+api.interceptors.request.use((config) => {
+  const csrfToken =  getCRFCookie();
+  if (csrfToken && config.headers) {
+    config.headers["X-CSRF-Token"] = csrfToken;
+  }
+  return config;
+});
 
 export async function GetDistricts() {
     const res = await fetch(`${API_URL}/api/locations/districts`);
@@ -67,15 +86,17 @@ export async function GetTeamMembers(id: string) {
 
 
 export async function ChangeTeamStatus(id: string) {
-    const res = await fetch(`${API_URL}/api/teams/${id}/switch`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-    });
+    try {
+        const res = await api.post<ApiResponse<any>>(
+            `/api/teams/${id}/switch`
+        )
+        const json = res.data
 
-    const json: ApiResponse<any> = await res.json();
-    if (!res.ok) {
-        throw new Error(json.message || "Ошибка при изменении статуса команды");
-    } else if (json.status == ResponseStatus.Error) {
-        throw new Error(json.message);
+        if (json.status === ResponseStatus.Error) {
+            throw new Error(json.message || "Ошибка при изменении статуса команды");
+        }
+        return json.data
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Ошибка при изменении статуса команды");
     }
 }

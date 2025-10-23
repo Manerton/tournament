@@ -115,7 +115,7 @@ func (s *GameService) DeleteByID(ctx context.Context, id string) error {
 	return nil
 }
 
-// Ссоздание игр по швейцарской системе
+// Создание игр по швейцарской системе
 func (s *GameService) CreateGames(ctx context.Context, mainEventId uuid.UUID, tourEventId uuid.UUID) error {
 	const op = "service.GameService.CreateGames"
 
@@ -148,7 +148,7 @@ func (s *GameService) createGamePairs(ctx context.Context, leaderboards []leader
 	// Проходим по всем командам и создаём игры с командами, с которыми ещё не играли
 	for i := 0; i < len(leaderboards); i++ {
 		for j := i + 1; j < len(leaderboards); j++ {
-			if !slices.Contains(leaderboards[i].EnemieIds, leaderboards[j].TeamID) {
+			if !slices.Contains(leaderboards[i].EnemiesIds, leaderboards[j].TeamID) {
 				newGame := &game.Game{
 					EventID:  tourEventId,
 					TeamA:    leaderboards[i].TeamID,

@@ -2,6 +2,7 @@ package calculations
 
 import (
 	"main/internal/leaderboard/model/leaderboard"
+	"math"
 	"sort"
 )
 
@@ -24,4 +25,9 @@ func SortLeaderboards(leaderboards []leaderboard.Leaderboard) []leaderboard.Lead
 	})
 
 	return leaderboards
+}
+
+func MaxTours(countTeams int) int {
+	result := math.Log2(float64(countTeams))
+	return int(math.Floor(result))
 }

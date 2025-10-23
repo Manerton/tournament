@@ -45,6 +45,7 @@ func ToDTOEvent(model event.Event) event_dto.EventDTOResponse {
 		Type:            model.Type,
 		TypeDraws:       model.TypeDraws,
 		Stage:           model.Stage,
+		MaxStage:        model.MaxStage,
 	}
 }
 

@@ -89,7 +89,7 @@ func (s *LeaderboardService) AddGameResultTx(ctx context.Context, transactionDB 
 		return err
 	}
 
-	leaderboardModel.EnemieIds = append(leaderboardModel.EnemieIds, enemyId)
+	leaderboardModel.EnemiesIds = append(leaderboardModel.EnemiesIds, enemyId)
 	leaderboardModel.Scores = append(leaderboardModel.Scores, teamScore)
 
 	err = s.leaderboardRepostitory.UpdateByID(ctx, transactionDB, leaderboardModel)

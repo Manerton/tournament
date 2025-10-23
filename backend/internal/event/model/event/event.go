@@ -20,6 +20,7 @@ const (
 const (
 	ActiveStatus   = 1
 	FinishedStatus = 2
+	RegisterStatus = 3
 )
 
 type Event struct {
@@ -31,6 +32,7 @@ type Event struct {
 	Type            int
 	Status          int
 	PreviousEvent   *Event `gorm:"foreignKey:PreviousEventID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
-	TypeDraws       int    `gorm:"type:varchar(100);not null;index"` // TODO: Define enum type
+	TypeDraws       int    `gorm:"type:varchar(100);not null;index"`
 	Stage           int
+	MaxStage        int
 }

@@ -2,6 +2,7 @@ import axios from "axios";
 import type { EventApiResponse, EventResponse, EventUpdate } from "../types/TournamentTypes";
 import { API_URL } from "../config/routes";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
+import { getCRFCookie } from "../components/helpers/AuthContext";
 
 
 // import type {
@@ -19,7 +20,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const csrfToken =  localStorage.getItem("csrfToken");
+  const csrfToken = getCRFCookie();
   if (csrfToken && config.headers) {
     config.headers["X-CSRF-Token"] = csrfToken;
   }
@@ -59,6 +60,36 @@ export async function axiosGetAllTournaments() {
   }
 }
 
+export async function axiosGetTours(id: string) {
+  try {
+    const res = await api.get<ApiResponse<EventResponse[]>>(`/api/events/${id}/stages`)
+    const json = res.data
+
+    if (json.status === ResponseStatus.Error) {
+      throw new Error(json.message || "Ошибка при загрузке туров");
+    }
+    return json.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Ошибка при загрузке туров");
+  }
+}
+
+export async function axiosStartTournament(id: string) {
+  try {
+    const res = await api.post<ApiResponse<any>>(`/api/events/${id}/start`);
+    const json = res.data;
+
+    if (json.status === ResponseStatus.Error) {
+      throw new Error(json.message || "Ошибка при запуске турнира");
+    }
+
+    return json.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Ошибка при запуске турнира");
+  }
+}
+
+
 export async function axiosUpdateTournament(id: string, dto: EventUpdate) {
   try {
     const res = await api.put<ApiResponse<any>>(
@@ -77,7 +108,7 @@ export async function axiosUpdateTournament(id: string, dto: EventUpdate) {
   }
 }
 
-export async function axiosDeleteEvent(id:string) {
+export async function axiosDeleteEvent(id: string) {
   try {
     const res = await api.delete<ApiResponse<any>>(
       `/api/events/${id}`
@@ -85,7 +116,7 @@ export async function axiosDeleteEvent(id:string) {
 
     const json = res.data
     return json.data
-  } catch (error: any){
+  } catch (error: any) {
     throw new Error(error.response?.data?.message || "Ошибка при удалении события");
   }
 }

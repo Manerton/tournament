@@ -45,6 +45,8 @@ var (
 	ErrTeamExist = &ApiError{Code: "TEAM ALREADY EXIST", HttpCode: http.StatusConflict, Message: "team already exist"}
 )
 
+// Event errors
 var (
-	ErrFinishedEvent = &ApiError{Code: "EVENT CAN`T FINISHED", HttpCode: http.StatusConflict, Message: "event cant finished"}
+	ErrStartTournament = &ApiError{Code: "EVENT CAN`T START", HttpCode: http.StatusNoContent, Message: "teams is 0, can't start tournament"}
+	ErrFinishedEvent   = &ApiError{Code: "EVENT CAN`T FINISHED", HttpCode: http.StatusConflict, Message: "event cant finished"}
 )

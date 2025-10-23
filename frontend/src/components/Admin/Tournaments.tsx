@@ -101,11 +101,12 @@ const Tournaments: React.FC = () => {
             {notify && <Alert variant={notify.variant}>{notify.text}</Alert>}
 
             {tournaments.map((tournament) => (
-                <Card key={tournament.id} className="rounded-3 mb-3 liqued-glass-bg">
+                <Card key={tournament.id} className="rounded-3 mb-3 liquid-glass-bg">
                     <div className="d-flex justify-content-between">
                         <div className="ms-3 text-start">
                             <h5>{tournament.name}</h5>
-                            <p>Статус: {tournament.status === EventStatus.Active ? "Активен" : "Завершён"}</p>
+                            <p>Даты: c {formatDateForInput(tournament.start_date)} по {formatDateForInput(tournament.end_date)}</p>
+                            <div>Статус: {tournament.status === EventStatus.Active ? "Активен" : "Завершён"}</div>
                         </div>
                         <div className="me-3 d-flex gap-3">
                             <button
@@ -169,8 +170,10 @@ const Tournaments: React.FC = () => {
                                 value={formData.status}
                                 onChange={handleChange}
                             >
-                                <option value={1}>Активен</option>
-                                <option value={0}>Завершён</option>
+                                <option value={EventStatus.Active}>Активен</option>
+                                <option value={EventStatus.Closed}>Завершён</option>
+                                <option value={EventStatus.Registration}>Регистрация</option>
+
                             </Form.Select>
                         </Form.Group>
                     </Form>

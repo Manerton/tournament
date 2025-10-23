@@ -38,7 +38,9 @@ import (
 	"time"
 
 	auth_verification "main/internal/pkg/middleware/authVerification"
+	"main/internal/pkg/middleware/midlogger"
 
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 )
@@ -73,7 +75,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	leaderboardService := leaderboard_service.New(log, storage, leaderboardRepository, teamRepository)
 	gameService := game_service.New(log, storage, gameRepository, leaderboardRepository, gameParticpantRepository, teamParticipantRepository, leaderboardService)
 	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, log, storage)
-	eventService := event_service.New(eventRepository, log, storage, gameService, leaderboardService)
+	eventService := event_service.New(log, storage, eventRepository, teamRepository, gameService, leaderboardService)
 	ssoService := sso_service.New(storage, log, userRepository, sessionRepository)
 	participantService := participant_service.New(log, storage, participantRepository, teamParticipantRepository)
 
@@ -96,9 +98,17 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 
 	// init router
 	router := chi.NewRouter()
+
+	// init CORS
 	app.initCors(router, cfg.FrontendURL)
+	// init middleware logger
+	router.Use(midlogger.New(log))
+	router.Use(middleware.URLFormat)
+
+	// init routes
 	app.initRoutes(router, teamHandler, eventHandler, userHandler, sessionHandler, locationHandler, gameHandler, participantHandler, authMiddleware)
 
+	// init server
 	app.server = &http.Server{
 		Addr:    cfg.GetAddress(),
 		Handler: router,
@@ -150,13 +160,13 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Post("/register", teamHandler.RegisterTeam)                    // POST /api/teams/register
 		r.Get("/event/{id}", teamHandler.GetTeamsByEventId)              // GET /api/teams/event/{id}
 		r.Get("/event/{id}/accept", teamHandler.GetAcceptTeamsByEventId) // GET /api/teams/accept/event/{id}
-		r.Post("/{id}/switch", teamHandler.SwitchTeamStatus)
+		r.With(authMiddleware.AuthVerify).Post("/{id}/switch", teamHandler.SwitchTeamStatus)
 	})
 
 	// Группа маршрутов для игр
 	router.Route("/api/games", func(r chi.Router) {
 		r.Post("/{id}/tours", gameHandler.GetByEventId)
-		r.Post("/{id}/finish", gameHandler.FinisheTour)
+		r.With(authMiddleware.AuthVerify).Post("/{id}/finish", gameHandler.FinisheTour)
 	})
 
 	// Группа маршрутов для событий

@@ -29,7 +29,7 @@ const TournamentsPage: React.FC = () => {
     if (tournament.status === EventStatus.Registration) {
       navigate(`/tournament/registerTeam/${tournament.id}`);
     } else {
-      navigate(`/tournament/tours/${tournament.id}`);
+      navigate(`/tournaments/${tournament.id}/tours`);
     }
   };
 

@@ -36,23 +36,33 @@ type LeaderboardServiceInterface interface {
 
 type GameServiceInterface interface {
 	AllGamesIsFinished(ctx context.Context, eventId uuid.UUID) (bool, error)
+	CreateGames(ctx context.Context, mainEventId uuid.UUID, tourEventId uuid.UUID) error
+}
+
+type TeamRepositoryInterface interface {
+	GetCountTeams(ctx context.Context, db *gorm.DB, eventId uuid.UUID) (int, error)
 }
 
 type EventService struct {
-	db         *gorm.DB
-	repository EventRepositoryInterface
-	log        *slog.Logger
+	db  *gorm.DB
+	log *slog.Logger
+
+	repository     EventRepositoryInterface
+	teamRepository TeamRepositoryInterface
 
 	gameService        GameServiceInterface
 	leaderboardService LeaderboardServiceInterface
 }
 
-func New(repository EventRepositoryInterface, log *slog.Logger, db *gorm.DB, gameService GameServiceInterface, leaderboardService LeaderboardServiceInterface) *EventService {
+func New(log *slog.Logger, db *gorm.DB,
+	repository EventRepositoryInterface, teamRepository TeamRepositoryInterface,
+	gameService GameServiceInterface, leaderboardService LeaderboardServiceInterface) *EventService {
 	return &EventService{
 		db:  db,
 		log: log,
 
-		repository: repository,
+		repository:     repository,
+		teamRepository: teamRepository,
 
 		gameService:        gameService,
 		leaderboardService: leaderboardService,
@@ -210,11 +220,20 @@ func (s *EventService) createTour(ctx context.Context, transactionDB *gorm.DB, p
 		return uuid.Nil, fmt.Errorf("failed create new tour: last tour not finished")
 	}
 
-	lastTourNum := lastTour.Stage + 1
+	parentEvent, err := s.repository.GetByID(ctx, transactionDB, parentId)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed get parent event")
+	}
+
+	newTourNum := lastTour.Stage + 1
+	if newTourNum >= parentEvent.MaxStage {
+		return uuid.Nil, fmt.Errorf("failed create new tour, max tour overhead")
+	}
+
 	newTour := event.Event{
-		Name:            "Тур" + strconv.Itoa(lastTourNum),
+		Name:            "Тур" + strconv.Itoa(newTourNum),
 		PreviousEventID: &parentId,
-		Stage:           lastTourNum,
+		Stage:           newTourNum,
 		Status:          event.ActiveStatus,
 		StartDate:       lastTour.StartDate,
 		EndDate:         lastTour.EndDate,
@@ -238,7 +257,16 @@ func (s *EventService) StartTournament(ctx context.Context, eventId string) erro
 		return errs.ErrInvalidId
 	}
 
-	// TODO!! teams != 0
+	countTeams, err := s.teamRepository.GetCountTeams(ctx, s.db, uid)
+	if err != nil {
+		log.Error("failed get count teams", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	if countTeams == 0 {
+		log.Warn("count teams is 0")
+		return errs.ErrStartTournament
+	}
 
 	transactionDB := s.db.Begin()
 	err = s.leaderboardService.InitForTeams(ctx, transactionDB, uid)
@@ -248,14 +276,16 @@ func (s *EventService) StartTournament(ctx context.Context, eventId string) erro
 		return errs.ErrInternalError
 	}
 
-	_, err = s.createTour(ctx, transactionDB, uid)
+	tourId, err := s.createTour(ctx, transactionDB, uid)
 	if err != nil {
 		transactionDB.Rollback()
 		log.Error("failed create first tour", logger.Err(err))
 		return errs.ErrInternalError
 	}
+
 	transactionDB.Commit()
-	return nil
+	// Создаём игры
+	return s.gameService.CreateGames(ctx, uid, tourId)
 }
 
 func (s *EventService) FinishEvent(ctx context.Context, id string) error {

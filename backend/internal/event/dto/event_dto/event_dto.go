@@ -25,4 +25,5 @@ type EventDTOResponse struct {
 	Type            int    `json:"type"`
 	TypeDraws       int    `json:"type_draws"`
 	Stage           int    `json:"stage"`
+	MaxStage        int    `json:"max_stage"`
 }
