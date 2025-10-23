@@ -25,5 +25,6 @@ export interface EventResponse {
 
 export const EventStatus = {
   Active: 1,
-  Closed: 2
+  Closed: 2,
+  Registration: 3
 } as const

@@ -16,6 +16,13 @@ export function getCookie(name: string): string | null {
   return null;
 }
 
+export function getCRFCookie(): string | null {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${"csrf_token"}=`);
+  if (parts.length === 2) return parts.pop()!.split(";").shift() || null;
+  return null;
+}
+
 export interface AuthContextType {
   user: UserAuth | null;            // Текущий пользователь
   initialized: boolean;             // Флаг, что контекст инициализирован

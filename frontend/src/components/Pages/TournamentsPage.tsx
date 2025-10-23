@@ -10,6 +10,28 @@ const TournamentsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  
+  // Используем тип для объектов чтобы TypeScript понимал структуру
+  const statusTexts: Record<number, string> = {
+    [EventStatus.Active]: "Активен",
+    [EventStatus.Registration]: "Регистрация", 
+    [EventStatus.Closed]: "Завершен"
+  };
+
+  const statusClasses: Record<number, string> = {
+    [EventStatus.Active]: "text-success",
+    [EventStatus.Registration]: "text-warning",
+    [EventStatus.Closed]: "text-body-secondary"
+  };
+
+  // Функция для обработки клика в зависимости от статуса
+  const handleCardClick = (tournament: EventResponse) => {
+    if (tournament.status === EventStatus.Registration) {
+      navigate(`/tournament/registerTeam/${tournament.id}`);
+    } else {
+      navigate(`/tournament/tours/${tournament.id}`);
+    }
+  };
 
   useEffect(() => {
     const fetchTournaments = async () => {
@@ -47,27 +69,27 @@ const TournamentsPage: React.FC = () => {
       ) : (
         <div className="d-flex flex-column gap-4">
           {tournaments.map((t) => (
-          <Card
-            key={t.id}
-            className="rounded-4 shadow-sm liquid-glass-bg card-interactive"
-            onClick={() => navigate(`/tournament/registerTeam/${t.id}`)}
-          >
-            <Card.Body className="py-4">
-              <Card.Title className="fw-bold mb-3 fs-1 text-body">
-                {t.name}
-              </Card.Title>
-              <Card.Text className="fs-3 mb-2 text-body-secondary">
-                {new Date(t.start_date).toLocaleDateString()} —{" "}
-                {new Date(t.end_date).toLocaleDateString()}
-              </Card.Text>
-              <Card.Text className="fs-3 text-body">
-                Статус:{" "}
-                <span className={t.status === EventStatus.Active ? "text-success" : "text-body-secondary"}>
-                  {t.status === EventStatus.Active ? "Активен" : "Завершён"}
-                </span>
-              </Card.Text>
-            </Card.Body>
-        </Card>
+            <Card
+              key={t.id}
+              className="rounded-4 shadow-sm liquid-glass-bg card-interactive"
+              onClick={() => handleCardClick(t)}
+            >
+              <Card.Body className="py-4">
+                <Card.Title className="fw-bold mb-3 fs-1 text-body">
+                  {t.name}
+                </Card.Title>
+                <Card.Text className="fs-3 mb-2 text-body-secondary">
+                  {new Date(t.start_date).toLocaleDateString()} —{" "}
+                  {new Date(t.end_date).toLocaleDateString()}
+                </Card.Text>
+                <Card.Text className="fs-3 text-body">
+                  Статус:{" "}
+                  <span className={statusClasses[t.status] || "text-body-secondary"}>
+                    {statusTexts[t.status] || "Неизвестно"}
+                  </span>
+                </Card.Text>
+              </Card.Body>
+            </Card>
           ))}
         </div>
       )}
