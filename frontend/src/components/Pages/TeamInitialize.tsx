@@ -77,6 +77,7 @@ const TeamInitialize: React.FC = () => {
     gender: 1,
     class: 0,
     school_id: "",
+    initial_score: 0,
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -205,7 +206,7 @@ const TeamInitialize: React.FC = () => {
       setParticipants([...participants, data]);
     }
 
-    setParticipant({ FIO: "", gender: 1, class: 0, school_id: "" });
+    setParticipant({ FIO: "", gender: 1, class: 0, school_id: "", initial_score: 0 });
     setValidationErrors(prev => ({ ...prev, participantClass: undefined }));
     setShowModal(false);
   };
@@ -416,6 +417,22 @@ const TeamInitialize: React.FC = () => {
               />
             </Form.Group>
 
+
+            <Form.Group className="mb-3">
+              <Form.Label>Стартовый балл</Form.Label>
+              <Form.Control
+                type="number"
+                inputMode="numeric"
+                value={participant.initial_score || 0}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  setParticipant({ ...participant, initial_score: isNaN(value) ? 0 : value });
+                }}
+                min={0}
+                step={0.01}
+              />
+              <Form.Text className="text-muted">Можно оставить 0, если не требуется</Form.Text>
+            </Form.Group>
           </Form>
 
 
@@ -432,6 +449,7 @@ const TeamInitialize: React.FC = () => {
                 <th>ФИО</th>
                 <th>Пол</th>
                 <th>Класс</th>
+                <th>Стартовый балл</th>
                 <th></th>
               </tr>
             </thead>
@@ -442,6 +460,7 @@ const TeamInitialize: React.FC = () => {
                     <td>{p.FIO}</td>
                     <td>{p.gender === 1 ? "Мужской" : "Женский"}</td>
                     <td>{p.class}</td>
+                    <td>{p.initial_score}</td>
                     <td>
                       <Button size="sm" variant="outline-primary" className="me-2" onClick={() => handleEdit(i)}>
                         Редактировать

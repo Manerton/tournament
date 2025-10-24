@@ -3,6 +3,7 @@ import { Alert, Card, Container, Button, Modal, Form } from "react-bootstrap";
 import { axiosDeleteEvent, axiosGetAllTournaments, axiosUpdateTournament } from "../../requests/tournamentRequests";
 import { EventStatus, type EventResponse, type EventUpdate } from "../../types/TournamentTypes";
 import formatDateForInput from "../../pkg/dateFormater";
+import { TeamStatus } from "../../types/teamType";
 
 const Tournaments: React.FC = () => {
     const [notify, setNotify] = useState<{ variant: "success" | "danger"; text: string } | null>(null);
@@ -106,7 +107,22 @@ const Tournaments: React.FC = () => {
                         <div className="ms-3 text-start">
                             <h5>{tournament.name}</h5>
                             <p>Даты: c {formatDateForInput(tournament.start_date)} по {formatDateForInput(tournament.end_date)}</p>
-                            <div>Статус: {tournament.status === EventStatus.Active ? "Активен" : "Завершён"}</div>
+                             Статус:{" "}
+                           <span
+                                                 className={`badge ${
+                                                   tournament.status === TeamStatus.Accept
+                                                     ? "bg-success"
+                                                     : tournament.status === TeamStatus.Review
+                                                     ? "bg-warning text-dark"
+                                                     : "bg-secondary"
+                                                 }`}
+                                               >
+                                                 {tournament.status === TeamStatus.Accept
+                                                   ? "Принято"
+                                                   : tournament.status === TeamStatus.Review
+                                                   ? "На рассмотрении"
+                                                   : "Неизвестно"}
+                                               </span>
                         </div>
                         <div className="me-3 d-flex gap-3">
                             <button

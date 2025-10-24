@@ -19,9 +19,9 @@ const TournamentsPage: React.FC = () => {
   };
 
   const statusClasses: Record<number, string> = {
-    [EventStatus.Active]: "text-success",
-    [EventStatus.Registration]: "text-warning",
-    [EventStatus.Closed]: "text-body-secondary"
+    [EventStatus.Active]: "badge bg-success",
+    [EventStatus.Registration]: "badge bg-warning text-dark",
+    [EventStatus.Closed]: "badge bg-secondary"
   };
 
   // Функция для обработки клика в зависимости от статуса

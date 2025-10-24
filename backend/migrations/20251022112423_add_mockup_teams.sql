@@ -1,5 +1,13 @@
 -- +goose Up
 -- +goose StatementBegin
+-- 1. Добавляем поле initial_score, если его нет в 2 таблицы
+ALTER TABLE public.participants
+ADD COLUMN IF NOT EXISTS initial_score int DEFAULT 0;
+
+ALTER TABLE public.teams
+ADD COLUMN IF NOT EXISTS initial_score int DEFAULT 0;
+
+
 DO $$
 DECLARE
   school_names varchar[] := ARRAY[
@@ -46,29 +54,45 @@ DECLARE
   idx int;
   sub int;
 BEGIN
-  SELECT id INTO event_id
-  FROM public.events
-  WHERE name = 'Второй региональный математический турнир школьных команд «Королевская битва»'
-  LIMIT 1;
+  -- 2. Создаём новое событие
+  INSERT INTO public.events (
+    name,
+    start_date,
+    end_date,
+    previous_event_id,
+    type_draws,
+    type,
+    status,
+    stage
+  )
+  VALUES (
+    'Математический турнир 2025',
+    '2025-11-12 10:00:00+03',
+    '2025-11-12 15:00:00+03',
+    NULL,
+    3,  -- Swiss
+    1,  -- тип события
+    3,  -- активен
+    0
+  )
+  RETURNING id INTO event_id;
 
-  IF event_id IS NULL THEN
-    RAISE EXCEPTION 'Event not found with name: Второй региональный математический турнир школьных команд «Королевская битва»';
-  END IF;
-
-  FOR idx IN 1..34 LOOP
+  -- 3. Сопоставляем школы
+  FOR idx IN 1..array_length(school_names, 1) LOOP
     SELECT id INTO temp_id
     FROM public.schools
     WHERE name = school_names[idx]
     LIMIT 1;
 
     IF temp_id IS NULL THEN
-      RAISE EXCEPTION 'School not found with name: %', school_names[idx];
+      RAISE NOTICE 'Школа не найдена: %', school_names[idx];
+    ELSE
+      school_ids := school_ids || temp_id;
     END IF;
-
-    school_ids := school_ids || temp_id;
   END LOOP;
 
-  FOR idx IN 1..34 LOOP
+  -- 4. Создаём команды и участников с initial_score
+  FOR idx IN 1..array_length(school_ids, 1) LOOP
     INSERT INTO public.teams (name, responsible_name, responsible_phone, event_id, school_id, status)
     VALUES (
       'Команда ' || idx,
@@ -80,12 +104,13 @@ BEGIN
     ) RETURNING id INTO t_id;
 
     FOR sub IN 1..5 LOOP
-      INSERT INTO public.participants (fio, class, gender, school_id)
+      INSERT INTO public.participants (fio, class, gender, school_id, initial_score)
       VALUES (
         'Участник ' || idx || '_' || sub,
         (8 + ((idx * sub) % 4))::smallint,
         ((idx + sub) % 2)::smallint,
-        school_ids[idx]
+        school_ids[idx],
+        (50 + ((idx * sub) % 51))::int  -- initial_score от 50 до 100
       ) RETURNING id INTO p_id;
 
       INSERT INTO public.team_participants (team_id, participant_id)
@@ -96,4 +121,24 @@ END $$;
 -- +goose StatementEnd
 
 -- +goose Down
--- No rollback for mock data, or add DELETE statements if needed.
+-- Удаляем созданное событие и связанные с ним команды и участников
+DO $$
+DECLARE
+  eid uuid;
+BEGIN
+  SELECT id INTO eid FROM public.events WHERE name = 'Математический турнир 2025' LIMIT 1;
+
+  IF eid IS NOT NULL THEN
+    DELETE FROM public.team_participants
+    WHERE team_id IN (SELECT id FROM public.teams WHERE event_id = eid);
+
+    DELETE FROM public.participants
+    WHERE id IN (
+      SELECT participant_id FROM public.team_participants
+      WHERE team_id IN (SELECT id FROM public.teams WHERE event_id = eid)
+    );
+
+    DELETE FROM public.teams WHERE event_id = eid;
+    DELETE FROM public.events WHERE id = eid;
+  END IF;
+END $$;
