@@ -297,12 +297,12 @@ const TeamInitialize: React.FC = () => {
     }
   }, [notify]);
 
-  if (event?.status != EventStatus.Active) {
+  if (event?.status != EventStatus.Registration) {
     return (
       <Container>
         <Card className="mb-4 shadow-sm">
           <h2 >{event?.name}</h2>
-          <h5>Завершён</h5>
+          <h5>Регистрация завершена</h5>
         </Card>
       </Container>
     )
