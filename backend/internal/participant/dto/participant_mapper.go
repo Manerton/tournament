@@ -8,10 +8,11 @@ import (
 
 func ToParticipantModel(dto ParticipantCreateDTO) participant.Participant {
 	return participant.Participant{
-		FIO:      dto.FIO,
-		Gender:   dto.Gender,
-		SchoolID: dto.SchoolID,
-		Class:    dto.Class,
+		FIO:          dto.FIO,
+		Gender:       dto.Gender,
+		SchoolID:     dto.SchoolID,
+		Class:        dto.Class,
+		InitialScore: dto.InitialScore,
 	}
 }
 
@@ -25,11 +26,12 @@ func ToManyParticipantModels(dtos []ParticipantCreateDTO) []participant.Particip
 
 func ToParticipantResponseDTO(model participant.Participant) ParticipantResponseDTO {
 	return ParticipantResponseDTO{
-		ID:       model.ID,
-		FIO:      model.FIO,
-		Gender:   model.Gender,
-		SchoolID: model.SchoolID,
-		Class:    model.Class,
+		ID:           model.ID,
+		FIO:          model.FIO,
+		Gender:       model.Gender,
+		SchoolID:     model.SchoolID,
+		Class:        model.Class,
+		InitialScore: model.InitialScore,
 	}
 }
 
@@ -54,6 +56,9 @@ func ConvertUpdateDTOToParticipant(id uuid.UUID, dto UpdateParticipantDTO, exist
 	}
 	if dto.SchoolID != nil {
 		existing.SchoolID = *dto.SchoolID
+	}
+	if dto.InitialScore != nil {
+		existing.InitialScore = *dto.InitialScore
 	}
 	return existing
 }

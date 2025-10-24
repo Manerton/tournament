@@ -89,6 +89,13 @@ func (s *LeaderboardService) AddGameResultTx(ctx context.Context, transactionDB 
 		return err
 	}
 
+	if leaderboardModel.EnemiesIds == nil {
+		leaderboardModel.EnemiesIds = []uuid.UUID{}
+	}
+	if leaderboardModel.Scores == nil {
+		leaderboardModel.Scores = []int{}
+	}
+
 	leaderboardModel.EnemiesIds = append(leaderboardModel.EnemiesIds, enemyId)
 	leaderboardModel.Scores = append(leaderboardModel.Scores, teamScore)
 

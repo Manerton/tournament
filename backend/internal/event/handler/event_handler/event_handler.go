@@ -15,7 +15,7 @@ import (
 type EventServiceInterface interface {
 	GetByID(context.Context, string) (event_dto.EventDTOResponse, error)
 	GetAll(context.Context) ([]event_dto.EventDTOResponse, error)
-	GetActualEvents(context.Context) ([]event_dto.EventDTOResponse, error)
+	GetTournamentsByStatus(context.Context, string) ([]event_dto.EventDTOResponse, error)
 	GetByPreviousEventID(context.Context, string) ([]event_dto.EventDTOResponse, error)
 
 	GetAllTournaments(context.Context) ([]event_dto.EventDTOResponse, error)
@@ -85,10 +85,12 @@ func (h *EventHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *EventHandler) GetActualEvents(w http.ResponseWriter, r *http.Request) {
+func (h *EventHandler) GetTournamentsByStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	events, err := h.eventService.GetActualEvents(ctx)
+	status := chi.URLParam(r, "status")
+
+	events, err := h.eventService.GetTournamentsByStatus(ctx, status)
 	if err != nil {
 		if apiErr, ok := errs.IsApiError(err); ok {
 			render.Status(r, apiErr.HttpCode)

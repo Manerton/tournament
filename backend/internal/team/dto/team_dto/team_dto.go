@@ -8,6 +8,7 @@ type TeamCreateDTO struct {
 	ResponsibleNumber string `json:"responsible_number"`
 	EventID           string `json:"event_id" binding:"required,uuid4"`
 	SchoolID          string `json:"school_id" binding:"required,uuid4"`
+	InitialScore      int    `json:"initial_score"`
 }
 
 type TeamResponseDTO struct {
@@ -18,6 +19,7 @@ type TeamResponseDTO struct {
 	EventID          string `json:"event_id"`
 	SchoolID         string `json:"school_id"`
 	Status           int    `json:"status"`
+	InitialScore     int    `json:"initial_score"`
 }
 
 type RegisterTeamRequestDTO struct {

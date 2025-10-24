@@ -25,6 +25,7 @@ func ToTeamModel(dto team_dto.TeamCreateDTO) (team.Team, error) {
 		ResponsiblePhone: dto.ResponsibleNumber,
 		SchoolID:         shcoolId,
 		Status:           team.ReviewStatus,
+		InitialScore:     dto.InitialScore,
 	}, nil
 }
 
@@ -37,6 +38,7 @@ func ToTeamDTO(model team.Team) team_dto.TeamResponseDTO {
 		EventID:          model.EventID.String(),
 		SchoolID:         model.SchoolID.String(),
 		Status:           model.Status,
+		InitialScore:     model.InitialScore,
 	}
 }
 

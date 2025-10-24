@@ -22,4 +22,5 @@ type Team struct {
 	SchoolID         uuid.UUID     `gorm:"type:uuid;not null;index"`
 	School           school.School `gorm:"foreignKey:SchoolID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	Status           int           `gorm:"type:int;not null;default:1"`
+	InitialScore     int           `gorm:"type:int;default:0;"`
 }

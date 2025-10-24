@@ -40,11 +40,12 @@ func (r *TeamRepository) GetAcceptTeamsByEventId(ctx context.Context, db *gorm.D
 	return result, nil
 }
 
+// Кол-во принятых команд
 func (r *TeamRepository) GetCountTeams(ctx context.Context, db *gorm.DB, eventId uuid.UUID) (int, error) {
 	const op = "repository.TeamRepository.GetCountTeams"
 
 	var result int64
-	err := db.WithContext(ctx).Model(team.Team{}).Where(team.Team{EventID: eventId}).Count(&result).Error
+	err := db.WithContext(ctx).Model(team.Team{}).Where(team.Team{EventID: eventId, Status: team.AcceptStatus}).Count(&result).Error
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}

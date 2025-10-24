@@ -2,6 +2,7 @@ package calculations
 
 import (
 	"main/internal/leaderboard/model/leaderboard"
+	"main/internal/team/model/team"
 	"math"
 	"sort"
 )
@@ -25,6 +26,13 @@ func SortLeaderboards(leaderboards []leaderboard.Leaderboard) []leaderboard.Lead
 	})
 
 	return leaderboards
+}
+
+func SortTeamByInitialScores(teams []team.Team) []team.Team {
+	sort.Slice(teams, func(i, j int) bool {
+		return teams[i].InitialScore > teams[j].InitialScore
+	})
+	return teams
 }
 
 func MaxTours(countTeams int) int {

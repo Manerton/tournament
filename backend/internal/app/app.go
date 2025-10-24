@@ -73,7 +73,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	districtService := district_service.New(log, storage, distrcitRepository)
 
 	leaderboardService := leaderboard_service.New(log, storage, leaderboardRepository, teamRepository)
-	gameService := game_service.New(log, storage, gameRepository, leaderboardRepository, gameParticpantRepository, teamParticipantRepository, leaderboardService)
+	gameService := game_service.New(log, storage, gameRepository, leaderboardRepository, gameParticpantRepository, teamParticipantRepository, teamRepository, leaderboardService)
 	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, log, storage)
 	eventService := event_service.New(log, storage, eventRepository, teamRepository, gameService, leaderboardService)
 	ssoService := sso_service.New(storage, log, userRepository, sessionRepository)
@@ -181,8 +181,8 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Get("/{id}", eventHandler.GetByID)
 		r.Get("/", eventHandler.GetAll)
 		r.Get("/tournaments", eventHandler.GetAllTournaments)
-		r.Get("/actual", eventHandler.GetActualEvents)             // GET /api/events/actual
-		r.Get("/{id}/stages", eventHandler.GetAllStagesByParentId) // GET /api/events/{id}/stages
+		r.Get("/status/{status}", eventHandler.GetTournamentsByStatus) // GET /api/events/actual
+		r.Get("/{id}/stages", eventHandler.GetAllStagesByParentId)     // GET /api/events/{id}/stages
 	})
 
 	router.Route("/api/participants", func(r chi.Router) {

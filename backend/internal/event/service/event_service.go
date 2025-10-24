@@ -36,7 +36,7 @@ type LeaderboardServiceInterface interface {
 
 type GameServiceInterface interface {
 	AllGamesIsFinished(ctx context.Context, eventId uuid.UUID) (bool, error)
-	CreateGames(ctx context.Context, mainEventId uuid.UUID, tourEventId uuid.UUID) error
+	CreateFirstGamesByInitialScores(ctx context.Context, mainEventId uuid.UUID, tourEventId uuid.UUID) error
 }
 
 type TeamRepositoryInterface interface {
@@ -104,11 +104,18 @@ func (s *EventService) GetByID(ctx context.Context, id string) (event_dto.EventD
 	return resultDTO, nil
 }
 
-func (s *EventService) GetActualEvents(ctx context.Context) ([]event_dto.EventDTOResponse, error) {
-	const op = "service.EventService.GetActualEvents"
+func (s *EventService) GetTournamentsByStatus(ctx context.Context, statusStr string) ([]event_dto.EventDTOResponse, error) {
+	const op = "service.EventService.GetTournamentsByStatus"
 
 	log := s.log.With(slog.String("op", op))
-	events, err := s.repository.GetByFilter(ctx, s.db, event.Event{Type: event.EventType, Status: event.ActiveStatus})
+
+	status, err := strconv.Atoi(statusStr)
+	if err != nil {
+		log.Error("failed convert status to int", slog.String("status", statusStr), logger.Err(err))
+		return nil, errs.ErrBadRequest
+	}
+
+	events, err := s.repository.GetByFilter(ctx, s.db, event.Event{Type: event.EventType, Status: status})
 	if err != nil {
 		log.Error("failed get actual events", logger.Err(err))
 		return nil, errs.ErrInternalError
@@ -285,7 +292,7 @@ func (s *EventService) StartTournament(ctx context.Context, eventId string) erro
 
 	transactionDB.Commit()
 	// Создаём игры
-	return s.gameService.CreateGames(ctx, uid, tourId)
+	return s.gameService.CreateFirstGamesByInitialScores(ctx, uid, tourId)
 }
 
 func (s *EventService) FinishEvent(ctx context.Context, id string) error {

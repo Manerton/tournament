@@ -12,6 +12,7 @@ import (
 	"main/internal/pkg/calculations"
 	"main/internal/pkg/errs"
 	"main/internal/pkg/logger"
+	"main/internal/team/model/team"
 	"main/internal/team/model/team_participant"
 	"slices"
 
@@ -38,6 +39,10 @@ type LeaderboardRepostioryInterface interface {
 	GetByEventId(ctx context.Context, db *gorm.DB, eventId uuid.UUID) ([]leaderboard.Leaderboard, error)
 }
 
+type TeamRepositoryInterface interface {
+	GetAcceptTeamsByEventId(ctx context.Context, db *gorm.DB, eventId uuid.UUID) ([]team.Team, error)
+}
+
 type TeamParticipantRepositoryInterface interface {
 	GetAllByTeamID(ctx context.Context, db *gorm.DB, teamID uuid.UUID) ([]team_participant.TeamParticipant, error)
 }
@@ -54,6 +59,7 @@ type GameService struct {
 	gameParticipantRepository GameParticipantRepositoryInterface
 	leaderboardRepostiory     LeaderboardRepostioryInterface
 	teamParticipantRepository TeamParticipantRepositoryInterface
+	teamRepository            TeamRepositoryInterface
 
 	leaderboardService LeaderboardServiceInterface
 }
@@ -63,6 +69,7 @@ func New(log *slog.Logger, db *gorm.DB,
 	leaderboardRepostiory LeaderboardRepostioryInterface,
 	gameParticipantRepository GameParticipantRepositoryInterface,
 	teamParticipantRepository TeamParticipantRepositoryInterface,
+	teamRepository TeamRepositoryInterface,
 	leaderboardService LeaderboardServiceInterface) *GameService {
 	return &GameService{
 		log: log,
@@ -72,6 +79,7 @@ func New(log *slog.Logger, db *gorm.DB,
 		leaderboardRepostiory:     leaderboardRepostiory,
 		gameParticipantRepository: gameParticipantRepository,
 		teamParticipantRepository: teamParticipantRepository,
+		teamRepository:            teamRepository,
 
 		leaderboardService: leaderboardService,
 	}
@@ -115,6 +123,37 @@ func (s *GameService) DeleteByID(ctx context.Context, id string) error {
 	return nil
 }
 
+func (s *GameService) CreateFirstGamesByInitialScores(ctx context.Context, mainEventId uuid.UUID, tourEventId uuid.UUID) error {
+	const op = "service.GameService.CreateFirstGamesByInitialScores"
+
+	log := slog.With(slog.String("op", op))
+
+	teams, err := s.teamRepository.GetAcceptTeamsByEventId(ctx, s.db, mainEventId)
+	if err != nil {
+		log.Error("failed get accept teams", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	teams = calculations.SortTeamByInitialScores(teams)
+	for i := 0; i < len(teams); i++ {
+		for j := len(teams); j > i; j-- {
+			newGame := game.Game{
+				EventID:  tourEventId,
+				TeamA:    teams[i].ID,
+				TeamB:    teams[j].ID,
+				Finished: game.NotFinished,
+			}
+			err := s.createGame(ctx, newGame)
+			if err != nil {
+				log.Error("failed create game", logger.Err(err))
+				return errs.ErrInternalError
+			}
+		}
+	}
+
+	return nil
+}
+
 // Создание игр по швейцарской системе
 func (s *GameService) CreateGames(ctx context.Context, mainEventId uuid.UUID, tourEventId uuid.UUID) error {
 	const op = "service.GameService.CreateGames"
@@ -147,9 +186,9 @@ func (s *GameService) createGamePairs(ctx context.Context, leaderboards []leader
 
 	// Проходим по всем командам и создаём игры с командами, с которыми ещё не играли
 	for i := 0; i < len(leaderboards); i++ {
-		for j := i + 1; j < len(leaderboards); j++ {
+		for j := len(leaderboards) - 1; j > i; j-- {
 			if !slices.Contains(leaderboards[i].EnemiesIds, leaderboards[j].TeamID) {
-				newGame := &game.Game{
+				newGame := game.Game{
 					EventID:  tourEventId,
 					TeamA:    leaderboards[i].TeamID,
 					TeamB:    leaderboards[j].TeamID,
@@ -168,7 +207,7 @@ func (s *GameService) createGamePairs(ctx context.Context, leaderboards []leader
 	return nil
 }
 
-func (s *GameService) createGame(ctx context.Context, game *game.Game) error {
+func (s *GameService) createGame(ctx context.Context, game game.Game) error {
 	const op = "service.GameService.createGame"
 
 	// Открываем транзакцию
@@ -178,7 +217,7 @@ func (s *GameService) createGame(ctx context.Context, game *game.Game) error {
 	}
 
 	// создаём игру
-	err := s.gameRepository.Create(ctx, transactionBegin, game)
+	err := s.gameRepository.Create(ctx, transactionBegin, &game)
 	if err != nil {
 		transactionBegin.Rollback()
 		return fmt.Errorf("%s: failed create game: %w", op, err)
