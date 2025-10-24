@@ -53,6 +53,7 @@ DECLARE
   p_id uuid;
   idx int;
   sub int;
+  total_score INT;
 BEGIN
   -- 2. Создаём новое событие
   INSERT INTO public.events (
@@ -116,6 +117,18 @@ BEGIN
       INSERT INTO public.team_participants (team_id, participant_id)
       VALUES (t_id, p_id);
     END LOOP;
+
+    -- Считаем суммарный стартовый балл участников этой команды
+    SELECT COALESCE(SUM(p.initial_score), 0)
+    INTO total_score
+    FROM public.participants p
+    JOIN public.team_participants tp ON tp.participant_id = p.id
+    WHERE tp.team_id = t_id;
+
+    -- 🔹 Обновляем поле initial_score в таблице teams
+    UPDATE public.teams
+    SET initial_score = total_score
+    WHERE id = t_id;
   END LOOP;
 END $$;
 -- +goose StatementEnd
