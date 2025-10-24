@@ -416,23 +416,6 @@ const TeamInitialize: React.FC = () => {
                 styles={customSelectStyles}
               />
             </Form.Group>
-
-
-            <Form.Group className="mb-3">
-              <Form.Label>Стартовый балл</Form.Label>
-              <Form.Control
-                type="number"
-                inputMode="numeric"
-                value={participant.initial_score || 0}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value);
-                  setParticipant({ ...participant, initial_score: isNaN(value) ? 0 : value });
-                }}
-                min={0}
-                step={0.01}
-              />
-              <Form.Text className="text-muted">Можно оставить 0, если не требуется</Form.Text>
-            </Form.Group>
           </Form>
 
 
@@ -479,6 +462,12 @@ const TeamInitialize: React.FC = () => {
             </tbody>
           </Table>   
 
+            <div className="text-center fw-bold mb-3">
+              Суммарный стартовый балл команды:{" "}
+              {participants.reduce((sum, p) => sum + (p.initial_score || 0), 0)}
+            </div>
+
+          
           <div className="justify-content-center">
           <Button
             size="lg"
@@ -585,6 +574,27 @@ const TeamInitialize: React.FC = () => {
                 {validationErrors.participantClass}
               </Form.Control.Feedback>
             </Form.Group>
+
+            <Form.Group className="mb-3">
+                <Form.Label>Стартовый балл *</Form.Label>
+                <Form.Control
+                  type="number"
+                  inputMode="numeric"
+                  value={participant.initial_score || 1}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    const safeVal = isNaN(val) ? 0 : Math.min(Math.max(val, 1), 100); // ограничиваем 1–100
+                    setParticipant({ ...participant, initial_score: safeVal });
+                  }}
+                  min={1}
+                  max={100}
+                />
+                <Form.Text className="text-muted">
+                  Балл от 1 до 100
+                </Form.Text>
+             </Form.Group>
+
+
           </Form>
         </Modal.Body>
         <Modal.Footer>

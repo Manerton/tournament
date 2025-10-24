@@ -118,10 +118,10 @@ const Tournaments: React.FC = () => {
                                                  }`}
                                                >
                                                  {tournament.status === EventStatus.Active
-                                                   ? "Принято"
+                                                   ? "Активен"
                                                    : tournament.status === EventStatus.Registration
-                                                   ? "На рассмотрении"
-                                                   : "Неизвестно"}
+                                                   ? "Регистрация"
+                                                   : "Завершён"}
                                                </span>
                         </div>
                         <div className="me-3 d-flex gap-3">
