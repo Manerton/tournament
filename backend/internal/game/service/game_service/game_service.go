@@ -123,39 +123,39 @@ func (s *GameService) DeleteByID(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *GameService) CreateFirstGamesByInitialScores(ctx context.Context, mainEventId uuid.UUID, tourEventId uuid.UUID) error {
+func (s *GameService) CreateFirstGamesByInitialScores(ctx context.Context, transactionDB *gorm.DB, mainEventId uuid.UUID, tourEventId uuid.UUID) error {
 	const op = "service.GameService.CreateFirstGamesByInitialScores"
 
 	log := slog.With(slog.String("op", op))
 
-	teams, err := s.teamRepository.GetAcceptTeamsByEventId(ctx, s.db, mainEventId)
+	teams, err := s.teamRepository.GetAcceptTeamsByEventId(ctx, transactionDB, mainEventId)
 	if err != nil {
 		log.Error("failed get accept teams", logger.Err(err))
 		return errs.ErrInternalError
 	}
 
 	teams = calculations.SortTeamByInitialScores(teams)
-	for i := 0; i < len(teams); i++ {
-		for j := len(teams); j > i; j-- {
-			newGame := game.Game{
-				EventID:  tourEventId,
-				TeamA:    teams[i].ID,
-				TeamB:    teams[j].ID,
-				Finished: game.NotFinished,
-			}
-			err := s.createGame(ctx, newGame)
-			if err != nil {
-				log.Error("failed create game", logger.Err(err))
-				return errs.ErrInternalError
-			}
+	j := len(teams) - 1
+	for i := 0; i < j; i++ {
+		newGame := game.Game{
+			EventID:  tourEventId,
+			TeamA:    teams[i].ID,
+			TeamB:    teams[j].ID,
+			Finished: game.NotFinished,
 		}
+		err := s.createGame(ctx, transactionDB, newGame)
+		if err != nil {
+			log.Error("failed create game", logger.Err(err))
+			return errs.ErrInternalError
+		}
+		j--
 	}
 
 	return nil
 }
 
 // Создание игр по швейцарской системе
-func (s *GameService) CreateGames(ctx context.Context, mainEventId uuid.UUID, tourEventId uuid.UUID) error {
+func (s *GameService) CreateGames(ctx context.Context, transactionDB *gorm.DB, mainEventId uuid.UUID, tourEventId uuid.UUID) error {
 	const op = "service.GameService.CreateGames"
 
 	log := slog.With(slog.String("op", op))
@@ -170,7 +170,7 @@ func (s *GameService) CreateGames(ctx context.Context, mainEventId uuid.UUID, to
 	// Сортируем команды по убыванию побед и очков
 	leaderboards = calculations.SortLeaderboards(leaderboards)
 	// Создаём пары команд, которые ещё не играли между собой
-	err = s.createGamePairs(ctx, leaderboards, tourEventId)
+	err = s.createGamePairs(ctx, transactionDB, leaderboards, tourEventId)
 	if err != nil {
 		log.Error("failed create game pairs", logger.Err(err))
 		return errs.ErrInternalError
@@ -179,12 +179,14 @@ func (s *GameService) CreateGames(ctx context.Context, mainEventId uuid.UUID, to
 	return nil
 }
 
-func (s *GameService) createGamePairs(ctx context.Context, leaderboards []leaderboard.Leaderboard, tourEventId uuid.UUID) error {
+func (s *GameService) createGamePairs(ctx context.Context, transactionDB *gorm.DB, leaderboards []leaderboard.Leaderboard, tourEventId uuid.UUID) error {
 	const op = "service.GameService.createGamePairs"
 
 	log := slog.With(slog.String("op", op))
 
 	// Проходим по всем командам и создаём игры с командами, с которыми ещё не играли
+
+	// TODO !!!! UNCORRENCT GENERATE GAMES
 	for i := 0; i < len(leaderboards); i++ {
 		for j := len(leaderboards) - 1; j > i; j-- {
 			if !slices.Contains(leaderboards[i].EnemiesIds, leaderboards[j].TeamID) {
@@ -195,7 +197,7 @@ func (s *GameService) createGamePairs(ctx context.Context, leaderboards []leader
 					Finished: game.NotFinished,
 				}
 				// Создаём игру
-				err := s.createGame(ctx, newGame)
+				err := s.createGame(ctx, transactionDB, newGame)
 				if err != nil {
 					log.Error("failed create game", logger.Err(err))
 					return errs.ErrInternalError
@@ -207,36 +209,25 @@ func (s *GameService) createGamePairs(ctx context.Context, leaderboards []leader
 	return nil
 }
 
-func (s *GameService) createGame(ctx context.Context, game game.Game) error {
+func (s *GameService) createGame(ctx context.Context, transactionBegin *gorm.DB, game game.Game) error {
 	const op = "service.GameService.createGame"
-
-	// Открываем транзакцию
-	transactionBegin := s.db.Begin()
-	if transactionBegin.Error != nil {
-		return fmt.Errorf("%s: failed begin transaction: %w", op, transactionBegin.Error)
-	}
 
 	// создаём игру
 	err := s.gameRepository.Create(ctx, transactionBegin, &game)
 	if err != nil {
-		transactionBegin.Rollback()
 		return fmt.Errorf("%s: failed create game: %w", op, err)
 	}
 
 	// создаём участников игры из состава команд А
 	err = s.createGameParticipants(ctx, transactionBegin, game.ID, game.TeamA)
 	if err != nil {
-		transactionBegin.Rollback()
 		return fmt.Errorf("%s: failed create game participants for team A: %w", op, err)
 	}
 	// создаём участников игры из состава команд B
 	err = s.createGameParticipants(ctx, transactionBegin, game.ID, game.TeamB)
 	if err != nil {
-		transactionBegin.Rollback()
 		return fmt.Errorf("%s: failed create game participants for team B: %w", op, err)
 	}
-	// коммитим транзакцию
-	transactionBegin.Commit()
 	return nil
 }
 

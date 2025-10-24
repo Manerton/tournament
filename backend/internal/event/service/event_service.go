@@ -36,7 +36,7 @@ type LeaderboardServiceInterface interface {
 
 type GameServiceInterface interface {
 	AllGamesIsFinished(ctx context.Context, eventId uuid.UUID) (bool, error)
-	CreateFirstGamesByInitialScores(ctx context.Context, mainEventId uuid.UUID, tourEventId uuid.UUID) error
+	CreateFirstGamesByInitialScores(ctx context.Context, transactionDB *gorm.DB, mainEventId uuid.UUID, tourEventId uuid.UUID) error
 }
 
 type TeamRepositoryInterface interface {
@@ -290,9 +290,16 @@ func (s *EventService) StartTournament(ctx context.Context, eventId string) erro
 		return errs.ErrInternalError
 	}
 
+	err = s.gameService.CreateFirstGamesByInitialScores(ctx, transactionDB, uid, tourId)
+	if err != nil {
+		transactionDB.Rollback()
+		log.Error("failed create first games", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
 	transactionDB.Commit()
 	// Создаём игры
-	return s.gameService.CreateFirstGamesByInitialScores(ctx, uid, tourId)
+	return nil
 }
 
 func (s *EventService) FinishEvent(ctx context.Context, id string) error {
