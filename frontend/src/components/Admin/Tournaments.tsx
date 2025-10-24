@@ -110,16 +110,16 @@ const Tournaments: React.FC = () => {
                              Статус:{" "}
                            <span
                                                  className={`badge ${
-                                                   tournament.status === TeamStatus.Accept
+                                                   tournament.status === EventStatus.Active
                                                      ? "bg-success"
-                                                     : tournament.status === TeamStatus.Review
+                                                     : tournament.status === EventStatus.Registration
                                                      ? "bg-warning text-dark"
                                                      : "bg-secondary"
                                                  }`}
                                                >
-                                                 {tournament.status === TeamStatus.Accept
+                                                 {tournament.status === EventStatus.Active
                                                    ? "Принято"
-                                                   : tournament.status === TeamStatus.Review
+                                                   : tournament.status === EventStatus.Registration
                                                    ? "На рассмотрении"
                                                    : "Неизвестно"}
                                                </span>

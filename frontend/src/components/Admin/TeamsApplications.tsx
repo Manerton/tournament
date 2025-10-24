@@ -8,9 +8,9 @@ import {
   Card,
   Collapse,
 } from "react-bootstrap";
-import type { EventResponse } from "../../types/TournamentTypes";
+import { EventStatus, type EventResponse } from "../../types/TournamentTypes";
 import { TeamStatus, type TeamResponseDTO } from "../../types/teamType";
-import { axiosGetTournamentActive } from "../../requests/tournamentRequests";
+import { axiosGetEventByStatus } from "../../requests/tournamentRequests";
 import {
   GetTeamsByEvent,
   GetTeamMembers,
@@ -34,8 +34,8 @@ const TeamApplicationsPage: React.FC = () => {
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
-        const res = await axiosGetTournamentActive();
-        setTournaments(res.data.data || []);
+        const res = await axiosGetEventByStatus(EventStatus.Registration);
+        setTournaments(res || []);
       } catch {
         setError("Не удалось загрузить список турниров");
       }

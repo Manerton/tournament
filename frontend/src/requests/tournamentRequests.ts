@@ -27,9 +27,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export const axiosGetTournamentActive = () => {
-  return api.get<EventApiResponse>("/api/events/actual");
-};
 
 export async function axiosGetEventById(id: string) {
   try {
@@ -45,6 +42,24 @@ export async function axiosGetEventById(id: string) {
     throw new Error(error.response?.data?.message || "Ошибка при загрузке события");
   }
 }
+
+
+export async function axiosGetEventByStatus(Status: number) {
+  try {
+    const res = await api.get<ApiResponse<EventResponse[]>>(`/api/events/status/${Status}`);
+    const json = res.data;
+
+    if (json.status === ResponseStatus.Error) {
+      throw new Error(json.message || "Ошибка при загрузке события");
+    }
+
+    return json.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Ошибка при загрузке события");
+  }
+}
+
+
 
 export async function axiosGetAllTournaments() {
   try {

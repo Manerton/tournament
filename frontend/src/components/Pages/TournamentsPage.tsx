@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Container, Card, Spinner, Alert } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { axiosGetTournamentActive } from "../../requests/tournamentRequests";
+import { axiosGetAllTournaments} from "../../requests/tournamentRequests";
 import { EventStatus, type EventResponse } from "../../types/TournamentTypes";
 import "../../assets/TournamentPage.css";
 
@@ -36,8 +36,8 @@ const TournamentsPage: React.FC = () => {
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
-        const res = await axiosGetTournamentActive();
-        setTournaments(res.data.data || []);
+        const res = await axiosGetAllTournaments();
+        setTournaments(res || []);
       } catch (err: any) {
         setError("Не удалось загрузить список турниров");
       } finally {
