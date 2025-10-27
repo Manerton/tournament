@@ -32,6 +32,7 @@ type GameRepositoryInterface interface {
 type GameParticipantRepositoryInterface interface {
 	Create(ctx context.Context, db *gorm.DB, _ *game_participant.GameParticipant) error
 
+	GetAllByGameID(ctx context.Context, db *gorm.DB, gameID uuid.UUID) ([]game_participant.GameParticipant, error)
 	GetByGameParticipantID(ctx context.Context, db *gorm.DB, gameId uuid.UUID, participantID uuid.UUID) (game_participant.GameParticipant, error)
 }
 
@@ -139,8 +140,8 @@ func (s *GameService) CreateFirstGamesByInitialScores(ctx context.Context, trans
 	for i := 0; i < j; i++ {
 		newGame := game.Game{
 			EventID:  tourEventId,
-			TeamA:    teams[i].ID,
-			TeamB:    teams[j].ID,
+			TeamAId:  teams[i].ID,
+			TeamBId:  teams[j].ID,
 			Finished: game.NotFinished,
 		}
 		err := s.createGame(ctx, transactionDB, newGame)
@@ -192,8 +193,8 @@ func (s *GameService) createGamePairs(ctx context.Context, transactionDB *gorm.D
 			if !slices.Contains(leaderboards[i].EnemiesIds, leaderboards[j].TeamID) {
 				newGame := game.Game{
 					EventID:  tourEventId,
-					TeamA:    leaderboards[i].TeamID,
-					TeamB:    leaderboards[j].TeamID,
+					TeamAId:  leaderboards[i].TeamID,
+					TeamBId:  leaderboards[j].TeamID,
 					Finished: game.NotFinished,
 				}
 				// Создаём игру
@@ -219,12 +220,12 @@ func (s *GameService) createGame(ctx context.Context, transactionBegin *gorm.DB,
 	}
 
 	// создаём участников игры из состава команд А
-	err = s.createGameParticipants(ctx, transactionBegin, game.ID, game.TeamA)
+	err = s.createGameParticipants(ctx, transactionBegin, game.ID, game.TeamAId)
 	if err != nil {
 		return fmt.Errorf("%s: failed create game participants for team A: %w", op, err)
 	}
 	// создаём участников игры из состава команд B
-	err = s.createGameParticipants(ctx, transactionBegin, game.ID, game.TeamB)
+	err = s.createGameParticipants(ctx, transactionBegin, game.ID, game.TeamBId)
 	if err != nil {
 		return fmt.Errorf("%s: failed create game participants for team B: %w", op, err)
 	}
@@ -272,15 +273,15 @@ func (s *GameService) FinishGame(ctx context.Context, gameID string) error {
 		return errs.ErrInternalError
 	}
 
-	teamAScore, err := s.getTeamScore(ctx, gameModel.TeamA, gameModel.ID)
+	teamAScore, err := s.getTeamScore(ctx, gameModel.TeamAId, gameModel.ID)
 	if err != nil {
-		log.Error("failed get team score", slog.String("TeamA", gameModel.TeamA.String()))
+		log.Error("failed get team score", slog.String("TeamA", gameModel.TeamAId.String()))
 		return errs.ErrInternalError
 	}
 
-	teamBScore, err := s.getTeamScore(ctx, gameModel.TeamB, gameModel.ID)
+	teamBScore, err := s.getTeamScore(ctx, gameModel.TeamBId, gameModel.ID)
 	if err != nil {
-		log.Error("failed get team score", slog.String("TeamB", gameModel.TeamB.String()))
+		log.Error("failed get team score", slog.String("TeamB", gameModel.TeamBId.String()))
 		return errs.ErrInternalError
 	}
 
@@ -302,14 +303,14 @@ func (s *GameService) FinishGame(ctx context.Context, gameID string) error {
 		log.Error("failed update status game", logger.Err(err))
 		return errs.ErrInternalError
 	}
-	err = s.leaderboardService.AddGameResultTx(ctx, transactionDB, gameModel.TeamA, gameModel.TeamB, teamAScore)
+	err = s.leaderboardService.AddGameResultTx(ctx, transactionDB, gameModel.TeamAId, gameModel.TeamBId, teamAScore)
 	if err != nil {
 		transactionDB.Rollback()
 		log.Error("failed add game result for team A", logger.Err(err))
 		return errs.ErrInternalError
 	}
 
-	err = s.leaderboardService.AddGameResultTx(ctx, transactionDB, gameModel.TeamB, gameModel.TeamA, teamBScore)
+	err = s.leaderboardService.AddGameResultTx(ctx, transactionDB, gameModel.TeamBId, gameModel.TeamAId, teamBScore)
 	if err != nil {
 		transactionDB.Rollback()
 		log.Error("failed add game result for team B", logger.Err(err))
@@ -356,4 +357,74 @@ func (s *GameService) AllGamesIsFinished(ctx context.Context, eventId uuid.UUID)
 	}
 
 	return true, nil
+}
+
+func (s *GameService) GetGamesAllInformation(ctx context.Context, eventId string) ([]game_dto.GameAllInfoResponse, error) {
+	const op = "service.GameService.GetGamesAllInformation"
+
+	log := slog.With(slog.String("op", op))
+
+	uid, err := uuid.Parse(eventId)
+	if err != nil {
+		log.Error("failed parse id to uuid", slog.String("id", eventId), logger.Err(err))
+		return nil, errs.ErrBadRequest
+	}
+
+	allGames, err := s.gameRepository.GetByEventId(ctx, s.db, uid)
+	if err != nil {
+		log.Error("failed get games by event id", logger.Err(err))
+		return nil, errs.ErrInternalError
+	}
+
+	var allGamesInfo = make([]game_dto.GameAllInfoResponse, 0, len(allGames))
+	for _, game := range allGames {
+
+		teamAScore, err := s.getScoreTeamParticipants(ctx, game.ID, game.TeamAId)
+		if err != nil {
+			log.Error("failed get score team A", logger.Err(err))
+			return nil, errs.ErrInternalError
+		}
+
+		teamBScore, err := s.getScoreTeamParticipants(ctx, game.ID, game.TeamBId)
+		if err != nil {
+			log.Error("failed get score team B", logger.Err(err))
+			return nil, errs.ErrInternalError
+		}
+
+		newGamesInfo := game_dto.GameAllInfoResponse{
+			TeamAName:  game.TeamA.Name,
+			TeamAId:    game.TeamA.ID.String(),
+			TeamBName:  game.TeamB.Name,
+			TeamBId:    game.TeamB.ID.String(),
+			TeamAScore: teamAScore,
+			TeamBScore: teamBScore,
+		}
+		allGamesInfo = append(allGamesInfo, newGamesInfo)
+	}
+
+	return allGamesInfo, nil
+}
+
+func (s *GameService) getScoreTeamParticipants(ctx context.Context, gameId uuid.UUID, teamId uuid.UUID) (int, error) {
+	const op = "service.GameService.getScoreTeamParticipants"
+
+	log := slog.With(slog.String("op", op))
+
+	allParticipantsTeam, err := s.teamParticipantRepository.GetAllByTeamID(ctx, s.db, teamId)
+	if err != nil {
+		log.Error("failed get team participants by team id", logger.Err(err))
+		return 0, errs.ErrInternalError
+	}
+
+	resultScore := 0
+	for _, participant := range allParticipantsTeam {
+		gameParticipant, err := s.gameParticipantRepository.GetByGameParticipantID(ctx, s.db, gameId, participant.ParticipantID)
+		if err != nil {
+			log.Error("failed get game participant by game id and participant id", logger.Err(err))
+			return 0, errs.ErrInternalError
+		}
+		resultScore += gameParticipant.Score
+	}
+
+	return resultScore, nil
 }

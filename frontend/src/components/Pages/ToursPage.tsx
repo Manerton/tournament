@@ -97,7 +97,7 @@ const ToursPage: React.FC = () => {
                         <Card
                             key={t.id}
                             className="rounded-4 shadow-sm liquid-glass-bg card-interactive"
-                            onClick={() => navigate(`/tournament/games/${t.id}`)}
+                            onClick={() => navigate(`/tours/${t.id}/games`)}
                             style={{ cursor: "pointer" }}
                         >
                             <Card.Body className="py-4">

@@ -9,8 +9,8 @@ func ToDTOGame(game game.Game) game_dto.GameDTOResponse {
 	return game_dto.GameDTOResponse{
 		ID:      game.ID.String(),
 		EventID: game.EventID.String(),
-		TeamA:   game.TeamA.String(),
-		TeamB:   game.TeamB.String(),
+		TeamAId: game.TeamAId.String(),
+		TeamBId: game.TeamBId.String(),
 	}
 }
 

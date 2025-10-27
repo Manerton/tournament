@@ -165,7 +165,8 @@ func (a *App) initRoutes(router *chi.Mux,
 
 	// Группа маршрутов для игр
 	router.Route("/api/games", func(r chi.Router) {
-		r.Post("/{id}/tours", gameHandler.GetByEventId)
+		r.Get("/{id}/tours", gameHandler.GetByEventId)
+		r.Get("/{id}/all-info", gameHandler.GetGamesAllInformation)
 		r.With(authMiddleware.AuthVerify).Post("/{id}/finish", gameHandler.FinisheTour)
 	})
 
@@ -188,7 +189,6 @@ func (a *App) initRoutes(router *chi.Mux,
 	router.Route("/api/participants", func(r chi.Router) {
 		r.Get("/team/{id}", participantHandler.GetParticipantsByTeamId)
 	})
-
 }
 
 func (a *App) initCors(router *chi.Mux, frontedUrl string) {

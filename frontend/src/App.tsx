@@ -12,6 +12,7 @@ import AdminPanel from './components/Admin/AdminPanel';
 import TeamApplicationsPage from './components/Admin/TeamsApplications';
 import Tournaments from './components/Admin/Tournaments';
 import ToursPage from './components/Pages/ToursPage';
+import GamesPage from './components/Pages/Games';
 
 function App() {
  
@@ -24,6 +25,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/tournaments" element={<TournamentsPage />} />
           <Route path="/tournaments/:id/tours" element={<ToursPage/>} />
+          <Route path="/tours/:id/games" element={<GamesPage/>} />
           </Route>
            <Route element={<AdminLayout />}>
             <Route path="/AdminPanel" element={<AdminPanel />} />
