@@ -16,6 +16,7 @@
     "acorn": "^8.15.0",
     "axios": "^1.12.2",
     "bootstrap": "^5.3.8",
+    "framer-motion": "^12.23.24",
     "react": "^19.1.1",
     "react-bootstrap": "^2.10.10",
     "react-bootstrap-icons": "^1.11.6",

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Nav, Button } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Nav } from "react-bootstrap";
+import { LinkContainer } from "react-router-bootstrap";
 import {
   HouseDoor,
   People,
@@ -10,9 +10,10 @@ import {
   FileText,
   BoxArrowLeft,
   PersonCircle,
+  ChevronRight,
+  ChevronLeft,
 } from "react-bootstrap-icons";
-
-import ThemeToggleButton from "../helpers//ThemeToggleButton";
+import ThemeToggleButton from "../helpers/ThemeToggleButton";
 import { useAuth } from "../helpers/AuthContext";
 
 const AdminSidebar: React.FC = () => {
@@ -22,11 +23,8 @@ const AdminSidebar: React.FC = () => {
 
   return (
     <div
-      className={`d-flex flex-column justify-content-between bg-dark text-white border-end ${
-        collapsed ? "px-2" : "px-3"
-      }`}
+      className="sidebar d-flex border-end shadow-sm dynamic-bg-sidebar text"
       style={{
-        width: collapsed ? "70px" : "250px",
         height: "100vh",
         position: "sticky",
         top: 0,
@@ -34,108 +32,88 @@ const AdminSidebar: React.FC = () => {
         transition: "width 0.3s",
       }}
     >
-      {/* Верхняя часть: профиль */}
-      <div>
-        <div className="d-flex align-items-center justify-content-between py-3">
-          <div className="d-flex align-items-center">
-            <PersonCircle size={24} className="me-2" />
-            {!collapsed && user && (
-              <div>
-                <strong>{user.email}</strong>
-                <div className="small">
-                  id-{user.id}
+      {/* Левая часть — основное содержимое */}
+      <div
+        className={`sidebar-main d-flex flex-column justify-content-between ${
+          collapsed ? "px-2" : "px-3"
+        }`}
+        style={{
+          width: collapsed ? "90px" : "270px",
+          transition: "width 0.3s",
+          flexShrink: 0, // не сжимается 
+        }}
+      >
+        {/* Верхняя часть: профиль */}
+        <div>
+          <div className="d-flex align-items-center justify-content-between py-3">
+            <div className="d-flex align-items-center">
+              <PersonCircle size={24} className="me-2" />
+              {!collapsed && user && (
+                <div>
+                  <strong>{user.email}</strong>
+                  <div className="small">id-{user.id}</div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-          <Button
-            variant="link"
-            className="text-white p-0 ms-auto"
-            onClick={toggleSidebar}
-          >
-            <span style={{ fontSize: "1.2rem" }}>{collapsed ? "»" : "«"}</span>
-          </Button>
+
+          <hr className="border-secondary" />
+
+          {/* Навигация */}
+          <Nav className="flex-column gap-2">
+            <div className="text-uppercase small px-2">
+              {!collapsed && "Разделы"}
+            </div>
+
+            <LinkContainer to="/">
+              <Nav.Link className="d-flex align-items-center text">
+                <HouseDoor className="me-2" />
+                {!collapsed && "На главную"}
+              </Nav.Link>
+            </LinkContainer>
+
+            {user && (
+              <>
+                <LinkContainer to="/TeamsApplications">
+                  <Nav.Link className="d-flex align-items-center text">
+                    <FileText className="me-2" />
+                    {!collapsed && "Заявки команд"}
+                  </Nav.Link>
+                </LinkContainer>
+
+                <LinkContainer to="/participants">
+                  <Nav.Link className="d-flex align-items-center text">
+                    <People className="me-2" />
+                    {!collapsed && "Пользователи"}
+                  </Nav.Link>
+                </LinkContainer>
+
+                <LinkContainer to="/olymp-admin/event/index">
+                  <Nav.Link className="d-flex align-items-center text">
+                    <CalendarCheck className="me-2" />
+                    {!collapsed && "Турниры"}
+                  </Nav.Link>
+                </LinkContainer>
+
+                <LinkContainer to="/schools">
+                  <Nav.Link className="d-flex align-items-center text">
+                    <FileEarmarkText className="me-2" />
+                    {!collapsed && "Школы"}
+                  </Nav.Link>
+                </LinkContainer>
+
+                <LinkContainer to="/report">
+                  <Nav.Link className="d-flex align-items-center text">
+                    <CreditCard className="me-2" />
+                    {!collapsed && "Отчеты"}
+                  </Nav.Link>
+                </LinkContainer>
+              </>
+            )}
+          </Nav>
         </div>
 
-        <hr className="border-secondary" />
-
-        {/* Навигация */}
-        <Nav className="flex-column gap-2">
-          <div className="text-uppercase small px-2">
-            {!collapsed && "Разделы"}
-          </div>
-
-          <Nav.Link
-            as={Link}
-            to="/"
-            className="text-white d-flex align-items-center"
-          >
-            <HouseDoor className="me-2" />
-            {!collapsed && "На главную"}
-          </Nav.Link>
-
-          {/*<Nav.Link*/}
-          {/*  as={Link}*/}
-          {/*  to={`/applications/user/${user?.id}`}*/}
-          {/*  className="text-white d-flex align-items-center"*/}
-          {/*>*/}
-          {/*  <FileText className="me-2" />*/}
-          {/*  {!collapsed && "Статус заявки"}*/}
-          {/*</Nav.Link>*/}
-
-          {/* Админские ссылки */}
-          {user && (
-            <>
-                <Nav.Link
-                as={Link}
-                to="/TeamsApplications"
-                className="text-white d-flex align-items-center"
-              >
-                <FileText className="me-2" />
-                {!collapsed && "Заявки команд"}
-              </Nav.Link>
-
-              <Nav.Link
-                as={Link}
-                to="/participants"
-                className="text-white d-flex align-items-center"
-              >
-                <People className="me-2" />
-                {!collapsed && "Пользователи"}
-              </Nav.Link>
-
-              <Nav.Link
-                as={Link}
-                to="/olymp-admin/event/index"
-                className="text-white d-flex align-items-center"
-              >
-                <CalendarCheck className="me-2" />
-                {!collapsed && "Турниры"}
-              </Nav.Link>
-
-              <Nav.Link
-                as={Link}
-                to="/schools"
-                className="text-white d-flex align-items-center"
-              >
-                <FileEarmarkText className="me-2" />
-                {!collapsed && "Школы"}
-              </Nav.Link>
-
-              <Nav.Link
-                as={Link}
-                to="/report"
-                className="text-white d-flex align-items-center"
-              >
-                <CreditCard className="me-2" />
-                {!collapsed && "Отчеты"}
-              </Nav.Link>
-            </>
-          )}
-        </Nav>
-      </div>
-          
-      <div className="d-flex flex-column pb-3 justify-content-center align-items-start">
+        <div className="d-flex flex-column pb-3 justify-content-center align-items-start">
           <div className="mb-2">
             <ThemeToggleButton />
           </div>
@@ -148,6 +126,34 @@ const AdminSidebar: React.FC = () => {
             {!collapsed && "Выйти"}
           </Nav.Link>
         </div>
+      </div>
+
+      {/* Правая колонка — кнопка сворачивания */}
+      <div
+        className="sidebar-toggle d-flex justify-content-center align-items-center border-start border-secondary border-opacity-50"
+        onClick={toggleSidebar}
+        style={{
+          width: "2rem",
+          cursor: "pointer",
+          userSelect: "none",
+          transition: "background-color 0.2s",
+          flexShrink: 0,
+        }}
+        title={collapsed ? "Развернуть панель" : "Свернуть панель"}
+      >
+        <span
+          style={{
+            fontSize: "1.8rem",
+            lineHeight: "1",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--bs-body-color)",
+          }}
+        >
+          {collapsed ? <ChevronRight /> : <ChevronLeft />}
+        </span>
+      </div>
     </div>
   );
 };

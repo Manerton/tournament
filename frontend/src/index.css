@@ -93,6 +93,33 @@ button:focus-visible {
 }
 
 
+/* Тёмная тема */
+[data-bs-theme="light"] .dynamic-bg-sidebar {
+  background-color: #bebdbd !important;
+}
+
+/* Тёмная тема */
+[data-bs-theme="dark"] .dynamic-bg-sidebar  {
+  background-color: #0d0d2b !important;
+}
+
+.sidebar .nav-link {
+  color: var(--bs-body-color) !important;
+  text-decoration: none !important;
+}
+
+.sidebar .nav-link:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--bs-body-color) !important;
+}
+
+.sidebar .nav-link.active {
+  background-color: var(--bs-primary-bg-subtle);
+  color: var(--bs-primary-text-emphasis) !important;
+}
+
+
+
 
 .glass-dialog {
   background: transparent;
