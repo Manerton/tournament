@@ -419,7 +419,7 @@ const TeamInitialize: React.FC = () => {
           </Form>
 
 
-                     <div className="d-flex justify-content-between align-items-center mb-3">
+          <div className="d-flex justify-content-between align-items-center mb-3">
             <h5>Участники</h5>
             <Button variant="outline-primary" onClick={() => setShowModal(true)} disabled={!team.school_id}>
               + Добавить участника
@@ -460,29 +460,29 @@ const TeamInitialize: React.FC = () => {
                 </tr>
               )}
             </tbody>
-          </Table>   
+          </Table>
 
-            <div className="text-center fw-bold mb-3">
-              Суммарный стартовый балл команды:{" "}
-              {participants.reduce((sum, p) => sum + (p.initial_score || 0), 0)}
-            </div>
+          <div className="text-center fw-bold mb-3">
+            Суммарный стартовый балл команды:{" "}
+            {participants.reduce((sum, p) => sum + (p.initial_score || 0), 0)}
+          </div>
 
-          
+
           <div className="justify-content-center">
-          <Button
-            size="lg"
-            variant="outline-primary"
-            onClick={handleSubmit}
-            disabled={submitting || !team.school_id || !participants.length}
-          >
-            {submitting ? <Spinner animation="border" size="sm" /> : "Отправить заявку"}
-          </Button>
-        </div>
+            <Button
+              size="lg"
+              variant="outline-primary"
+              onClick={handleSubmit}
+              disabled={submitting || !team.school_id || !participants.length}
+            >
+              {submitting ? <Spinner animation="border" size="sm" /> : "Отправить заявку"}
+            </Button>
+          </div>
 
         </Card.Body>
       </Card>
 
-  
+
       {/* Модальное окно участника */}
       <Modal
         show={showModal}
@@ -576,23 +576,23 @@ const TeamInitialize: React.FC = () => {
             </Form.Group>
 
             <Form.Group className="mb-3">
-                <Form.Label>Стартовый балл *</Form.Label>
-                <Form.Control
-                  type="number"
-                  inputMode="numeric"
-                  value={participant.initial_score || 1}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    const safeVal = isNaN(val) ? 0 : Math.min(Math.max(val, 1), 100); // ограничиваем 1–100
-                    setParticipant({ ...participant, initial_score: safeVal });
-                  }}
-                  min={1}
-                  max={100}
-                />
-                <Form.Text className="text-muted">
-                  Балл от 1 до 100
-                </Form.Text>
-             </Form.Group>
+              <Form.Label>Стартовый балл *</Form.Label>
+              <Form.Control
+                type="number"
+                inputMode="numeric"
+                value={participant.initial_score || 0}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  const safeVal = isNaN(val) ? 0 : Math.min(Math.max(val, 0), 100); // ограничиваем 0–100
+                  setParticipant({ ...participant, initial_score: safeVal });
+                }}
+                min={0}
+                max={100}
+              />
+              <Form.Text className="text-muted">
+                Балл от 0 до 100
+              </Form.Text>
+            </Form.Group>
 
 
           </Form>
