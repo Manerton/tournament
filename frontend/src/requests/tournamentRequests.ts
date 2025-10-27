@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { EventApiResponse, EventResponse, EventUpdate } from "../types/TournamentTypes";
+import type { EventResponse, EventUpdate } from "../types/TournamentTypes";
 import { API_URL } from "../config/routes";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
 import { getCRFCookie } from "../components/helpers/AuthContext";

@@ -3,7 +3,6 @@ import { Alert, Card, Container, Button, Modal, Form } from "react-bootstrap";
 import { axiosDeleteEvent, axiosGetAllTournaments, axiosUpdateTournament } from "../../requests/tournamentRequests";
 import { EventStatus, type EventResponse, type EventUpdate } from "../../types/TournamentTypes";
 import formatDateForInput from "../../pkg/dateFormater";
-import { TeamStatus } from "../../types/teamType";
 
 const Tournaments: React.FC = () => {
     const [notify, setNotify] = useState<{ variant: "success" | "danger"; text: string } | null>(null);
@@ -36,7 +35,7 @@ const Tournaments: React.FC = () => {
         setSelectedTournament(tournament);
         setFormData({
             name: tournament.name,
-            start_date:formatDateForInput(tournament.start_date),
+            start_date: formatDateForInput(tournament.start_date),
             end_date: formatDateForInput(tournament.end_date),
             status: tournament.status,
         });
@@ -107,22 +106,21 @@ const Tournaments: React.FC = () => {
                         <div className="ms-3 text-start">
                             <h5>{tournament.name}</h5>
                             <p>Даты: c {formatDateForInput(tournament.start_date)} по {formatDateForInput(tournament.end_date)}</p>
-                             Статус:{" "}
-                           <span
-                                                 className={`badge ${
-                                                   tournament.status === EventStatus.Active
-                                                     ? "bg-success"
-                                                     : tournament.status === EventStatus.Registration
-                                                     ? "bg-warning text-dark"
-                                                     : "bg-secondary"
-                                                 }`}
-                                               >
-                                                 {tournament.status === EventStatus.Active
-                                                   ? "Активен"
-                                                   : tournament.status === EventStatus.Registration
-                                                   ? "Регистрация"
-                                                   : "Завершён"}
-                                               </span>
+                            Статус:{" "}
+                            <span
+                                className={`badge ${tournament.status === EventStatus.Active
+                                        ? "bg-success"
+                                        : tournament.status === EventStatus.Registration
+                                            ? "bg-warning text-dark"
+                                            : "bg-secondary"
+                                    }`}
+                            >
+                                {tournament.status === EventStatus.Active
+                                    ? "Активен"
+                                    : tournament.status === EventStatus.Registration
+                                        ? "Регистрация"
+                                        : "Завершён"}
+                            </span>
                         </div>
                         <div className="me-3 d-flex gap-3">
                             <button
