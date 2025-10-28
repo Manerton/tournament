@@ -398,6 +398,7 @@ func (s *GameService) GetGamesAllInformation(ctx context.Context, eventId string
 			TeamBId:    game.TeamB.ID.String(),
 			TeamAScore: teamAScore,
 			TeamBScore: teamBScore,
+			GameStatus: game.Finished,
 		}
 		allGamesInfo = append(allGamesInfo, newGamesInfo)
 	}
