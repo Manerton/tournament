@@ -49,7 +49,7 @@ const Footer: React.FC = () => (
     </Container>
 
     <div className="bg-secondary text-center py-2 text-white small">
-      © 2025 Все права защищены
+      © 2025 ГАОУ АО ДО «РШТ»
     </div>
   </footer>
 );

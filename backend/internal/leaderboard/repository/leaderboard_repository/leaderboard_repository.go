@@ -21,7 +21,8 @@ func New() *LeaderboardRepostiory {
 func (r *LeaderboardRepostiory) GetByEventId(ctx context.Context, db *gorm.DB, eventId uuid.UUID) ([]leaderboard.Leaderboard, error) {
 	const op = "repository.LeaderboardRepository.GetByEventId"
 	var leaderboards []leaderboard.Leaderboard
-	err := db.WithContext(ctx).Where(leaderboard.Leaderboard{EventID: eventId}).Find(&leaderboards).Error
+
+	err := db.WithContext(ctx).Preload("Team").Where(leaderboard.Leaderboard{EventID: eventId}).Find(&leaderboards).Error
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

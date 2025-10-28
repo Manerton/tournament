@@ -3,7 +3,9 @@ package leaderboard_service
 import (
 	"context"
 	"log/slog"
+	leaderboard_dto "main/internal/leaderboard/dto"
 	"main/internal/leaderboard/model/leaderboard"
+	"main/internal/pkg/calculations"
 	"main/internal/pkg/errs"
 	"main/internal/pkg/logger"
 	"main/internal/team/model/team"
@@ -15,19 +17,24 @@ import (
 type LeaderboardRepositoryInterface interface {
 	Create(context.Context, *gorm.DB, *leaderboard.Leaderboard) error
 	UpdateByID(context.Context, *gorm.DB, leaderboard.Leaderboard) error
-
 	GetByTeamId(ctx context.Context, db *gorm.DB, teamId uuid.UUID) (leaderboard.Leaderboard, error)
+	GetByEventId(ctx context.Context, db *gorm.DB, eventId uuid.UUID) ([]leaderboard.Leaderboard, error)
 }
 
 type TeamRepositoryInterface interface {
 	GetAcceptTeamsByEventId(context.Context, *gorm.DB, uuid.UUID) ([]team.Team, error)
 }
 
+// type ParticipantRepositoryInterface interface {
+// 	GetById(context.Context, *gorm.DB, uuid.UUID) ([]team.Team, error)
+// }
+
 type LeaderboardService struct {
 	log                    *slog.Logger
 	db                     *gorm.DB
 	leaderboardRepostitory LeaderboardRepositoryInterface
 	teamRepository         TeamRepositoryInterface
+	// participantRepository  ParticipantRepositoryInterface
 }
 
 func New(log *slog.Logger, storage *gorm.DB, leaderboardRepository LeaderboardRepositoryInterface, teamRepository TeamRepositoryInterface) *LeaderboardService {
@@ -36,6 +43,7 @@ func New(log *slog.Logger, storage *gorm.DB, leaderboardRepository LeaderboardRe
 		db:                     storage,
 		leaderboardRepostitory: leaderboardRepository,
 		teamRepository:         teamRepository,
+		//participantRepository:  participantRepository,
 	}
 }
 
@@ -106,4 +114,51 @@ func (s *LeaderboardService) AddGameResultTx(ctx context.Context, transactionDB 
 	}
 
 	return nil
+}
+
+func (s *LeaderboardService) GetLeaderboardWins(ctx context.Context, EventID uuid.UUID) ([]leaderboard_dto.LeaderboardDTOResponse, error) {
+	const op = "service.LeaderboardService.GetLeaderboardWins"
+
+	log := s.log.With(slog.String("op", op))
+
+	leaderboards, err := s.leaderboardRepostitory.GetByEventId(ctx, s.db, EventID)
+	if err != nil {
+		log.Error("failed get leaderboards", logger.Err(err))
+		return nil, err
+	}
+
+	var responses []leaderboard_dto.LeaderboardDTOResponse
+	for _, lb := range leaderboards {
+		responses = append(responses, leaderboard_dto.LeaderboardDTOResponse{
+			ID:    lb.ID.String(),
+			Name:  lb.Team.Name,
+			Score: lb.WinCount,
+		})
+	}
+
+	return responses, nil
+}
+
+func (s *LeaderboardService) GetLeaderboardScore(ctx context.Context, EventID uuid.UUID) ([]leaderboard_dto.LeaderboardDTOResponse, error) {
+	const op = "service.LeaderboardService.GetLeaderboardScore"
+
+	log := s.log.With(slog.String("op", op))
+
+	leaderboards, err := s.leaderboardRepostitory.GetByEventId(ctx, s.db, EventID)
+	if err != nil {
+		log.Error("failed get leaderboards", logger.Err(err))
+		return nil, err
+	}
+
+	var responses []leaderboard_dto.LeaderboardDTOResponse
+	for _, lb := range leaderboards {
+		responses = append(responses, leaderboard_dto.LeaderboardDTOResponse{
+			ID:    lb.ID.String(),
+			Name:  lb.Team.Name,
+			Score: calculations.Sum(lb.Scores),
+		})
+	}
+
+	return responses, nil
+
 }

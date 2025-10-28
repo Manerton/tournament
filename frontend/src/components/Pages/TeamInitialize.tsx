@@ -317,7 +317,35 @@ const TeamInitialize: React.FC = () => {
     <Container >
       <Card className="mb-4 shadow-sm liquid-glass-bg card-interactive">
         <Card.Body>
+          <Row>
+            <Col>
+            </Col>
+            <Col>
+            <h6>ГАОУ АО ДО «Региональный школьный технопарк»</h6>
+            </Col>
+            <Col>
+            </Col>
+          </Row>
+          <Row>
+          <Col>
+          <img
+                src="/RST logo.png"
+                alt="Логотип"
+                className="w-50 h-100 object-fit-contain"
+              />
+          </Col>
+          <Col>
+          
           <h2>{event?.name}</h2>
+          </Col>
+          <Col>
+            <img
+                src="/battleroyale cat-.png"
+                alt="Логотип"
+               className="w-50 h-150 object-fit-contain"
+              />
+          </Col>
+          </Row>
         </Card.Body>
 
       </Card>
@@ -349,7 +377,7 @@ const TeamInitialize: React.FC = () => {
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>ФИО ответственного</Form.Label>
+                  <Form.Label>Ф.И.О. педагога, сопровождающего команду на турнире</Form.Label>
                   <Form.Control
                     value={team.responsible_name}
                     onChange={(e) => setTeam({ ...team, responsible_name: e.target.value })}
@@ -358,7 +386,7 @@ const TeamInitialize: React.FC = () => {
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Телефон ответственного</Form.Label>
+                  <Form.Label>Номер сотового телефона педагога, сопровождающего команду на турнире</Form.Label>
                   <Form.Control
                     value={team.responsible_number}
                     onChange={(e) => {
@@ -379,7 +407,7 @@ const TeamInitialize: React.FC = () => {
             </Row>
 
             <Form.Group className="mb-3">
-              <Form.Label>Муниципалитет *</Form.Label>
+              <Form.Label>Муниципальное образование *</Form.Label>
               <Select
                 isDisabled={loadingDistricts}
                 isLoading={loadingDistricts}
@@ -405,7 +433,7 @@ const TeamInitialize: React.FC = () => {
                   loadingSchools
                     ? "Загрузка школ..."
                     : !selectedDistrict
-                      ? "Сначала выберите муниципалитет"
+                      ? "Сначала выберите муниципальное образование "
                       : "Выберите школу..."
                 }
                 options={schools.map((s) => ({ value: s.id, label: s.name }))}
@@ -429,11 +457,10 @@ const TeamInitialize: React.FC = () => {
           <Table striped bordered hover responsive>
             <thead>
               <tr>
-                <th>ФИО</th>
+                <th>Ф.И.О.</th>
                 <th>Пол</th>
                 <th>Класс</th>
-                <th>Стартовый балл</th>
-                <th></th>
+                <th>Полный балл на школьном этапе ВСОШ по математике в 2025-2026 учебном году</th>
               </tr>
             </thead>
             <tbody>
@@ -462,10 +489,7 @@ const TeamInitialize: React.FC = () => {
             </tbody>
           </Table>
 
-          <div className="text-center fw-bold mb-3">
-            Суммарный стартовый балл команды:{" "}
-            {participants.reduce((sum, p) => sum + (p.initial_score || 0), 0)}
-          </div>
+          
 
 
           <div className="justify-content-center">
@@ -478,6 +502,18 @@ const TeamInitialize: React.FC = () => {
               {submitting ? <Spinner animation="border" size="sm" /> : "Отправить заявку"}
             </Button>
           </div>
+
+          <div className="text-justify m-3 p-3  rounded" style={{ lineHeight: "1.6", fontSize: "1rem" }}>
+            <p className="mb-2">
+              <strong>Уважаемый педагог,</strong> регистрирующий команду! Если у вас возникли вопросы по заполнению данной формы, 
+              пожалуйста, обращайтесь к нам по номеру <strong>+7 988 069 1743 — Портнова Юлия Сергеевна </strong> 
+              или в мобильном приложении <strong>MAX</strong>.
+            </p>
+            <p className="mb-0">
+              <em>Благодарим вас за внимание!</em>
+            </p>
+</div>
+
 
         </Card.Body>
       </Card>
@@ -576,7 +612,7 @@ const TeamInitialize: React.FC = () => {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Стартовый балл *</Form.Label>
+              <Form.Label>Полный балл на школьном этапе ВСОШ по математике в 2025-2026 учебном году *</Form.Label>
               <Form.Control
                 type="number"
                 inputMode="numeric"
