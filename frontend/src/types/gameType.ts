@@ -18,7 +18,7 @@ export interface GameAllInformation {
     team_a_name: string
     team_b_id: string
     team_b_name: string
-    score_a: number
-    score_b: number
-    status: number
+    team_a_score: number
+    team_b_score: number
+    game_status: number
 }

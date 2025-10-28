@@ -12,11 +12,8 @@ $$ LANGUAGE plpgsql;
 
 -- Вставляем тестовых пользователей
 INSERT INTO users (login, password) VALUES
-    ('jury', hash_password('jury')),
-    ('jury2', hash_password('jury2')),
-    ('jury3', hash_password('jury3')),
-    ('admin', hash_password('admin')),
-    ('moderator', hash_password('moderator'));
+    ('jury', hash_password('K1V8BPBX34')),
+    ('admin', hash_password('TXHNIN7EQ6WX')),
 
 -- Удаляем вспомогательную функцию
 DROP FUNCTION hash_password(TEXT);
@@ -27,6 +24,6 @@ DROP FUNCTION hash_password(TEXT);
 -- +goose StatementBegin
 
 -- Удаляем тестовых пользователей
-DELETE FROM users WHERE login IN ('jury', 'jury2', 'jury3', 'admin', 'moderator');
+DELETE FROM users WHERE login IN ('jury', 'admin');
 
 -- +goose StatementEnd

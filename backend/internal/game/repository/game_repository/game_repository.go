@@ -22,7 +22,7 @@ func (r *GameRespository) GetByEventId(ctx context.Context, db *gorm.DB, eventId
 	const op = "repository.GameRepository.GetByEventId"
 
 	var games []game.Game
-	err := db.WithContext(ctx).Where(game.Game{EventID: eventId}).Find(&games).Error
+	err := db.WithContext(ctx).Preload("TeamA").Preload("TeamB").Where(game.Game{EventID: eventId}).Find(&games).Error
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
