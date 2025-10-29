@@ -168,6 +168,8 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Get("/{id}/tours", gameHandler.GetByEventId)
 		r.Get("/{id}/all-info", gameHandler.GetGamesAllInformation)
 		r.With(authMiddleware.AuthVerify).Post("/{id}/finish", gameHandler.FinisheTour)
+		r.With(authMiddleware.AuthVerify).Post("/vote/{id}", gameHandler.UpdateScore)
+
 	})
 
 	// Группа маршрутов для событий

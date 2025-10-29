@@ -15,6 +15,7 @@ import (
 	"main/internal/team/model/team"
 	"main/internal/team/model/team_participant"
 	"slices"
+	"strconv"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -31,6 +32,7 @@ type GameRepositoryInterface interface {
 
 type GameParticipantRepositoryInterface interface {
 	Create(ctx context.Context, db *gorm.DB, _ *game_participant.GameParticipant) error
+	UpdateScore(ctx context.Context, db *gorm.DB, gameID uuid.UUID, participantID uuid.UUID, score int) error
 
 	GetAllByGameID(ctx context.Context, db *gorm.DB, gameID uuid.UUID) ([]game_participant.GameParticipant, error)
 	GetByGameParticipantID(ctx context.Context, db *gorm.DB, gameId uuid.UUID, participantID uuid.UUID) (game_participant.GameParticipant, error)
@@ -429,4 +431,35 @@ func (s *GameService) getScoreTeamParticipants(ctx context.Context, gameId uuid.
 	}
 
 	return resultScore, nil
+}
+
+func (s *GameService) UpdateScore(ctx context.Context, gameId string, participantId string, score string) error {
+	const op = "service.GameService.UpdateScore"
+
+	log := slog.With(slog.String("op", op))
+
+	gameUid, err := uuid.Parse(gameId)
+	if err != nil {
+		log.Error("failed parse game id to uuid", slog.String("id", gameId), logger.Err(err))
+		return errs.ErrBadRequest
+	}
+
+	participant, err := uuid.Parse(participantId)
+	if err != nil {
+		log.Error("failed parse participant id to uuid", slog.String("id", participantId), logger.Err(err))
+		return errs.ErrBadRequest
+	}
+
+	scoreInt, err := strconv.Atoi(score)
+	if err != nil {
+		log.Error("failed parse score to int", slog.String("score", score), logger.Err(err))
+		return errs.ErrBadRequest
+	}
+
+	err = s.gameParticipantRepository.UpdateScore(ctx, s.db, gameUid, participant, scoreInt)
+	if err != nil {
+		log.Error("failed update score", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	return nil
 }
