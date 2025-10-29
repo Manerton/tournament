@@ -8,6 +8,7 @@ import type { ParticipantCreateDTO } from "../../types/participantTypes";
 import { GetDistricts, GetSchools, RegisterTeam } from "../../requests/teamRequests";
 import { EventStatus, type EventResponse } from "../../types/TournamentTypes";
 import { axiosGetEventById } from "../../requests/tournamentRequests";
+import formatDateForInput from "../../pkg/dateFormater";
 
 
 // ------------------------------------
@@ -316,58 +317,65 @@ const TeamInitialize: React.FC = () => {
   return (
     <Container >
       <div
-            className="d-flex justify-content-center align-items-end w-100 m-0 p-0 position-relative"
-            style={{ zIndex: 0 }}
-          >
-            <img
-              src="/RST logo.png"
-              alt="Логотип"
-              className="ms-3"
-              style={{ height: "50px", objectFit: "contain", transform: "translateY(2px)" }}
-            />
-            <img
-              src="/battleroyale cat+.png"
-              alt="Логотип"
-              className="me-2"
-              style={{ height: "120px", objectFit: "contain", transform: "translateY(2px)" }}
-            />
-          </div>
+        className="d-flex justify-content-center align-items-end w-100 m-0 p-0 position-relative"
+        style={{ zIndex: 0 }}
+      >
+        <img
+          src="/RST logo.png"
+          alt="Логотип"
+          className="ms-3"
+          style={{ height: "50px", objectFit: "contain", transform: "translateY(2px)" }}
+        />
+        <img
+          src="/battleroyale cat+.png"
+          alt="Логотип"
+          className="me-2"
+          style={{ height: "120px", objectFit: "contain", transform: "translateY(2px)" }}
+        />
+      </div>
 
 
-    
+
       <Card className="mb-4 shadow-sm liquid-glass-bg card-interactive">
         <Card.Body className="p-0">
           <Row>
             <Col xs={2}>
-            
+
             </Col>
             <Col>
-            <h6>ГАОУ АО ДО «Региональный школьный технопарк»</h6>
+              <h6>ГАОУ АО ДО «Региональный школьный технопарк»</h6>
             </Col>
             <Col xs={2}>
             </Col>
           </Row>
           <Row>
-          <Col>
-           {/* Основное название мероприятия */}
-          {event?.name && (
-          <h3 className="mb-0">
-            {event.name.includes('«') || event.name.includes('"') ? (
-              <>
-                {event.name.split(/["«»]/)[0].trim()}
-                <br />
-                «{event.name.split(/["«»]/)[1].trim()}»
-              </>
-            ) : (
-              event.name
-            )}
-          </h3>
-          )}
-          </Col>
-          </Row>
-          
+            <Col>
+              {/* Основное название мероприятия */}
+              {event?.name && (
+                <h3 className="mb-0">
+                  {event.name.includes('«') || event.name.includes('"') ? (
+                    <>
+                      {event.name.split(/["«»]/)[0].trim()}
+                      <br />
+                      «{event.name.split(/["«»]/)[1].trim()}»
+                    </>
+                  ) : (
+                    event.name
+                  )}
+                </h3>
 
-          
+              )}
+              {event?.start_date && (
+                <h6 className="mt-3 mb-0">
+                  {formatDateForInput(event.start_date)}
+                </h6>
+              )}
+
+            </Col>
+          </Row>
+
+
+
         </Card.Body>
 
       </Card>
@@ -511,7 +519,7 @@ const TeamInitialize: React.FC = () => {
             </tbody>
           </Table>
 
-          
+
 
 
           <div className="justify-content-center">
@@ -527,14 +535,14 @@ const TeamInitialize: React.FC = () => {
 
           <div className="text-justify m-3 p-3  rounded" style={{ lineHeight: "1.6", fontSize: "1rem" }}>
             <p className="mb-2">
-              <strong>Уважаемый педагог,</strong> регистрирующий команду! Если у вас возникли вопросы по заполнению данной формы, 
-              пожалуйста, обращайтесь к нам по номеру <strong>+7 988 069 1743 — Портнова Юлия Сергеевна </strong> 
+              <strong>Уважаемый педагог,</strong> регистрирующий команду! Если у вас возникли вопросы по заполнению данной формы,
+              пожалуйста, обращайтесь к нам по номеру <strong>+7 988 069 1743 — Портнова Юлия Сергеевна </strong>
               или в мобильном приложении <strong>MAX</strong>.
             </p>
             <p className="mb-0">
               <em>Благодарим вас за внимание!</em>
             </p>
-</div>
+          </div>
 
 
         </Card.Body>

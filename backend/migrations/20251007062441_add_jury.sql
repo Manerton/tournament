@@ -13,7 +13,7 @@ $$ LANGUAGE plpgsql;
 -- Вставляем тестовых пользователей
 INSERT INTO users (login, password) VALUES
     ('jury', hash_password('K1V8BPBX34')),
-    ('admin', hash_password('TXHNIN7EQ6WX')),
+    ('admin', hash_password('TXHNIN7EQ6WX'));
 
 -- Удаляем вспомогательную функцию
 DROP FUNCTION hash_password(TEXT);

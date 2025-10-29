@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Navbar, Nav, Dropdown, Container } from "react-bootstrap";
 import { LinkContainer } from "react-router-bootstrap";
 import { Link } from "react-router-dom";
@@ -11,9 +11,15 @@ import {
 import ThemeToggleButton from "../helpers/ThemeToggleButton";
 import { useAuth } from "../helpers/AuthContext";
 
+import logoRHTYellow from "/RST logo yellow.png";
+import logoRHTBlue from "/RST logo blue.png";
+import { ThemeContext } from "../helpers/ThemeContext";
+
 function Header() {
   const { user, logout, initialized } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+    const { theme } = useContext(ThemeContext);
+  
 
   if (!initialized) {
     return (
@@ -48,7 +54,7 @@ function Header() {
           <Container fluid="lg" className="mx-auto">
             <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
               <img
-                src="/favicon.png"
+                src={ theme === 'light' ? logoRHTBlue : logoRHTYellow}
                 height={32}
                 width={80}
                 alt="Логотип"
@@ -82,7 +88,7 @@ function Header() {
                     >
                       <PersonCircle size={24} className="me-2" />
                       <span className="text-body">
-                        {user?.email || user?.id}
+                        {isAuthenticated ? "Авторизован" : "Гость"}
                       </span>
                     </Dropdown.Toggle>
 
