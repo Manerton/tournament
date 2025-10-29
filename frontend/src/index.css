@@ -1,7 +1,7 @@
 @font-face {
     font-family: 'Bounded';
-    src: url('Bounded-Variable.woff2') format('woff2'),
-        url('Bounded-Variable.woff') format('woff');
+    src: url('/Bounded-Variable.woff2') format('woff2'),
+        url('/Bounded-Variable.woff') format('woff');
     font-weight: 100 900;
     font-style: normal;
     font-display: swap;
@@ -128,9 +128,6 @@ button:focus-visible {
   background-color: var(--bs-primary-bg-subtle);
   color: var(--bs-primary-text-emphasis) !important;
 }
-
-
-
 
 .glass-dialog {
   background: transparent;

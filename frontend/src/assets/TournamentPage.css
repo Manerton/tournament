@@ -15,7 +15,7 @@
 .card-interactive {
   cursor: pointer;
   border-radius: 1rem;
-  padding: 1rem;
+  /* padding: 1rem; */
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 

@@ -315,37 +315,59 @@ const TeamInitialize: React.FC = () => {
   // ------------------------------------
   return (
     <Container >
+      <div
+            className="d-flex justify-content-center align-items-end w-100 m-0 p-0 position-relative"
+            style={{ zIndex: 0 }}
+          >
+            <img
+              src="/RST logo.png"
+              alt="Логотип"
+              className="ms-3"
+              style={{ height: "50px", objectFit: "contain", transform: "translateY(2px)" }}
+            />
+            <img
+              src="/battleroyale cat+.png"
+              alt="Логотип"
+              className="me-2"
+              style={{ height: "120px", objectFit: "contain", transform: "translateY(2px)" }}
+            />
+          </div>
+
+
+    
       <Card className="mb-4 shadow-sm liquid-glass-bg card-interactive">
-        <Card.Body>
+        <Card.Body className="p-0">
           <Row>
-            <Col>
+            <Col xs={2}>
+            
             </Col>
             <Col>
             <h6>ГАОУ АО ДО «Региональный школьный технопарк»</h6>
             </Col>
-            <Col>
+            <Col xs={2}>
             </Col>
           </Row>
           <Row>
           <Col>
-          <img
-                src="/RST logo.png"
-                alt="Логотип"
-                className="w-50 h-100 object-fit-contain"
-              />
-          </Col>
-          <Col>
-          
-          <h2>{event?.name}</h2>
-          </Col>
-          <Col>
-            <img
-                src="/battleroyale cat-.png"
-                alt="Логотип"
-               className="w-50 h-150 object-fit-contain"
-              />
+           {/* Основное название мероприятия */}
+          {event?.name && (
+          <h3 className="mb-0">
+            {event.name.includes('«') || event.name.includes('"') ? (
+              <>
+                {event.name.split(/["«»]/)[0].trim()}
+                <br />
+                «{event.name.split(/["«»]/)[1].trim()}»
+              </>
+            ) : (
+              event.name
+            )}
+          </h3>
+          )}
           </Col>
           </Row>
+          
+
+          
         </Card.Body>
 
       </Card>
