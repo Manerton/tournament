@@ -392,6 +392,7 @@ func (s *GameService) GetGamesAllInformation(ctx context.Context, eventId string
 		}
 
 		newGamesInfo := game_dto.GameAllInfoResponse{
+			ID:         game.ID.String(),
 			TeamAName:  game.TeamA.Name,
 			TeamAId:    game.TeamA.ID.String(),
 			TeamBName:  game.TeamB.Name,

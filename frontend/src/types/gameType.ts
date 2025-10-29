@@ -14,6 +14,7 @@ export interface GameParticipant {
 }
 
 export interface GameAllInformation {
+    id: string
     team_a_id: string
     team_a_name: string
     team_b_id: string
