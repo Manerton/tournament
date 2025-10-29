@@ -1,5 +1,15 @@
+@font-face {
+    font-family: 'Bounded';
+    src: url('Bounded-Variable.woff2') format('woff2'),
+        url('Bounded-Variable.woff') format('woff');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Bounded', system-ui, Avenir, Helvetica, Arial, sans-serif !important;
   line-height: 1.5;
   font-weight: 400;
 
@@ -23,6 +33,7 @@ a:hover {
 }
 
 body {
+  font-family: 'Bounded', system-ui, Avenir, Helvetica, Arial, sans-serif !important;
   margin: 0;
   padding: 0;
   display: flex;
