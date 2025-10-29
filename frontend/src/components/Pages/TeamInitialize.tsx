@@ -9,6 +9,7 @@ import { GetDistricts, GetSchools, RegisterTeam } from "../../requests/teamReque
 import { EventStatus, type EventResponse } from "../../types/TournamentTypes";
 import { axiosGetEventById } from "../../requests/tournamentRequests";
 import formatDateForInput from "../../pkg/dateFormater";
+import { useMemo } from "react";
 
 
 // ------------------------------------
@@ -89,6 +90,54 @@ const TeamInitialize: React.FC = () => {
     phone?: string;
     participantClass?: string;
   }>({});
+
+      const customOrder = [
+      "Частные",
+      "Федеральные",
+      "Подведомственные МОиН АО",
+    ];
+
+    const districtOptions = useMemo(() => {
+      if (!districts.length) return [];
+
+      // 1️⃣ Разделяем по категориям
+      const specialItems = districts.filter((d) =>
+        customOrder.includes(d.name.trim())
+      );
+
+      const otherItems = districts.filter(
+        (d) => !customOrder.includes(d.name.trim())
+      );
+
+      // 2️⃣ Сортируем внутри категорий
+      const sortedSpecial = specialItems.sort(
+        (a, b) => customOrder.indexOf(a.name) - customOrder.indexOf(b.name)
+      );
+
+      const sortedOthers = otherItems.sort((a, b) => {
+        const aIsMO = a.name.startsWith("МО г. Астрахань");
+        const bIsMO = b.name.startsWith("МО г. Астрахань");
+          
+          if (aIsMO !== bIsMO) {
+              return aIsMO ? -1 : 1;
+          }
+          
+          return a.name.localeCompare(b.name, "ru");
+      });
+
+      // 3️⃣ Группируем для Select
+      return [
+        {
+          label: "Особые категории",
+          options: sortedSpecial.map((d) => ({ value: d.id, label: d.name })),
+        },
+        {
+          label: "Муниципальные образования",
+          options: sortedOthers.map((d) => ({ value: d.id, label: d.name })),
+        },
+      ];
+    }, [districts]);
+  
 
   // ------------------------------------
   // Загрузка муниципалитетов
@@ -184,7 +233,7 @@ const TeamInitialize: React.FC = () => {
   // ------------------------------------
   const handleAddOrEditParticipant = () => {
     if (!participant.FIO.trim()) {
-      setNotify({ variant: "danger", text: "Введите ФИО участника" });
+      setNotify({ variant: "danger", text: "Введите Ф.И.О. участника" });
       return;
     }
 
@@ -308,31 +357,33 @@ const TeamInitialize: React.FC = () => {
       </Container>
     )
   }
-
-
+   const theme = document.documentElement.getAttribute("data-bs-theme") || "light";
+    const isDark = theme === "dark";
 
   // ------------------------------------
   // JSX
   // ------------------------------------
   return (
     <Container >
-      <div
-        className="d-flex justify-content-center align-items-end w-100 m-0 p-0 position-relative"
-        style={{ zIndex: 0 }}
-      >
-        <img
-          src="/RST logo.png"
-          alt="Логотип"
-          className="ms-3"
-          style={{ height: "50px", objectFit: "contain", transform: "translateY(2px)" }}
-        />
-        <img
-          src="/battleroyale cat+.png"
-          alt="Логотип"
-          className="me-2"
-          style={{ height: "120px", objectFit: "contain", transform: "translateY(2px)" }}
-        />
-      </div>
+    
+
+        <div
+          className="d-flex justify-content-center align-items-end w-100 m-0 p-0 position-relative"
+          style={{ zIndex: 0 }}
+        >
+          <img
+            src={isDark ? "/RST logo yellow.png" : "/RST logo.png"}
+            alt="Логотип"
+            className="ms-3"
+            style={{ height: "50px", objectFit: "contain", transform: "translateY(2px)" }}
+          />
+          <img
+            src="/battleroyale cat+.png"
+            alt="Логотип"
+            className="me-2"
+            style={{ height: "120px", objectFit: "contain", transform: "translateY(2px)" }}
+          />
+        </div>
 
 
 
@@ -405,54 +456,75 @@ const TeamInitialize: React.FC = () => {
             </Form.Group>
 
             <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Ф.И.О. педагога, сопровождающего команду на турнире</Form.Label>
-                  <Form.Control
-                    value={team.responsible_name}
-                    onChange={(e) => setTeam({ ...team, responsible_name: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Номер сотового телефона педагога, сопровождающего команду на турнире</Form.Label>
-                  <Form.Control
-                    value={team.responsible_number}
-                    onChange={(e) => {
-                      const formatted = formatPhoneNumber(e.target.value);
-                      handlePhoneChange(formatted);
-                    }}
-                    placeholder="+7XXXXXXXXXX или 8XXXXXXXXXX"
-                    isInvalid={!!validationErrors.phone}
-                  />
-                  <Form.Control.Feedback type="invalid">
-                    {validationErrors.phone}
-                  </Form.Control.Feedback>
-                  <Form.Text className="text-muted">
-                    Формат: +7XXXXXXXXXX или 8XXXXXXXXXX
-                  </Form.Text>
-                </Form.Group>
-              </Col>
-            </Row>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label className="fixed-label-height">Ф.И.О. педагога, сопровождающего команду на турнире</Form.Label>
+            <Form.Control
+              value={team.responsible_name}
+              onChange={(e) => setTeam({ ...team, responsible_name: e.target.value })}
+            />
+          </Form.Group>
+        </Col>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label className="fixed-label-height">Номер сотового телефона педагога, сопровождающего команду на турнире</Form.Label>
+            <Form.Control
+              value={team.responsible_number}
+              onChange={(e) => {
+                const formatted = formatPhoneNumber(e.target.value);
+                handlePhoneChange(formatted);
+              }}
+              placeholder="+7XXXXXXXXXX или 8XXXXXXXXXX"
+              isInvalid={!!validationErrors.phone}
+            />
+            <Form.Control.Feedback type="invalid">
+              {validationErrors.phone}
+            </Form.Control.Feedback>
+            <Form.Text className="text-muted">
+              Формат: +7XXXXXXXXXX или 8XXXXXXXXXX
+            </Form.Text>
+          </Form.Group>
+        </Col>
+      </Row>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Муниципальное образование *</Form.Label>
-              <Select
-                isDisabled={loadingDistricts}
-                isLoading={loadingDistricts}
-                placeholder="Выберите муниципалитет..."
-                options={districts.map((d) => ({ value: d.id, label: d.name }))}
-                value={districts
-                  .filter((d) => d.id === selectedDistrict)
-                  .map((d) => ({ value: d.id, label: d.name }))[0] || null}
-                onChange={(opt) => {
-                  setSelectedDistrict(opt ? opt.value : "");
-                  setTeam((prev) => ({ ...prev, school_id: "" }));
+  
+
+<Form.Group className="mb-3"> 
+  <Form.Label>Муниципальное образование *</Form.Label> 
+      <Select 
+      isDisabled={loadingDistricts} 
+      isLoading={loadingDistricts} 
+      placeholder="Выберите муниципальное образование..." 
+      options={districtOptions} 
+      value={ 
+        districtOptions 
+        .flatMap((g) => g.options) 
+        .find((opt) => opt.value === selectedDistrict) || null } 
+        onChange={(opt) => { 
+          setSelectedDistrict(opt ? opt.value : ""); 
+          setTeam((prev) => ({ ...prev, school_id: "" })); }} 
+          styles={customSelectStyles} 
+          formatGroupLabel={(group) => {
+            const theme = document.documentElement.getAttribute("data-bs-theme") || "light";
+            const isDark = theme === "dark";
+
+            return (
+              <div
+                style={{
+                  fontWeight: 800,
+                  fontSize: "1rem",
+                  paddingBottom: 2,
+                  marginBottom: 4,
+                  color: isDark ? "var(--bs-warning)" : "var(--bs-primary)", // разный цвет
                 }}
-                styles={customSelectStyles}
-              />
-            </Form.Group>
+              >
+                {group.label}
+              </div>
+            );
+          }}
+
+                /> 
+      </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label>Школа *</Form.Label>
@@ -518,9 +590,6 @@ const TeamInitialize: React.FC = () => {
               )}
             </tbody>
           </Table>
-
-
-
 
           <div className="justify-content-center">
             <Button

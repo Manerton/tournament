@@ -28,3 +28,9 @@
 [data-bs-theme="dark"] .card-interactive:hover {
   border-color: rgba(255, 255, 255, 0.35);
 }
+
+
+.fixed-label-height {
+  min-height: 48px; /* Примерно на 2-3 строки текста, в зависимости от вашего шрифта и line-height. Подгоните под дизайн. */
+  display: block; /* Чтобы min-height работал правильно */
+}

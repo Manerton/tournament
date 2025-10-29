@@ -23,7 +23,7 @@ const BackgroundParticles: React.FC = () => {
     const particleColor = isDark ? "#ffffff" : "#000000";
 
     const newOptions: ISourceOptions = {
-      fullScreen: { enable: true, zIndex: -1 }, // ✅ Фон на весь экран, под контентом
+      fullScreen: { enable: true, zIndex: -1 }, // Фон на весь экран, под контентом
       background: { color: { value: backgroundColor } },
       fpsLimit: 60,
       interactivity: {
