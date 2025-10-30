@@ -36,6 +36,7 @@ type GameParticipantRepositoryInterface interface {
 
 	GetAllByGameID(ctx context.Context, db *gorm.DB, gameID uuid.UUID) ([]game_participant.GameParticipant, error)
 	GetByGameParticipantID(ctx context.Context, db *gorm.DB, gameId uuid.UUID, participantID uuid.UUID) (game_participant.GameParticipant, error)
+	GetByListParticipantIds(ctx context.Context, db *gorm.DB, participantIds []uuid.UUID) ([]game_participant.GameParticipant, error)
 }
 
 type LeaderboardRepostioryInterface interface {
@@ -192,7 +193,7 @@ func (s *GameService) createGamePairs(ctx context.Context, transactionDB *gorm.D
 	// TODO !!!! UNCORRENCT GENERATE GAMES
 	for i := 0; i < len(leaderboards); i++ {
 		for j := len(leaderboards) - 1; j > i; j-- {
-			if !slices.Contains(leaderboards[i].EnemiesIds, leaderboards[j].TeamID) {
+			if !slices.Contains(leaderboards[i].EnemiesIds, leaderboards[j].TeamID.String()) {
 				newGame := game.Game{
 					EventID:  tourEventId,
 					TeamAId:  leaderboards[i].TeamID,
@@ -433,7 +434,7 @@ func (s *GameService) getScoreTeamParticipants(ctx context.Context, gameId uuid.
 	return resultScore, nil
 }
 
-func (s *GameService) UpdateScore(ctx context.Context, gameId string, participantId string, score string) error {
+func (s *GameService) UpdateScore(ctx context.Context, gameId string, participantId string, score string) (int, error) {
 	const op = "service.GameService.UpdateScore"
 
 	log := slog.With(slog.String("op", op))
@@ -441,25 +442,56 @@ func (s *GameService) UpdateScore(ctx context.Context, gameId string, participan
 	gameUid, err := uuid.Parse(gameId)
 	if err != nil {
 		log.Error("failed parse game id to uuid", slog.String("id", gameId), logger.Err(err))
-		return errs.ErrBadRequest
+		return 0, errs.ErrBadRequest
 	}
 
-	participant, err := uuid.Parse(participantId)
+	participantUid, err := uuid.Parse(participantId)
 	if err != nil {
 		log.Error("failed parse participant id to uuid", slog.String("id", participantId), logger.Err(err))
-		return errs.ErrBadRequest
+		return 0, errs.ErrBadRequest
 	}
 
 	scoreInt, err := strconv.Atoi(score)
 	if err != nil {
 		log.Error("failed parse score to int", slog.String("score", score), logger.Err(err))
-		return errs.ErrBadRequest
+		return 0, errs.ErrBadRequest
 	}
 
-	err = s.gameParticipantRepository.UpdateScore(ctx, s.db, gameUid, participant, scoreInt)
+	err = s.gameParticipantRepository.UpdateScore(ctx, s.db, gameUid, participantUid, scoreInt)
 	if err != nil {
 		log.Error("failed update score", logger.Err(err))
-		return errs.ErrInternalError
+		return 0, errs.ErrInternalError
 	}
-	return nil
+
+	participantModel, err := s.gameParticipantRepository.GetByGameParticipantID(ctx, s.db, gameUid, participantUid)
+	if err != nil {
+		log.Error("failed get participant by id", logger.Err(err))
+		return 0, errs.ErrInternalError
+	}
+	return participantModel.Score, nil
+}
+
+func (s *GameService) GetGameParticipantsByListIDs(ctx context.Context, ids []string) ([]game_dto.GameParticipantDTOResponse, error) {
+	const op = "service.GameService.GetGameParticipantsByListIDs"
+
+	log := s.log.With(slog.String("op", op))
+
+	participantUids := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		uid, err := uuid.Parse(id)
+		if err != nil {
+			log.Error("failed parse id to uuid", slog.String("id", id), logger.Err(err))
+			return nil, errs.ErrBadRequest
+		}
+
+		participantUids = append(participantUids, uid)
+	}
+
+	gameParticipantModel, err := s.gameParticipantRepository.GetByListParticipantIds(ctx, s.db, participantUids)
+	if err != nil {
+		log.Error("failed get game participants by list ids", logger.Err(err))
+		return nil, errs.ErrInternalError
+	}
+
+	return game_mapper.ToManyDTOGameParticipants(gameParticipantModel), nil
 }

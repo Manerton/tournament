@@ -7,7 +7,7 @@ import "../../assets/GamesPage.css";
 import { useAuth } from "../helpers/AuthContext";
 import { ThemeContext } from "../helpers/ThemeContext";
 
-const REFRESH_INTERVAL = 2000; // обновляем каждые 2 секунды
+const REFRESH_INTERVAL = 1500; // обновляем каждые 1 секунды
 
 const GamesPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -23,6 +23,7 @@ const GamesPage: React.FC = () => {
     const loadGames = useCallback(async () => {
         try {
             const res = await axiosGetGames(id!);
+            console.log("Загруженные игры:", res);
             setGames((prev) => {
                 const changed = JSON.stringify(prev) !== JSON.stringify(res);
                 return changed ? res : prev;
@@ -55,12 +56,12 @@ const GamesPage: React.FC = () => {
 
     const handleTeamClick = (game: GameAllInformation) => {
         if (!initialized) return;
-        navigate(`/vote`, {state: {game}});
+        navigate(`/vote`, { state: { game } });
     };
 
     return (
         <Container className="py-4">
-            <h2 className="mb-4 fw-bold text-center display-6">Игры турнира</h2>
+            <h2 className="mb-4 fw-bold text-center display-6">Игры тура</h2>
 
             {loading ? (
                 <div className="text-center my-5">
@@ -73,14 +74,14 @@ const GamesPage: React.FC = () => {
                     {games.map((g) => (
                         <Col key={g.team_a_id + g.team_b_id}>
                             <Card className="rounded-3 shadow-sm liquid-glass-bg" style={{ cursor: "pointer" }}>
-                                <Card.Body className="d-flex justify-content-between align-items-center py-3 px-2 flex-wrap" 
-                                   onClick={() => handleTeamClick(g)}>
+                                <Card.Body className="d-flex justify-content-between align-items-center py-3 px-2 flex-wrap"
+                                    onClick={() => handleTeamClick(g)}>
                                     {/* Команда A */}
                                     <div
-                                     
-                                        className={`team-card text-center flex-fill me-2 clickable ${g.game_status === 2 && g.team_a_score > g.team_b_score
+
+                                        className={`team-card text-center flex-fill me-2 clickable ${g.game_status != 3 && g.team_a_score > g.team_b_score
                                             ? "winner"
-                                            : g.game_status === 2 && g.team_a_score < g.team_b_score
+                                            : g.game_status != 3 && g.team_a_score < g.team_b_score
                                                 ? "loser"
                                                 : ""
                                             }`}
@@ -97,9 +98,9 @@ const GamesPage: React.FC = () => {
 
                                     {/* Команда B */}
                                     <div
-                                        className={`team-card text-center flex-fill ms-2 border-1 clickable ${g.game_status === 2 && g.team_b_score > g.team_a_score
+                                        className={`team-card text-center flex-fill ms-2 border-1 clickable ${g.game_status != 3 && g.team_b_score > g.team_a_score
                                             ? "winner"
-                                            : g.game_status === 2 && g.team_b_score < g.team_a_score
+                                            : g.game_status != 3 && g.team_b_score < g.team_a_score
                                                 ? "loser"
                                                 : ""
                                             }`}

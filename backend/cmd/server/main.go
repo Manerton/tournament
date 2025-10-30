@@ -15,7 +15,7 @@ const abs = "C:/Users/Admin/goProject/tournament/backend/config-yaml/local.yaml"
 
 func main() {
 	// init config
-	cfg := config.MustConfig(configPath)
+	cfg := config.MustConfig(abs)
 	// init logger
 	log := logger.InitLogger(cfg.EnvLevel)
 	// init app

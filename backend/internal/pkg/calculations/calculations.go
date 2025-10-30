@@ -7,8 +7,8 @@ import (
 	"sort"
 )
 
-func Sum(arr []int) int {
-	total := 0
+func Sum(arr []int32) int32 {
+	var total = int32(0)
 	for _, v := range arr {
 		total += v
 	}

@@ -7,6 +7,13 @@ type GameDTOResponse struct {
 	TeamBId string `json:"team_b" binding:"required,uuid"`
 }
 
+type GameParticipantDTOResponse struct {
+	ID            string `json:"id"`
+	GameID        string `json:"game_id" binding:"required,uuid"`
+	ParticipantID string `json:"participant_id" binding:"required,uuid"`
+	Score         int    `json:"score"`
+}
+
 type GameAllInfoResponse struct {
 	ID         string `json:"id"`
 	TeamAId    string `json:"team_a_id"`

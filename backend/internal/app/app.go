@@ -167,9 +167,10 @@ func (a *App) initRoutes(router *chi.Mux,
 	router.Route("/api/games", func(r chi.Router) {
 		r.Get("/{id}/tours", gameHandler.GetByEventId)
 		r.Get("/{id}/all-info", gameHandler.GetGamesAllInformation)
-		r.With(authMiddleware.AuthVerify).Post("/{id}/finish", gameHandler.FinisheTour)
+		r.With(authMiddleware.AuthVerify).Post("/{id}/finish", gameHandler.FinisheGame)
 		r.With(authMiddleware.AuthVerify).Post("/vote/{id}", gameHandler.UpdateScore)
 
+		r.With(authMiddleware.AuthVerify).Post("/participants/by-list-id", gameHandler.GetGameParticipantsByListIDs)
 	})
 
 	// Группа маршрутов для событий

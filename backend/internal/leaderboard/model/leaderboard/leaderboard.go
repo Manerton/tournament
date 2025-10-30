@@ -5,15 +5,16 @@ import (
 	"main/internal/team/model/team"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type Leaderboard struct {
-	ID         uuid.UUID   `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	TeamID     uuid.UUID   `gorm:"type:uuid;not null;uniqueIndex:idx_team_event"`
-	Team       team.Team   `gorm:"foreignKey:TeamID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	EventID    uuid.UUID   `gorm:"type:uuid;not null;uniqueIndex:idx_team_event"`
-	Event      event.Event `gorm:"foreignKey:EventID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	EnemiesIds []uuid.UUID `gorm:"type:uuid[];" json:"enemies_ids"`
-	Scores     []int       `gorm:"type:int[];" json:"scores"`
-	WinCount   int         `gorm:"type:int;default:0"`
+	ID         uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	TeamID     uuid.UUID      `gorm:"type:uuid;not null;uniqueIndex:idx_team_event"`
+	Team       team.Team      `gorm:"foreignKey:TeamID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	EventID    uuid.UUID      `gorm:"type:uuid;not null;uniqueIndex:idx_team_event"`
+	Event      event.Event    `gorm:"foreignKey:EventID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	EnemiesIds pq.StringArray `gorm:"type:uuid[];" json:"enemies_ids"`
+	Scores     pq.Int32Array  `gorm:"type:int[];" json:"scores"`
+	WinCount   int            `gorm:"type:int;default:0"`
 }

@@ -11,6 +11,7 @@ import (
 	"main/internal/team/model/team"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -98,14 +99,14 @@ func (s *LeaderboardService) AddGameResultTx(ctx context.Context, transactionDB 
 	}
 
 	if leaderboardModel.EnemiesIds == nil {
-		leaderboardModel.EnemiesIds = []uuid.UUID{}
+		leaderboardModel.EnemiesIds = pq.StringArray{}
 	}
 	if leaderboardModel.Scores == nil {
-		leaderboardModel.Scores = []int{}
+		leaderboardModel.Scores = pq.Int32Array{}
 	}
 
-	leaderboardModel.EnemiesIds = append(leaderboardModel.EnemiesIds, enemyId)
-	leaderboardModel.Scores = append(leaderboardModel.Scores, teamScore)
+	leaderboardModel.EnemiesIds = append(leaderboardModel.EnemiesIds, enemyId.String())
+	leaderboardModel.Scores = append(leaderboardModel.Scores, int32(teamScore))
 
 	err = s.leaderboardRepostitory.UpdateByID(ctx, transactionDB, leaderboardModel)
 	if err != nil {
@@ -155,7 +156,7 @@ func (s *LeaderboardService) GetLeaderboardScore(ctx context.Context, EventID uu
 		responses = append(responses, leaderboard_dto.LeaderboardDTOResponse{
 			ID:    lb.ID.String(),
 			Name:  lb.Team.Name,
-			Score: calculations.Sum(lb.Scores),
+			Score: int(calculations.Sum(lb.Scores)),
 		})
 	}
 

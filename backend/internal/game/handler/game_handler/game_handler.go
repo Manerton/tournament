@@ -15,8 +15,9 @@ type GameServiceInterface interface {
 	FinishGame(ctx context.Context, gameID string) error
 	GetByEventId(ctx context.Context, eventId string) ([]game_dto.GameDTOResponse, error)
 	GetGamesAllInformation(ctx context.Context, eventId string) ([]game_dto.GameAllInfoResponse, error)
+	GetGameParticipantsByListIDs(ctx context.Context, ids []string) ([]game_dto.GameParticipantDTOResponse, error)
 
-	UpdateScore(ctx context.Context, gameId string, participantId string, score string) error
+	UpdateScore(ctx context.Context, gameId string, participantId string, score string) (int, error)
 }
 
 type GameHandler struct {
@@ -52,7 +53,7 @@ func (h *GameHandler) GetByEventId(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *GameHandler) FinisheTour(w http.ResponseWriter, r *http.Request) {
+func (h *GameHandler) FinisheGame(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	id := chi.URLParam(r, "id")
@@ -102,7 +103,7 @@ func (h *GameHandler) UpdateScore(w http.ResponseWriter, r *http.Request) {
 	participantIdStr := r.URL.Query().Get("participant_id")
 	scoreStr := r.URL.Query().Get("score")
 
-	err := h.gameService.UpdateScore(ctx, gameId, participantIdStr, scoreStr)
+	score, err := h.gameService.UpdateScore(ctx, gameId, participantIdStr, scoreStr)
 	if err != nil {
 		if apiErr, ok := errs.IsApiError(err); ok {
 			render.Status(r, apiErr.HttpCode)
@@ -114,6 +115,44 @@ func (h *GameHandler) UpdateScore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.JSON(w, r, response.SuccessResponse("success update score"))
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.StatusOK,
+		StatusCode: http.StatusOK,
+		Data:       score,
+	})
+}
+
+func (h *GameHandler) GetGameParticipantsByListIDs(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	type ListIds struct {
+		Ids []string `json:"ids"`
+	}
+
+	var ids ListIds
+	err := render.DecodeJSON(r.Body, &ids)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	result, err := h.gameService.GetGameParticipantsByListIDs(ctx, ids.Ids)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.StatusOK,
+		StatusCode: http.StatusOK,
+		Data:       result,
+	})
 
 }

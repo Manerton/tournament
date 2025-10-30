@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { GetTeamMembers } from "../../requests/teamRequests";
 import type { ParticipantResponseDTO } from "../../types/participantTypes";
 import { axiosUpdateParticipantScore } from "../../requests/participantRequest";
+import { axiosFinishGame, axiosGetGameParticipantsByListId } from "../../requests/gamesRequests";
 
 interface Props {
     game: GameAllInformation;
@@ -23,8 +24,11 @@ const GameVotePage: React.FC = () => {
     const [teamA, setTeamA] = useState<ParticipantResponseDTO[]>([]);
     const [teamB, setTeamB] = useState<ParticipantResponseDTO[]>([]);
 
+    const [scores, setScores] = useState<Record<string, number>>({})
+
     useEffect(() => {
         if (!game) return;
+
 
         const loadTeams = async () => {
             try {
@@ -41,10 +45,32 @@ const GameVotePage: React.FC = () => {
         loadTeams();
     }, [game]);
 
+    useEffect(() => {
+        const loadScores = async () => {
+            try {
+                const allparticipantIds = [...teamA, ...teamB].map((p) => p.id)
+                const res = await axiosGetGameParticipantsByListId(allparticipantIds)
+
+                const scoresMap: Record<string, number> = {}
+                res.forEach(s => scoresMap[s.participant_id] = s.score)
+                setScores(scoresMap)
+                console.log(scoresMap)
+            } catch (err) {
+                console.error("Ошибка загрузки очков участников:", err);
+            }
+        }
+
+        if (teamA.length || teamB.length) {
+            loadScores();
+        }
+    }, [teamA, teamB]);
+
     const handleFinishGame = async () => {
         setFinishing(true);
         try {
-            // await axiosFinishGame(game.id); // TODO: реализовать позже
+            const res = await axiosFinishGame(game.id);
+            console.log("TEST" ,res);
+            
             console.log(`Игра ${game.id} завершена`);
             navigate(-1);
         } catch (err) {
@@ -55,9 +81,14 @@ const GameVotePage: React.FC = () => {
         }
     };
 
+
     const handleScoreChange = async (participantId: string, delta: number) => {
         try {
-            await axiosUpdateParticipantScore(game.id, participantId, delta);
+            const updateScore = await axiosUpdateParticipantScore(game.id, participantId, delta);
+            setScores(prev => ({
+                ...prev,
+                [participantId]: updateScore
+            }));
         } catch (err) {
             console.error("Ошибка обновления очков:", err);
         }
@@ -88,6 +119,9 @@ const GameVotePage: React.FC = () => {
                         >
                             <div>
                                 <strong>{p.FIO}</strong>
+                            </div>
+                            <div className="text-muted small">
+                                Текущий счёт: {scores[p.id] ?? 0}
                             </div>
                             <div className="d-flex flex-column align-items-end gap-1">
                                 <div className="d-flex gap-2">
@@ -124,7 +158,7 @@ const GameVotePage: React.FC = () => {
 
     return (
         <Container className="py-4">
-            <h2 className="mb-4 fw-bold text-center display-6">Оценка игр турнира</h2>
+            <h2 className="mb-4 fw-bold text-center display-6">Оценка игр тура</h2>
 
             <div className="d-flex justify-content-center flex-wrap align-items-center mb-4">
                 <h4 className="fw-bold me-3">{game.team_a_name}</h4>

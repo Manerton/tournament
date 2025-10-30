@@ -33,5 +33,4 @@ export async function axiosUpdateParticipantScore(gameId: string, userId:string,
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Ошибка при изменении статуса команды");
     }
-
 } 

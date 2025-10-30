@@ -14,3 +14,4 @@ export interface ParticipantResponseDTO {
   class: number;
   initial_score: number;
 }
+
