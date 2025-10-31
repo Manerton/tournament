@@ -6,6 +6,7 @@ export interface TeamCreateDTO {
   responsible_number: string;
   event_id: string;
   school_id: string;
+  initial_score : number;
 }
 
 export interface RegisterTeamRequestDTO {
@@ -14,6 +15,7 @@ export interface RegisterTeamRequestDTO {
   responsible_number: string;
   event_id: string;
   school_id: string;
+  initial_score : number;
   participants: ParticipantCreateDTO[];
 }
 

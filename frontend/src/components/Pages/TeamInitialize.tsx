@@ -68,6 +68,7 @@ const TeamInitialize: React.FC = () => {
     responsible_number: "",
     event_id: id || "",
     school_id: "",
+      initial_score: 0,
   });
 
   const [participants, setParticipants] = useState<ParticipantCreateDTO[]>([]);
@@ -298,6 +299,8 @@ const TeamInitialize: React.FC = () => {
         return;
       }
     }
+
+    team.initial_score = participants.reduce((sum, p) => sum + (p.initial_score || 0), 0);
 
     const dto: RegisterTeamRequestDTO = {
       ...team,
@@ -715,7 +718,7 @@ const TeamInitialize: React.FC = () => {
               <Form.Control
                 type="number"
                 inputMode="numeric"
-                value={participant.initial_score || 0}
+                value={participant.initial_score?.toString().replace(/^0+(?=\d)/, "") || 0}
                 onChange={(e) => {
                   const val = parseInt(e.target.value, 10);
                   const safeVal = isNaN(val) ? 0 : Math.min(Math.max(val, 0), 100); // ограничиваем 0–100
