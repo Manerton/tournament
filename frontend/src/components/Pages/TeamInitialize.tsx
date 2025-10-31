@@ -627,7 +627,7 @@ const TeamInitialize: React.FC = () => {
         onHide={() => setShowModal(false)}
         centered
         contentClassName="dynamic-bg-modal"
-        dialogClassName="glass-dialog"
+        dialogClassName=""
       >
         <Modal.Header closeButton>
           <Modal.Title>
