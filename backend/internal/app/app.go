@@ -13,6 +13,7 @@ import (
 	"main/internal/game/repository/game_participant_repository"
 	"main/internal/game/repository/game_repository"
 	"main/internal/game/service/game_service"
+	leadeboard_handler "main/internal/leaderboard/handler"
 	"main/internal/leaderboard/repository/leaderboard_repository"
 	"main/internal/leaderboard/service/leaderboard_service"
 	"main/internal/location/handler/location_handler"
@@ -87,6 +88,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	sessionHandler := session_handler.NewSessionHandler(ssoService)
 	userHandler := user_handler.NewUserHandler(ssoService)
 	participantHandler := participant_handler.NewParticipantHandler(participantService)
+	leaderboardhandler := leadeboard_handler.New(leaderboardService)
 
 	//init auth
 	// init auth middleware
@@ -106,7 +108,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	router.Use(middleware.URLFormat)
 
 	// init routes
-	app.initRoutes(router, teamHandler, eventHandler, userHandler, sessionHandler, locationHandler, gameHandler, participantHandler, authMiddleware)
+	app.initRoutes(router, teamHandler, eventHandler, userHandler, sessionHandler, locationHandler, gameHandler, participantHandler, leaderboardhandler, authMiddleware)
 
 	// init server
 	app.server = &http.Server{
@@ -125,6 +127,7 @@ func (a *App) initRoutes(router *chi.Mux,
 	locationHandler *location_handler.LocationHandler,
 	gameHandler *game_handler.GameHandler,
 	participantHandler *participant_handler.ParticipantHandler,
+	leadeboardHandler *leadeboard_handler.LeaderboardHandler,
 
 	authMiddleware *auth_verification.AuthMiddleware) {
 
@@ -192,6 +195,13 @@ func (a *App) initRoutes(router *chi.Mux,
 	router.Route("/api/participants", func(r chi.Router) {
 		r.Get("/team/{id}", participantHandler.GetParticipantsByTeamId)
 	})
+
+	router.Route("/api/leaderboard", func(r chi.Router) {
+		r.Get("/wins/{id}", leadeboardHandler.GetByAllWins)
+		r.Get("/score/{id}", leadeboardHandler.GetByAllScore)
+		r.Get("/participants/{id}", leadeboardHandler.GetAllParticipantsScore)
+	})
+
 }
 
 func (a *App) initCors(router *chi.Mux, frontedUrl string) {
