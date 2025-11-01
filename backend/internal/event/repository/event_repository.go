@@ -53,13 +53,22 @@ func (r *EventRepository) GetLastTour(ctx context.Context, db *gorm.DB, parentId
 func (r *EventRepository) GetNumLastTour(ctx context.Context, db *gorm.DB, parentId uuid.UUID) (int, error) {
 	const op = "repository.EventRepository.GetNumLastTour"
 	var stage int
-	err := db.Model(&event.Event{}).
+	err := db.WithContext(ctx).Model(&event.Event{}).
 		Where("previous_event_id = ?", parentId).
 		Select("COALESCE(MAX(stage), 0)").
 		Scan(&stage).Error
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
-
 	return stage, nil
+}
+
+func (r *EventRepository) GetByPreviousEventIDAndStage(ctx context.Context, db *gorm.DB, parentId uuid.UUID, stage int) (event.Event, error) {
+	const op = "repository.EventRepository.GetByPreviousEventIDAndStage"
+	var result = event.Event{}
+	err := db.WithContext(ctx).Model(&event.Event{}).Where(event.Event{PreviousEventID: &parentId, Stage: stage}).Find(&result).Error
+	if err != nil {
+		return event.Event{}, fmt.Errorf("%s: %w", op, err)
+	}
+	return result, nil
 }

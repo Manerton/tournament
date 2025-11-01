@@ -52,7 +52,7 @@ type TeamParticipantRepositoryInterface interface {
 }
 
 type LeaderboardServiceInterface interface {
-	AddGameResultTx(ctx context.Context, transactionDB *gorm.DB, teamId uuid.UUID, enemyId uuid.UUID, teamScore int) error
+	AddGameResultTx(ctx context.Context, transactionDB *gorm.DB, teamId uuid.UUID, enemyId uuid.UUID, teamScore int, winA bool) error
 }
 
 type GameService struct {
@@ -171,8 +171,9 @@ func (s *GameService) CreateGames(ctx context.Context, transactionDB *gorm.DB, m
 		return errs.ErrInternalError
 	}
 
-	// Сортируем команды по убыванию побед и очков
-	leaderboards = calculations.SortLeaderboards(leaderboards)
+	// // Сортируем команды по убыванию побед и очков
+	// leaderboardsMap := calculations.SortLeaderboards(leaderboards)
+
 	// Создаём пары команд, которые ещё не играли между собой
 	err = s.createGamePairs(ctx, transactionDB, leaderboards, tourEventId)
 	if err != nil {
@@ -188,28 +189,34 @@ func (s *GameService) createGamePairs(ctx context.Context, transactionDB *gorm.D
 
 	log := slog.With(slog.String("op", op))
 
-	// Проходим по всем командам и создаём игры с командами, с которыми ещё не играли
+	usedTeams := []uuid.UUID{}
 
-	// TODO !!!! UNCORRENCT GENERATE GAMES
-	for i := 0; i < len(leaderboards); i++ {
-		for j := len(leaderboards) - 1; j > i; j-- {
-			if !slices.Contains(leaderboards[i].EnemiesIds, leaderboards[j].TeamID.String()) {
+	// Сортируем команды по убыванию побед и очков
+	leaderboardsMap := calculations.SortLeaderboards(leaderboards)
+	// Проходим по всем группам команд с одинаковыми показателями
+	for _, group := range leaderboardsMap {
+		j := len(group) - 1
+		for i := 0; i < j; {
+			if !slices.Contains(group[i].EnemiesIds, group[j].TeamID.String()) && !slices.Contains(usedTeams, group[i].TeamID) && !slices.Contains(usedTeams, group[j].TeamID) {
 				newGame := game.Game{
 					EventID:  tourEventId,
-					TeamAId:  leaderboards[i].TeamID,
-					TeamBId:  leaderboards[j].TeamID,
+					TeamAId:  group[i].TeamID,
+					TeamBId:  group[j].TeamID,
 					Finished: game.NotFinished,
 				}
-				// Создаём игру
 				err := s.createGame(ctx, transactionDB, newGame)
 				if err != nil {
 					log.Error("failed create game", logger.Err(err))
 					return errs.ErrInternalError
 				}
+				usedTeams = append(usedTeams, group[i].TeamID, group[j].TeamID)
+				i++
+				j = len(group) - 1
 			}
+			j--
 		}
-	}
 
+	}
 	return nil
 }
 
@@ -293,7 +300,9 @@ func (s *GameService) FinishGame(ctx context.Context, gameID string) error {
 		return errs.ErrBadRequest
 	}
 
-	if teamAScore > teamBScore {
+	winTeamA := teamAScore > teamBScore
+
+	if winTeamA {
 		gameModel.Finished = game.TeamAWon
 	} else {
 		gameModel.Finished = game.TeamBWon
@@ -306,14 +315,14 @@ func (s *GameService) FinishGame(ctx context.Context, gameID string) error {
 		log.Error("failed update status game", logger.Err(err))
 		return errs.ErrInternalError
 	}
-	err = s.leaderboardService.AddGameResultTx(ctx, transactionDB, gameModel.TeamAId, gameModel.TeamBId, teamAScore)
+	err = s.leaderboardService.AddGameResultTx(ctx, transactionDB, gameModel.TeamAId, gameModel.TeamBId, teamAScore, winTeamA)
 	if err != nil {
 		transactionDB.Rollback()
 		log.Error("failed add game result for team A", logger.Err(err))
 		return errs.ErrInternalError
 	}
 
-	err = s.leaderboardService.AddGameResultTx(ctx, transactionDB, gameModel.TeamBId, gameModel.TeamAId, teamBScore)
+	err = s.leaderboardService.AddGameResultTx(ctx, transactionDB, gameModel.TeamBId, gameModel.TeamAId, teamBScore, !winTeamA)
 	if err != nil {
 		transactionDB.Rollback()
 		log.Error("failed add game result for team B", logger.Err(err))
@@ -483,7 +492,6 @@ func (s *GameService) GetGameParticipantsByListIDs(ctx context.Context, ids []st
 			log.Error("failed parse id to uuid", slog.String("id", id), logger.Err(err))
 			return nil, errs.ErrBadRequest
 		}
-
 		participantUids = append(participantUids, uid)
 	}
 

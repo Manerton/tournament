@@ -1,24 +1,49 @@
-.team-card {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 1rem;
-    border-radius: 0.8rem;
-    transition: all 0.3s;
+.game-card {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.team-card .score {
-    font-size: 2rem;
-    font-weight: bold;
-    margin-top: 0.5rem;
+.game-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-.team-card.winner {
-    background-color: rgba(0, 200, 0, 0.2);
+.team-name {
+  flex: 1;
+  word-break: break-word;
+  white-space: normal;
+  padding: 0 10px;
 }
 
-.team-card.loser {
-    background-color: rgba(200, 0, 0, 0.2);
+.team-name h5 {
+  margin-bottom: 0.3rem;
+  font-weight: 600;
 }
 
-.vs-container {
-    min-width: 80px;
+.score {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.vs-section {
+  flex-shrink: 0;
+  text-align: center;
+  padding: 0 1rem;
+}
+
+.vs-text {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #dc3545; /* красный VS */
+  line-height: 1;
+}
+
+.winner {
+  background-color: rgba(40, 167, 70, 0.5);
+  border-radius: 8px;
+}
+
+.loser {
+  background-color: rgba(220, 53, 70, 0.5);
+  border-radius: 8px;
 }

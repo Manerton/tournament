@@ -98,12 +98,12 @@ func (s *LeaderboardService) InitForTeams(ctx context.Context, transactionDB *go
 	return nil
 }
 
-func (s *LeaderboardService) AddGameResult(ctx context.Context, teamId uuid.UUID, enemyId uuid.UUID, teamScore int) error {
+func (s *LeaderboardService) AddGameResult(ctx context.Context, teamId uuid.UUID, enemyId uuid.UUID, teamScore int, winA bool) error {
 	const op = "service.LeaderboardService.AddGameResult"
 
 	log := s.log.With(slog.String("op", op))
 
-	err := s.AddGameResultTx(ctx, s.db, teamId, enemyId, teamScore)
+	err := s.AddGameResultTx(ctx, s.db, teamId, enemyId, teamScore, winA)
 	if err != nil {
 		log.Error("failed add game result", logger.Err(err))
 		return errs.ErrInternalError
@@ -111,7 +111,7 @@ func (s *LeaderboardService) AddGameResult(ctx context.Context, teamId uuid.UUID
 	return nil
 }
 
-func (s *LeaderboardService) AddGameResultTx(ctx context.Context, transactionDB *gorm.DB, teamId uuid.UUID, enemyId uuid.UUID, teamScore int) error {
+func (s *LeaderboardService) AddGameResultTx(ctx context.Context, transactionDB *gorm.DB, teamId uuid.UUID, enemyId uuid.UUID, teamScore int, winA bool) error {
 	const op = "service.LeaderboardService.AddGameResultTx"
 
 	log := s.log.With(slog.String("op", op))
@@ -127,6 +127,10 @@ func (s *LeaderboardService) AddGameResultTx(ctx context.Context, transactionDB 
 	}
 	if leaderboardModel.Scores == nil {
 		leaderboardModel.Scores = pq.Int32Array{}
+	}
+
+	if winA {
+		leaderboardModel.WinCount += 1
 	}
 
 	leaderboardModel.EnemiesIds = append(leaderboardModel.EnemiesIds, enemyId.String())

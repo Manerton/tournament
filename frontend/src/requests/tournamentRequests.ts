@@ -89,6 +89,21 @@ export async function axiosGetTours(id: string) {
   }
 }
 
+export async function axiosFinishTour(id: string) {
+  try {
+    const res = await api.post<ApiResponse<any>>(`/api/events/${id}/finish`)
+    const json = res.data
+
+    if (json.status === ResponseStatus.Error) {
+      throw new Error(json.message || "Ошибка при завершении тура")
+    }
+    return json.data
+
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Ошибка при завершении тура")
+  }
+}
+
 export async function axiosStartTournament(id: string) {
   try {
     const res = await api.post<ApiResponse<any>>(`/api/events/${id}/start`);
@@ -104,6 +119,20 @@ export async function axiosStartTournament(id: string) {
   }
 }
 
+export async function axiosNextTour(id: string) {
+  try {
+    const res = await api.post<ApiResponse<any>>(`/api/events/${id}/next-tour`)
+    const json = res.data
+
+    if (json.status == ResponseStatus.Error) {
+      throw new Error(json.message || "Ошибка при переходе к следующему туру");
+    }
+
+    return json.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Ошибка при переходе к следующему туру");
+  }
+}
 
 export async function axiosUpdateTournament(id: string, dto: EventUpdate) {
   try {

@@ -24,6 +24,7 @@ type EventRepositoryInterface interface {
 
 	GetLastTour(ctx context.Context, db *gorm.DB, parentId uuid.UUID) (event.Event, error)
 	GetNumLastTour(ctx context.Context, db *gorm.DB, parentId uuid.UUID) (int, error)
+	GetByPreviousEventIDAndStage(ctx context.Context, db *gorm.DB, parentId uuid.UUID, stage int) (event.Event, error)
 
 	Create(ctx context.Context, db *gorm.DB, _ *event.Event) error
 	UpdateByID(ctx context.Context, db *gorm.DB, _ event.Event) error
@@ -36,6 +37,7 @@ type LeaderboardServiceInterface interface {
 
 type GameServiceInterface interface {
 	AllGamesIsFinished(ctx context.Context, eventId uuid.UUID) (bool, error)
+	CreateGames(ctx context.Context, transactionDB *gorm.DB, mainEventId uuid.UUID, tourEventId uuid.UUID) error
 	CreateFirstGamesByInitialScores(ctx context.Context, transactionDB *gorm.DB, mainEventId uuid.UUID, tourEventId uuid.UUID) error
 }
 
@@ -214,6 +216,7 @@ func (s *EventService) createTour(ctx context.Context, transactionDB *gorm.DB, p
 			StartDate:       parentEvent.StartDate,
 			EndDate:         parentEvent.EndDate,
 			TypeDraws:       parentEvent.TypeDraws,
+			MaxStage:        parentEvent.MaxStage,
 		}
 		err = s.repository.Create(ctx, transactionDB, &newTour)
 		if err != nil {
@@ -245,6 +248,7 @@ func (s *EventService) createTour(ctx context.Context, transactionDB *gorm.DB, p
 		StartDate:       lastTour.StartDate,
 		EndDate:         lastTour.EndDate,
 		Type:            lastTour.Type,
+		MaxStage:        lastTour.MaxStage,
 	}
 	err = s.repository.Create(ctx, transactionDB, &newTour)
 	if err != nil {
@@ -374,6 +378,62 @@ func (s *EventService) finishTour(ctx context.Context, eventModel event.Event) e
 	}
 
 	return nil
+}
+
+func (s *EventService) TryNextTour(ctx context.Context, id string) (string, error) {
+	const op = "service.EventService.TryNextTour"
+	log := s.log.With(slog.String("op", op))
+
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		log.Error("failed parse id to uuid", slog.String("id", id), logger.Err(err))
+		return "", errs.ErrBadRequest
+	}
+
+	tour, err := s.repository.GetByID(ctx, s.db, uid)
+	if err != nil {
+		log.Error("failed get tour by id", logger.Err(err))
+		return "", errs.ErrInternalError
+	}
+
+	numLastTour, err := s.repository.GetNumLastTour(ctx, s.db, *tour.PreviousEventID)
+	if err != nil {
+		log.Error("failed get num last tour", logger.Err(err))
+		return "", errs.ErrInternalError
+	}
+
+	var nextTourNum = tour.Stage + 1
+
+	if nextTourNum > tour.MaxStage {
+		log.Warn("Reached max tour")
+		return "", errs.ErrBadRequest
+	}
+
+	if numLastTour < nextTourNum {
+		uid, err := s.createTour(ctx, s.db, *tour.PreviousEventID)
+		if err != nil {
+			log.Error("failed create new tour", logger.Err(err))
+			return "", errs.ErrInternalError
+		}
+
+		transactionDb := s.db.Begin()
+		err = s.gameService.CreateGames(ctx, transactionDb, *tour.PreviousEventID, uid)
+		if err != nil {
+			transactionDb.Rollback()
+			log.Error("failed create games", logger.Err(err))
+			return "", errs.ErrInternalError
+		}
+		transactionDb.Commit()
+		return uid.String(), nil
+	}
+
+	nextTour, err := s.repository.GetByPreviousEventIDAndStage(ctx, s.db, *tour.PreviousEventID, nextTourNum)
+	if err != nil {
+		log.Error("failed get next tour", logger.Err(err))
+		return "", errs.ErrInternalError
+	}
+
+	return nextTour.ID.String(), nil
 }
 
 func (s *EventService) Update(ctx context.Context, id string, dto event_dto.EventDTOUpdate) error {
