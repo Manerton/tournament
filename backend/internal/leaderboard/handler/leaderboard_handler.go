@@ -12,9 +12,10 @@ import (
 )
 
 type LeaderboardServiceInterface interface {
-	GetLeaderboardWins(ctx context.Context, EventID string) ([]leaderboard_dto.LeaderboardDTOResponse, error)
+	GetLeaderboardWins(ctx context.Context, EventID string) ([]leaderboard_dto.LeaderboardWinDTOResponse, error)
 	GetLeaderboardScore(ctx context.Context, EventID string) ([]leaderboard_dto.LeaderboardDTOResponse, error)
 	GetParticipantsScore(ctx context.Context, EventID string) ([]leaderboard_dto.LeaderboardPlayesDTOResponse, error)
+	GetLeaderboardScoreLive(ctx context.Context, EventID string) ([]leaderboard_dto.LeaderboardDTOResponse, error)
 }
 
 type LeaderboardHandler struct {
@@ -54,7 +55,7 @@ func (h *LeaderboardHandler) GetByAllScore(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 
 	id := chi.URLParam(r, "id")
-	results, err := h.leaderboardService.GetLeaderboardScore(ctx, id)
+	results, err := h.leaderboardService.GetLeaderboardScoreLive(ctx, id)
 	if err != nil {
 		if apiErr, ok := errs.IsApiError(err); ok {
 			render.Status(r, apiErr.HttpCode)

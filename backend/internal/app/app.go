@@ -73,7 +73,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	schoolService := school_service.New(log, storage, schoolRepository)
 	districtService := district_service.New(log, storage, distrcitRepository)
 
-	leaderboardService := leaderboard_service.New(log, storage, leaderboardRepository, teamRepository)
+	leaderboardService := leaderboard_service.New(log, storage, leaderboardRepository, teamRepository, teamParticipantRepository, eventRepository, gameRepository, gameParticpantRepository)
 	gameService := game_service.New(log, storage, gameRepository, leaderboardRepository, gameParticpantRepository, teamParticipantRepository, teamRepository, leaderboardService)
 	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, log, storage)
 	eventService := event_service.New(log, storage, eventRepository, teamRepository, gameService, leaderboardService)

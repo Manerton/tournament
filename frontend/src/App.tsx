@@ -15,6 +15,7 @@ import ToursPage from './components/Pages/ToursPage';
 import GamesPage from './components/Pages/Games';
 import GameVotePage from './components/Pages/GameVote';
 
+
 function App() {
  
   return (
@@ -22,13 +23,13 @@ function App() {
        <div className="App">
       <Routes>
           <Route element={<Layout />}>
-          <Route path="/" element={<MainPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/tournaments" element={<TournamentsPage />} />
-          <Route path="/tournaments/:id/tours" element={<ToursPage/>} />
-          <Route path="/tours/:id/games" element={<GamesPage/>} />
-          <Route path="/vote" element={<GameVotePage/>} />
-
+              <Route path="/" element={<MainPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/tournaments" element={<TournamentsPage />} />
+              <Route path="/tournaments/:id/tours" element={<ToursPage/>} />
+              <Route path="/tours/:id/games" element={<GamesPage/>} />
+              <Route path="/vote" element={<GameVotePage/>} />
+              {/*<Route path="/tournaments/leaderboard/:id" element={<LeaderboardTabs eventId={""}/>} />*/}
           </Route>
            <Route element={<AdminLayout />}>
             <Route path="/AdminPanel" element={<AdminPanel />} />

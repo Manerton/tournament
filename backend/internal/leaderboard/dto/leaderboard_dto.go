@@ -6,6 +6,13 @@ type LeaderboardDTOResponse struct {
 	Score int    `json:"score"`
 }
 
+type LeaderboardWinDTOResponse struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	ScoreWins int    `json:"scoreWins"`
+	Score     int    `json:"score"`
+}
+
 type LeaderboardPlayesDTOResponse struct {
 	TeamName string `json:"team_name"`
 	Name     string `json:"name"`
