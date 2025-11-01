@@ -8,6 +8,7 @@ import (
 	"main/internal/event/dto/event_dto"
 	"main/internal/event/event_mapper"
 	"main/internal/event/model/event"
+	"main/internal/pkg/calculations"
 	"main/internal/pkg/errs"
 	"main/internal/pkg/logger"
 	"strconv"
@@ -29,6 +30,8 @@ type EventRepositoryInterface interface {
 	Create(ctx context.Context, db *gorm.DB, _ *event.Event) error
 	UpdateByID(ctx context.Context, db *gorm.DB, _ event.Event) error
 	DeleteByID(ctx context.Context, db *gorm.DB, id uuid.UUID) error
+
+	UpdateMaxStageById(ctx context.Context, db *gorm.DB, id uuid.UUID, maxStage int) error
 }
 
 type LeaderboardServiceInterface interface {
@@ -236,12 +239,12 @@ func (s *EventService) createTour(ctx context.Context, transactionDB *gorm.DB, p
 	}
 
 	newTourNum := lastTour.Stage + 1
-	if newTourNum >= parentEvent.MaxStage {
+	if newTourNum > parentEvent.MaxStage {
 		return uuid.Nil, fmt.Errorf("failed create new tour, max tour overhead")
 	}
 
 	newTour := event.Event{
-		Name:            "Тур" + strconv.Itoa(newTourNum),
+		Name:            "Тур " + strconv.Itoa(newTourNum),
 		PreviousEventID: &parentId,
 		Stage:           newTourNum,
 		Status:          event.ActiveStatus,
@@ -280,6 +283,14 @@ func (s *EventService) StartTournament(ctx context.Context, eventId string) erro
 	}
 
 	transactionDB := s.db.Begin()
+	maxStages := calculations.MaxTours(countTeams)
+	err = s.repository.UpdateMaxStageById(ctx, s.db, uid, maxStages)
+	if err != nil {
+		transactionDB.Rollback()
+		log.Error("failed update max stages", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
 	err = s.leaderboardService.InitForTeams(ctx, transactionDB, uid)
 	if err != nil {
 		transactionDB.Rollback()

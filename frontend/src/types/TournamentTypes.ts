@@ -21,6 +21,7 @@ export interface EventResponse {
   type: number
   type_draws: number
   stage: number
+  max_stage: number
 }
 
 export const EventStatus = {
