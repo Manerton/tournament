@@ -189,34 +189,72 @@ func (s *GameService) createGamePairs(ctx context.Context, transactionDB *gorm.D
 
 	log := slog.With(slog.String("op", op))
 
-	usedTeams := []uuid.UUID{}
-
 	// Сортируем команды по убыванию побед и очков
 	leaderboardsMap := calculations.SortLeaderboards(leaderboards)
+
 	// Проходим по всем группам команд с одинаковыми показателями
+	// Жадный алгоритм
+	usedTeams := []uuid.UUID{}
+	pairsUUID := [][2]uuid.UUID{}
 	for _, group := range leaderboardsMap {
 		j := len(group) - 1
 		for i := 0; i < j; {
 			if !slices.Contains(group[i].EnemiesIds, group[j].TeamID.String()) && !slices.Contains(usedTeams, group[i].TeamID) && !slices.Contains(usedTeams, group[j].TeamID) {
-				newGame := game.Game{
-					EventID:  tourEventId,
-					TeamAId:  group[i].TeamID,
-					TeamBId:  group[j].TeamID,
-					Finished: game.NotFinished,
-				}
-				err := s.createGame(ctx, transactionDB, newGame)
-				if err != nil {
-					log.Error("failed create game", logger.Err(err))
-					return errs.ErrInternalError
-				}
+				pairsUUID = append(pairsUUID, [2]uuid.UUID{group[i].TeamID, group[j].TeamID})
+
 				usedTeams = append(usedTeams, group[i].TeamID, group[j].TeamID)
 				i++
 				j = len(group) - 1
 			}
 			j--
 		}
-
 	}
+
+	if len(pairsUUID)*2 == len(leaderboards) {
+		for _, pa := range pairsUUID {
+			newGame := game.Game{
+				EventID:  tourEventId,
+				TeamAId:  pa[0],
+				TeamBId:  pa[1],
+				Finished: game.NotFinished,
+			}
+			err := s.createGame(ctx, transactionDB, newGame)
+			if err != nil {
+				log.Error("failed create game", logger.Err(err))
+				return errs.ErrInternalError
+			}
+		}
+		return nil
+	}
+
+	// Рекурсивный алгоритм поиска пар
+	for _, group := range leaderboardsMap {
+		allCombinations := calculations.GenerateAllCombinationsInGroup(group)
+
+		used := make([]bool, len(group))
+		var pairs [][2]int
+
+		ok := calculations.FindPairs(allCombinations, used, &pairs)
+		if !ok {
+			log.Error("failed find pairs")
+			return errs.ErrInternalError
+		}
+
+		for _, pa := range pairs {
+			newGame := game.Game{
+				EventID:  tourEventId,
+				TeamAId:  group[pa[0]].TeamID,
+				TeamBId:  group[pa[1]].TeamID,
+				Finished: game.NotFinished,
+			}
+			err := s.createGame(ctx, transactionDB, newGame)
+			if err != nil {
+				log.Error("failed create game", logger.Err(err))
+				return errs.ErrInternalError
+			}
+		}
+	}
+
 	return nil
 }
 

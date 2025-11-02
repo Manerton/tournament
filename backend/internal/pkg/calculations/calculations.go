@@ -4,6 +4,7 @@ import (
 	"main/internal/leaderboard/model/leaderboard"
 	"main/internal/team/model/team"
 	"math"
+	"slices"
 	"sort"
 )
 
@@ -44,6 +45,51 @@ func SortLeaderboards(leaderboards []leaderboard.Leaderboard) map[int][]leaderbo
 	// return leaderboards
 
 	return winGroup
+}
+
+func GenerateAllCombinationsInGroup(group []leaderboard.Leaderboard) [][]bool {
+	groupLen := len(group)
+	result := make([][]bool, groupLen)
+
+	for i := range group {
+		result[i] = make([]bool, groupLen)
+		for j := range group {
+			if i != j && !slices.Contains(group[i].EnemiesIds, group[j].TeamID.String()) {
+				result[i][j] = true
+			}
+		}
+	}
+	return result
+}
+
+func FindPairs(combitations [][]bool, used []bool, pairs *[][2]int) bool {
+	freeTeam := -1
+	for i, u := range used {
+		if !u {
+			freeTeam = i
+			break
+		}
+	}
+
+	if freeTeam == -1 {
+		return true
+	}
+
+	for j := freeTeam + 1; j < len(used); j++ {
+		if !used[j] && combitations[freeTeam][j] {
+			used[freeTeam], used[j] = true, true
+			*pairs = append(*pairs, [2]int{freeTeam, j})
+
+			if FindPairs(combitations, used, pairs) {
+				return true
+			}
+
+			*pairs = (*pairs)[:len(*pairs)-1]
+			used[freeTeam], used[j] = false, false
+		}
+	}
+
+	return false
 }
 
 func SortTeamByInitialScores(teams []team.Team) []team.Team {
