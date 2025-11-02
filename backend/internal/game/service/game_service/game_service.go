@@ -184,16 +184,7 @@ func (s *GameService) CreateGames(ctx context.Context, transactionDB *gorm.DB, m
 	return nil
 }
 
-func (s *GameService) createGamePairs(ctx context.Context, transactionDB *gorm.DB, leaderboards []leaderboard.Leaderboard, tourEventId uuid.UUID) error {
-	const op = "service.GameService.createGamePairs"
-
-	log := slog.With(slog.String("op", op))
-
-	// Сортируем команды по убыванию побед и очков
-	leaderboardsMap := calculations.SortLeaderboards(leaderboards)
-
-	// Проходим по всем группам команд с одинаковыми показателями
-	// Жадный алгоритм
+func (s *GameService) greedyGamePairsCreater(leaderboardsMap map[int][]leaderboard.Leaderboard) [][2]uuid.UUID {
 	usedTeams := []uuid.UUID{}
 	pairsUUID := [][2]uuid.UUID{}
 	for _, group := range leaderboardsMap {
@@ -209,6 +200,21 @@ func (s *GameService) createGamePairs(ctx context.Context, transactionDB *gorm.D
 			j--
 		}
 	}
+
+	return pairsUUID
+}
+
+func (s *GameService) createGamePairs(ctx context.Context, transactionDB *gorm.DB, leaderboards []leaderboard.Leaderboard, tourEventId uuid.UUID) error {
+	const op = "service.GameService.createGamePairs"
+
+	log := slog.With(slog.String("op", op))
+
+	// Сортируем команды по убыванию побед и очков
+	leaderboardsMap := calculations.SortLeaderboards(leaderboards)
+
+	// Проходим по всем группам команд с одинаковыми показателями
+	// Жадный алгоритм
+	pairsUUID := s.greedyGamePairsCreater(leaderboardsMap)
 
 	if len(pairsUUID)*2 == len(leaderboards) {
 		for _, pa := range pairsUUID {
