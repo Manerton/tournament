@@ -201,7 +201,7 @@ const TeamApplicationsPage: React.FC = () => {
                       <ul className="list-unstyled mb-0">
                         {teamMembers[team.id].map((m) => (
                           <li key={m.id} className="mb-1">
-                            <strong>{m.FIO}</strong> — {m.class} класс
+                            <strong>{m.FIO}</strong> — {m.class} класс — стартовый балл {m.initial_score}
                           </li>
                         ))}
                       </ul>

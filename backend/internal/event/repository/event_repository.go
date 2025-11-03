@@ -75,9 +75,9 @@ func (r *EventRepository) GetByPreviousEventIDAndStage(ctx context.Context, db *
 
 func (r *EventRepository) UpdateMaxStageById(ctx context.Context, db *gorm.DB, id uuid.UUID, maxStage int) error {
 	const op = "repository.EventRepository.UpdateMaxStageById"
-	err := db.WithContext(ctx).Model(event.Event{}).UpdateColumn("max_stage", maxStage)
+	err := db.WithContext(ctx).Model(event.Event{}).Where(event.Event{ID: id}).UpdateColumn("max_stage", maxStage).Error
 	if err != nil {
-
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
 

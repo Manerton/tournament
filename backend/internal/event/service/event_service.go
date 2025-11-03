@@ -171,29 +171,15 @@ func (s *EventService) Create(ctx context.Context, dto event_dto.EventDTOCreate)
 	transactionDB := s.db.Begin()
 	defer transactionDB.Commit()
 
-	var createdId uuid.UUID
-	// if not main event
-	if model.PreviousEventID != nil {
-		uid, err := s.createTour(ctx, transactionDB, *model.PreviousEventID)
-		if err != nil {
-			transactionDB.Rollback()
-			log.Error("failed create tour with games", logger.Err(err))
-			return uuid.Nil, errs.ErrInternalError
-		}
-		createdId = uid
-	} else {
-		model.Type = event.EventType
-		// simple create main event
-		err := s.repository.Create(ctx, transactionDB, &model)
-		if err != nil {
-			transactionDB.Rollback()
-			log.Error("failed create event", logger.Err(err))
-			return uuid.Nil, errs.ErrInternalError
-		}
-		createdId = model.ID
+	model.Type = event.EventType
+	// simple create main event
+	err := s.repository.Create(ctx, transactionDB, &model)
+	if err != nil {
+		transactionDB.Rollback()
+		log.Error("failed create event", logger.Err(err))
+		return uuid.Nil, errs.ErrInternalError
 	}
-
-	return createdId, nil
+	return model.ID, nil
 }
 
 func (s *EventService) createTour(ctx context.Context, transactionDB *gorm.DB, parentId uuid.UUID) (uuid.UUID, error) {

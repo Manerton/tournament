@@ -11,6 +11,13 @@ export interface EventUpdate {
   status: number
 }
 
+export interface EventCreate {
+  name: string
+  start_date: string
+  end_date: string
+  type_draws: number
+}
+
 export interface EventResponse {
   id: string
   name: string

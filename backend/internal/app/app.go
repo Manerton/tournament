@@ -178,7 +178,7 @@ func (a *App) initRoutes(router *chi.Mux,
 
 	// Группа маршрутов для событий
 	router.Route("/api/events", func(r chi.Router) {
-		r.With(authMiddleware.AuthVerify).Post("/", eventHandler.Create) // POST /api/events
+		r.With(authMiddleware.AuthVerify).Post("/create", eventHandler.Create) // POST /api/events
 		r.With(authMiddleware.AuthVerify).Post("/{id}/start", eventHandler.StartTournament)
 		r.With(authMiddleware.AuthVerify).Post("/{id}/finish", eventHandler.FinishEvent)
 		r.With(authMiddleware.AuthVerify).Post("/{id}/next-tour", eventHandler.NextTour)

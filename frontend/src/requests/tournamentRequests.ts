@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { EventResponse, EventUpdate } from "../types/TournamentTypes";
+import type { EventCreate, EventResponse, EventUpdate } from "../types/TournamentTypes";
 import { API_URL } from "../config/routes";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
 import { getCRFCookie } from "../components/helpers/AuthContext";
@@ -59,6 +59,20 @@ export async function axiosGetEventByStatus(Status: number) {
   }
 }
 
+
+export async function axiosCreateTournament(dto: EventCreate) {
+  try {
+    const res = await api.post<ApiResponse<any>>(`/api/events/create`, dto)
+    const json = res.data;
+    if (json.status === ResponseStatus.Error) {
+      throw new Error(json.message || "Ошибка при создании турнира");
+    }
+
+    return json.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Ошибка при создании турнира");
+  }
+}
 
 
 export async function axiosGetAllTournaments() {
