@@ -327,6 +327,11 @@ func (s *GameService) FinishGame(ctx context.Context, gameID string) error {
 		return errs.ErrInternalError
 	}
 
+	if gameModel.Finished != game.NotFinished {
+		log.Warn("game is already finished", slog.String("gameID", gameID))
+		return errs.ErrInvalidGameState.Wrap("Игра уже завершена")
+	}
+
 	teamAScore, err := s.getTeamScore(ctx, gameModel.TeamAId, gameModel.ID)
 	if err != nil {
 		log.Error("failed get team score", slog.String("TeamA", gameModel.TeamAId.String()))
@@ -340,8 +345,8 @@ func (s *GameService) FinishGame(ctx context.Context, gameID string) error {
 	}
 
 	if teamAScore == teamBScore {
-		// TODO get corrent error
-		return errs.ErrBadRequest
+		log.Warn("failed finish game, team score equal")
+		return errs.ErrInvalidGameState.Wrap(fmt.Sprintf("Количество очков конмады не должно быть равным друг другу. Сейчас: %d = %d", teamAScore, teamBScore))
 	}
 
 	winTeamA := teamAScore > teamBScore

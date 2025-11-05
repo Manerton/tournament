@@ -50,3 +50,8 @@ var (
 	ErrStartTournament = &ApiError{Code: "EVENT CAN`T START", HttpCode: http.StatusNoContent, Message: "teams is 0, can't start tournament"}
 	ErrFinishedEvent   = &ApiError{Code: "EVENT CAN`T FINISHED", HttpCode: http.StatusConflict, Message: "event cant finished"}
 )
+
+// Game errors
+var (
+	ErrInvalidGameState = &ApiError{Code: "INVALID_GAME_STATE", HttpCode: http.StatusBadRequest, Message: "invalid game state"}
+)
