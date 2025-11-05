@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Alert, Card, Container, Button, Modal, Form } from "react-bootstrap";
 import {
     axiosDeleteEvent,

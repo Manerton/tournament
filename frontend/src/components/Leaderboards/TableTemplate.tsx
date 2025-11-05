@@ -2,57 +2,93 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 
-interface TableRow {
-  id: string; // уникальный ключ, может быть name или id
-  name: string;
-  score: number;
+interface Column<T> {
+    key: keyof T;
+    label: string;
 }
 
-interface LiveTableProps {
-  title: string;
-  url: string;
-  interval?: number; // ms
+interface LiveTableProps<T> {
+    title: string;
+    url: string;
+    interval?: number; // ms
+    idKey: keyof T;
+    columns: Column<T>[];
+    sortKey: keyof T;
 }
 
-export default function LiveTable({ title, url, interval = 1000 }: LiveTableProps) {
-  const [rows, setRows] = useState<TableRow[]>([]);
+export default function LiveTable<T>({
+                                         title,
+                                         url,
+                                         interval = 1000,
+                                         idKey,
+                                         columns,
+                                         sortKey,
+                                     }: LiveTableProps<T>) {
+    const [rows, setRows] = useState<T[]>([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await axios.get<TableRow[]>(url);
-        const data = res.data;
-        data.sort((a, b) => b.score - a.score);
-        setRows(data);
-      } catch (err) {
-        console.error(`Error fetching data from ${url}:`, err);
-      }
-    };
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const res = await axios.get(url);
+                const data = res.data?.data ?? [];
 
-    fetchData();
-    const timer = setInterval(fetchData, interval);
+                if (!Array.isArray(data)) {
+                    console.error("Expected 'data' to be an array but got:", data);
+                    return;
+                }
 
-    return () => clearInterval(timer);
-  }, [url, interval]);
+                data.sort((a, b) => {
+                    const diff = (b[sortKey] as number) - (a[sortKey] as number);
+                    if (diff !== 0) return diff;
+                    return String(a[idKey]).localeCompare(String(b[idKey]));
+                });
+                setRows(data);
+            } catch (err) {
+                console.error(`Error fetching data from ${url}:`, err);
+            }
+        };
 
-  return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-2">{title}</h2>
-      <div className="space-y-2">
-        <AnimatePresence>
-          {rows.map((row) => (
-            <motion.div
-              key={row.id}
-              layout
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-white rounded-lg shadow p-3 flex justify-between"
-            >
-              <span>{row.name}</span>
-              <span>{row.score}</span>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
+        fetchData();
+        const timer = setInterval(fetchData, interval);
+        return () => clearInterval(timer);
+    }, [url, interval, sortKey]);
+
+    return (
+        <div className="p-1">
+            <h2 className="text-xl font-bold mb-2">{title}</h2>
+            <hr/>
+            <table className="table-hover table-bordered w-100 liquid-glass-bg shadow overflow-auto">
+                <thead>
+                <tr>
+                    {columns.map((col) => (
+                        <th
+                            key={col.key as string}
+                            className="border-b p-3 text-left font-semibold"
+                        >
+                            {col.label}
+                        </th>
+                    ))}
+                </tr>
+                </thead>
+                <tbody>
+                <AnimatePresence>
+                    {rows.map((row) => (
+                        <motion.tr
+                            key={row[idKey] as string}
+                            layout
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            className="hover:bg-gray-100"
+                        >
+                            {columns.map((col) => (
+                                <td key={col.key as string} className="border-b p-3">
+                                    {row[col.key] as React.ReactNode}
+                                </td>
+                            ))}
+                        </motion.tr>
+                    ))}
+                </AnimatePresence>
+                </tbody>
+            </table>
+        </div>
+    );
 }

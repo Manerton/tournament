@@ -14,6 +14,10 @@ import Tournaments from './components/Admin/Tournaments';
 import ToursPage from './components/Pages/ToursPage';
 import GamesPage from './components/Pages/Games';
 import GameVotePage from './components/Pages/GameVote';
+import PlayersTemplate from "./components/Leaderboards/PlayersTemplate.tsx";
+import ScoreTemplate from "./components/Leaderboards/ScoreTemplate.tsx";
+import WinLeaderboard from "./components/Leaderboards/WinLeaderboard.tsx";
+import GlobalLeaderboard from "./components/Leaderboards/GlobalLeaderboard.tsx";
 
 
 function App() {
@@ -29,7 +33,10 @@ function App() {
               <Route path="/tournaments/:id/tours" element={<ToursPage/>} />
               <Route path="/tours/:id/games" element={<GamesPage/>} />
               <Route path="/vote" element={<GameVotePage/>} />
-              {/*<Route path="/tournaments/leaderboard/:id" element={<LeaderboardTabs eventId={""}/>} />*/}
+              <Route path="/tournaments/:id/players" element={<PlayersTemplate />} />
+              <Route path="/tournaments/:id/score" element={<ScoreTemplate />} />
+              <Route path="/tournaments/:id/wins" element={<WinLeaderboard />} />
+              <Route path="/tournaments/:id/leaderboard" element={<GlobalLeaderboard />} />
           </Route>
            <Route element={<AdminLayout />}>
             <Route path="/AdminPanel" element={<AdminPanel />} />

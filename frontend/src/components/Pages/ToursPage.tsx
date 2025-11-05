@@ -63,6 +63,52 @@ const ToursPage: React.FC = () => {
 
     return (
         <Container className="py-4">
+
+            {/* Добавляем раздел с кнопками для лидербордов */}
+            <div className="mb-5">
+                <h3 className="mb-3 fw-bold text-center fs-4">Таблицы лидеров</h3>
+                <div className="d-flex justify-content-around gap-3">
+                    <Button
+                        variant="outline-primary"
+                        size="lg"
+                        className="flex-grow-1"
+                        onClick={() => navigate(`/tournaments/${id}/leaderboard`)}
+                    >
+                        Глобальная
+                    </Button>
+
+
+                    <Button
+                        variant="outline-primary"
+                        size="lg"
+                        className="flex-grow-1"
+                        onClick={() => navigate(`/tournaments/${id}/players`)}
+                    >
+                        Участники
+                    </Button>
+                    <Button
+                        variant="outline-primary"
+                        size="lg"
+                        className="flex-grow-1"
+                        onClick={() => navigate(`/tournaments/${id}/score`)}
+                    >
+                        По очкам
+                    </Button>
+                    <Button
+                        variant="outline-primary"
+                        size="lg"
+                        className="flex-grow-1"
+                        onClick={() => navigate(`/tournaments/${id}/wins`)}
+                    >
+                        По победам
+                    </Button>
+
+
+
+                </div>
+            </div>
+
+
             <h2 className="mb-4 fw-bold text-center display-6">Список туров</h2>
 
             {tours.length === 0 ? (
@@ -121,6 +167,8 @@ const ToursPage: React.FC = () => {
                     ))}
                 </div>
             )}
+
+
         </Container>
     );
 };

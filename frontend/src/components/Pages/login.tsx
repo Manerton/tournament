@@ -34,8 +34,8 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <Container className="d-flex align-items-center justify-content-center vh-100">
-      <Card className="p-4 shadow-lg" style={{ minWidth: "320px", maxWidth: "400px" }}>
+    <Container className="d-flex align-items-center  justify-content-center vh-100">
+      <Card className="p-4 shadow-lg liquid-glass-bg" style={{ minWidth: "320px", maxWidth: "400px" }}>
         <h3 className="text-center mb-4">Авторизация</h3>
 
         {error && <Alert variant="danger">{error}</Alert>}
