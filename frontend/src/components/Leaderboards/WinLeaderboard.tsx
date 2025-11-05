@@ -15,6 +15,7 @@ const WinLeaderboard: React.FC = () => {
                 url={`${API_URL}/api/leaderboard/wins/${id}`}
                 idKey="id"
                 sortKey="scoreWins"
+                sortKey2="score"
                 columns={[
                     /*{ key: "id", label: "ID" },*/
                     { key: "name", label: "Имя" },

@@ -46,6 +46,7 @@ const GlobalLeaderboard: React.FC = () => {
                         url={`${API_URL}/api/leaderboard/wins/${id}`}
                         idKey="id"
                         sortKey="scoreWins"
+                        sortKey2="score"
                         columns={[
                             { key: "name", label: "Имя" },
                             { key: "scoreWins", label: "Победы" },

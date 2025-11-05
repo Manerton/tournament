@@ -23,7 +23,8 @@ export default function LiveTable<T>({
                                          idKey,
                                          columns,
                                          sortKey,
-                                     }: LiveTableProps<T>) {
+                                         sortKey2 = null,
+                                     }: LiveTableProps<T> & { sortKey2?: keyof T | null }) {
     const [rows, setRows] = useState<T[]>([]);
 
     useEffect(() => {
@@ -38,10 +39,20 @@ export default function LiveTable<T>({
                 }
 
                 data.sort((a, b) => {
-                    const diff = (b[sortKey] as number) - (a[sortKey] as number);
-                    if (diff !== 0) return diff;
+                    // 1️⃣ Сначала сортируем по основному ключу
+                    const primaryDiff = (b[sortKey] as number) - (a[sortKey] as number);
+                    if (primaryDiff !== 0) return primaryDiff;
+
+                    // 2 Если есть sortKey2 — сортируем по нему
+                    if (sortKey2) {
+                        const secondaryDiff = (b[sortKey2] as number) - (a[sortKey2] as number);
+                        if (secondaryDiff !== 0) return secondaryDiff;
+                    }
+
+                    // 3Если значения равны — сортируем по idKey для стабильности
                     return String(a[idKey]).localeCompare(String(b[idKey]));
                 });
+
                 setRows(data);
             } catch (err) {
                 console.error(`Error fetching data from ${url}:`, err);
@@ -51,12 +62,12 @@ export default function LiveTable<T>({
         fetchData();
         const timer = setInterval(fetchData, interval);
         return () => clearInterval(timer);
-    }, [url, interval, sortKey]);
+    }, [url, interval, sortKey, sortKey2]);
 
     return (
         <div className="p-1">
             <h2 className="text-xl font-bold mb-2">{title}</h2>
-            <hr/>
+            <hr />
             <table className="table-hover table-bordered w-100 liquid-glass-bg shadow overflow-auto">
                 <thead>
                 <tr>
