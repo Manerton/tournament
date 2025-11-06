@@ -148,6 +148,12 @@ func (a *App) initRoutes(router *chi.Mux,
 
 	authMiddleware *auth_verification.AuthMiddleware) {
 
+	router.Route("/api/submissions", func(r chi.Router) {
+		r.Use(authMiddleware.AuthVerify)
+		r.Get("/{id}/all", submissionHandler.GetAllSubmissonsByEventId)
+		r.Get("/{id}/one", submissionHandler.GetSubmissionByEventIdAndCode)
+	})
+
 	// Группа маршрутов для аутентификации и сессий
 	router.Route("/api/sessions", func(r chi.Router) {
 		r.Post("/login", sessionHandler.Login)            // POST /api/sessions/login
@@ -218,11 +224,6 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Get("/wins/{id}", leadeboardHandler.GetByAllWins)
 		r.Get("/score/{id}", leadeboardHandler.GetByAllScore)
 		r.Get("/participants/{id}", leadeboardHandler.GetAllParticipantsScore)
-	})
-
-	router.Route("/api/submissions", func(r chi.Router) {
-		r.With(authMiddleware.AuthVerify).Get("event/all/{id}", submissionHandler.GetAllSubmissonsByEventId)
-		r.With(authMiddleware.AuthVerify).Get("event/one/{id}", submissionHandler.GetSubmissionByEventIdAndCode)
 	})
 
 }

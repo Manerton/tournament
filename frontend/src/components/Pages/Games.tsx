@@ -9,7 +9,7 @@ import { ThemeContext } from "../helpers/ThemeContext";
 import { EventStatus, type EventResponse } from "../../types/TournamentTypes";
 import { axiosFinishTour, axiosGetEventById, axiosNextTour } from "../../requests/tournamentRequests";
 
-const REFRESH_INTERVAL = 1500;
+const REFRESH_INTERVAL = 1000;
 
 const GamesPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -70,9 +70,9 @@ const GamesPage: React.FC = () => {
         }
     };
 
-    const handleTeamClick = (game: GameAllInformation) => {
+    const handleTeamClick = (game: GameAllInformation, mainEventId: string) => {
         if (!initialized) return;
-        navigate(`/vote`, { state: { game } });
+        navigate(`/vote`, { state: { game, mainEventId } });
     };
 
     const handleFinishTour = async () => {
@@ -120,7 +120,7 @@ const GamesPage: React.FC = () => {
                             <Col key={g.team_a_id + g.team_b_id}>
                                 <Card
                                     className="rounded-3 shadow-sm game-card liquid-glass-bg "
-                                    onClick={() => handleTeamClick(g)}
+                                    onClick={() => handleTeamClick(g, tour?.previous_event_id!)}
                                 >
                                     <Card.Body className="d-flex align-items-center justify-content-between text-center">
                                         <div

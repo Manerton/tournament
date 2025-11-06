@@ -6,9 +6,11 @@ import { GetTeamMembers } from "../../requests/teamRequests";
 import type { ParticipantResponseDTO } from "../../types/participantTypes";
 import { axiosUpdateParticipantScore } from "../../requests/participantRequest";
 import { axiosFinishGame, axiosGetGameParticipantsByListId } from "../../requests/gamesRequests";
+import SubmissionSidebar from "../common/SubmissionSidebar";
 
 interface Props {
     game: GameAllInformation;
+    mainEventId: string;
 }
 
 const GameVotePage: React.FC = () => {
@@ -20,6 +22,9 @@ const GameVotePage: React.FC = () => {
 
 
     const { game } = (location.state || {}) as Props;
+    const { mainEventId } = (location.state || {}) as Props;
+
+
     const [loading, setLoading] = useState(true);
     const [teamA, setTeamA] = useState<ParticipantResponseDTO[]>([]);
     const [teamB, setTeamB] = useState<ParticipantResponseDTO[]>([]);
@@ -158,6 +163,7 @@ const GameVotePage: React.FC = () => {
 
     return (
         <Container className="py-4">
+            <SubmissionSidebar eventId={mainEventId}/>
             <h2 className="mb-4 fw-bold text-center display-6">Оценка игр тура</h2>
 
             <div className="d-flex justify-content-center flex-wrap align-items-center mb-4">
