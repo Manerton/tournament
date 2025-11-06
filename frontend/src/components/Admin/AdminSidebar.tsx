@@ -81,10 +81,10 @@ const AdminSidebar: React.FC = () => {
                   </Nav.Link>
                 </LinkContainer>
 
-                <LinkContainer to="/participants">
+                <LinkContainer to="/UsersManagment">
                   <Nav.Link className="d-flex align-items-center text">
                     <People className="me-2" />
-                    {!collapsed && "Пользователи"}
+                    {!collapsed && "Жюри"}
                   </Nav.Link>
                 </LinkContainer>
 

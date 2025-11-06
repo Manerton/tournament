@@ -162,11 +162,11 @@ func (a *App) initRoutes(router *chi.Mux,
 
 	// Группа маршрутов для пользователей
 	router.Route("/api/users", func(r chi.Router) {
-		r.Post("/", userHandler.CreateUser)       // POST /api/users
-		r.Get("/{id}", userHandler.GetUserByID)   // GET /api/users/{id}
-		r.Get("/", userHandler.ListUsers)         // GET /api/users
-		r.Put("/{id}", userHandler.UpdateUser)    // PUT /api/users/{id}
-		r.Delete("/{id}", userHandler.DeleteUser) // DELETE /api/users/{id}
+		r.With(authMiddleware.AuthVerify).Post("/", userHandler.CreateUser)       // POST/api/users/
+		r.With(authMiddleware.AuthVerify).Get("/{id}", userHandler.GetUserByID)   // GET /api/users/{id}
+		r.With(authMiddleware.AuthVerify).Get("/all", userHandler.ListUsers)      // GET /api/users/all
+		r.With(authMiddleware.AuthVerify).Put("/{id}", userHandler.UpdateUser)    // PUT /api/users/{id}
+		r.With(authMiddleware.AuthVerify).Delete("/{id}", userHandler.DeleteUser) // DELETE /api/users/{id}
 	})
 
 	// Группа маршрутов для локаций

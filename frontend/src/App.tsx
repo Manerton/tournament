@@ -18,6 +18,7 @@ import PlayersTemplate from "./components/Leaderboards/PlayersTemplate.tsx";
 import ScoreTemplate from "./components/Leaderboards/ScoreTemplate.tsx";
 import WinLeaderboard from "./components/Leaderboards/WinLeaderboard.tsx";
 import GlobalLeaderboard from "./components/Leaderboards/GlobalLeaderboard.tsx";
+import UsersManagement from "./components/Admin/UsersManagment.tsx";
 
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
            <Route element={<AdminLayout />}>
             <Route path="/AdminPanel" element={<AdminPanel />} />
             <Route path='/TeamsApplications' element={<TeamApplicationsPage/>} />
+               <Route path='/UsersManagment' element={<UsersManagement/>} />
             <Route path='/olymp-admin/event/index' element={<Tournaments/>}/>
            </Route>
 
