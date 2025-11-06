@@ -21,6 +21,9 @@ import (
 	"main/internal/location/repository/school_repository"
 	"main/internal/location/service/district_service"
 	"main/internal/location/service/school_service"
+	"main/internal/submission/handler/submission_handler"
+	"main/internal/submission/repository/submission_repository"
+	"main/internal/submission/service/submission_service"
 
 	"main/internal/config"
 	"main/internal/event/handler/event_handler"
@@ -68,6 +71,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	leaderboardRepository := leaderboard_repository.New()
 	userRepository := user_repository.New()
 	sessionRepository := session_repository.New()
+	submissionRepository := submission_repository.New()
 
 	// init service
 	schoolService := school_service.New(log, storage, schoolRepository)
@@ -79,6 +83,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	eventService := event_service.New(log, storage, eventRepository, teamRepository, gameService, leaderboardService)
 	ssoService := sso_service.New(storage, log, userRepository, sessionRepository)
 	participantService := participant_service.New(log, storage, participantRepository, teamParticipantRepository)
+	submissionService := submission_service.New(log, storage, submissionRepository)
 
 	// init handler
 	locationHandler := location_handler.New(districtService, schoolService)
@@ -89,6 +94,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	userHandler := user_handler.NewUserHandler(ssoService)
 	participantHandler := participant_handler.NewParticipantHandler(participantService)
 	leaderboardhandler := leadeboard_handler.New(leaderboardService)
+	submissionHandler := submission_handler.New(submissionService)
 
 	//init auth
 	// init auth middleware
@@ -108,7 +114,17 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	router.Use(middleware.URLFormat)
 
 	// init routes
-	app.initRoutes(router, teamHandler, eventHandler, userHandler, sessionHandler, locationHandler, gameHandler, participantHandler, leaderboardhandler, authMiddleware)
+	app.initRoutes(router,
+		teamHandler,
+		eventHandler,
+		userHandler,
+		sessionHandler,
+		locationHandler,
+		gameHandler,
+		participantHandler,
+		leaderboardhandler,
+		submissionHandler,
+		authMiddleware)
 
 	// init server
 	app.server = &http.Server{
@@ -128,6 +144,7 @@ func (a *App) initRoutes(router *chi.Mux,
 	gameHandler *game_handler.GameHandler,
 	participantHandler *participant_handler.ParticipantHandler,
 	leadeboardHandler *leadeboard_handler.LeaderboardHandler,
+	submissionHandler *submission_handler.SubmissionHandler,
 
 	authMiddleware *auth_verification.AuthMiddleware) {
 
@@ -201,6 +218,11 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Get("/wins/{id}", leadeboardHandler.GetByAllWins)
 		r.Get("/score/{id}", leadeboardHandler.GetByAllScore)
 		r.Get("/participants/{id}", leadeboardHandler.GetAllParticipantsScore)
+	})
+
+	router.Route("/api/submissions", func(r chi.Router) {
+		r.With(authMiddleware.AuthVerify).Get("event/all/{id}", submissionHandler.GetAllSubmissonsByEventId)
+		r.With(authMiddleware.AuthVerify).Get("event/one/{id}", submissionHandler.GetSubmissionByEventIdAndCode)
 	})
 
 }
