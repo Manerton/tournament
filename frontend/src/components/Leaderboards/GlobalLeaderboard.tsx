@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import LiveTable from "./TableTemplate.tsx";
 import { API_URL } from "../../config/routes.ts";
 import { Col, Row } from "react-bootstrap";
-import type {LeaderboardPlayersDTOResponse, LeaderboardDTOResponse, LeaderboardWinDTOResponse} from "../../types/LeaderboadTypes.ts";
+import type {LeaderboardPlayersDTOResponse, /*LeaderboardDTOResponse,*/ LeaderboardWinDTOResponse} from "../../types/LeaderboadTypes.ts";
 
 const GlobalLeaderboard: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -11,6 +11,22 @@ const GlobalLeaderboard: React.FC = () => {
     return (
         <div className="container-fluid">
             <Row>
+
+                <Col>
+                    <LiveTable<LeaderboardWinDTOResponse>
+                        title="Таблица по победам"
+                        url={`${API_URL}/api/leaderboard/wins/${id}`}
+                        idKey="id"
+                        sortKey="scoreWins"
+                        sortKey2="score"
+                        columns={[
+                            { key: "name", label: "Название команды" },
+                            { key: "scoreWins", label: "Победы" },
+                            { key: "score", label: "Очки" },
+                        ]}
+                    />
+                </Col>
+
                 <Col>
                     <div className="table-responsive">
                         <LiveTable<LeaderboardPlayersDTOResponse>
@@ -27,7 +43,7 @@ const GlobalLeaderboard: React.FC = () => {
                     </div>
                 </Col>
 
-                <Col>
+                {/*<Col>
                     <LiveTable<LeaderboardDTOResponse>
                         title="Таблица команд по очкам"
                         url={`${API_URL}/api/leaderboard/score/${id}`}
@@ -38,22 +54,8 @@ const GlobalLeaderboard: React.FC = () => {
                             { key: "score", label: "Очки" },
                         ]}
                     />
-                </Col>
+                </Col>*/}
 
-                <Col>
-                    <LiveTable<LeaderboardWinDTOResponse>
-                        title="Таблица по победам"
-                        url={`${API_URL}/api/leaderboard/wins/${id}`}
-                        idKey="id"
-                        sortKey="scoreWins"
-                        sortKey2="score"
-                        columns={[
-                            { key: "name", label: "Имя" },
-                            { key: "scoreWins", label: "Победы" },
-                            { key: "score", label: "Очки" },
-                        ]}
-                    />
-                </Col>
             </Row>
         </div>
     );

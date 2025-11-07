@@ -18,7 +18,7 @@ const ScoreTemplate: React.FC = () => {
                 sortKey="score"
                 columns={[
                     /*{ key: "id", label: "ID" },*/
-                    { key: "name", label: "Имя" },
+                    { key: "name", label: "Название команды" },
                     { key: "score", label: "Очки" },
                 ]}
             />

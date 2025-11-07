@@ -18,7 +18,7 @@ const WinLeaderboard: React.FC = () => {
                 sortKey2="score"
                 columns={[
                     /*{ key: "id", label: "ID" },*/
-                    { key: "name", label: "Имя" },
+                    { key: "name", label: "Название команды" },
                     { key: "scoreWins", label: "Победы" },
                     { key: "score", label: "Очки" },
                 ]}
