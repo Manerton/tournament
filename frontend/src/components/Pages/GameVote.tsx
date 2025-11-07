@@ -1,6 +1,6 @@
 import { Alert, Accordion, Button, Container, Spinner, Modal } from "react-bootstrap";
-import type { GameAllInformation } from "../../types/gameType";
-import { useEffect, useState } from "react";
+import { GameStatus, type GameAllInformation } from "../../types/gameType";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { GetTeamMembers } from "../../requests/teamRequests";
 import type { ParticipantResponseDTO } from "../../types/participantTypes";
@@ -20,6 +20,10 @@ const GameVotePage: React.FC = () => {
     const [finishing, setFinishing] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
 
+    const [notify, setNotify] = useState<{ variant: "success" | "danger"; text: string } | null>(null);
+    const alertRef = useRef<HTMLDivElement | null>(null);
+
+
 
     const { game } = (location.state || {}) as Props;
     const { mainEventId } = (location.state || {}) as Props;
@@ -30,6 +34,13 @@ const GameVotePage: React.FC = () => {
     const [teamB, setTeamB] = useState<ParticipantResponseDTO[]>([]);
 
     const [scores, setScores] = useState<Record<string, number>>({})
+
+    useEffect(() => {
+        if (notify && alertRef.current) {
+            alertRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+    }, [notify]);
+
 
     useEffect(() => {
         if (!game) return;
@@ -61,6 +72,8 @@ const GameVotePage: React.FC = () => {
                 setScores(scoresMap)
                 console.log(scoresMap)
             } catch (err) {
+                const message = err instanceof Error ? err.message : "Не удалось загрузить очки участников";
+                setNotify({ variant: "danger", text: message });
                 console.error("Ошибка загрузки очков участников:", err);
             }
         }
@@ -73,12 +86,12 @@ const GameVotePage: React.FC = () => {
     const handleFinishGame = async () => {
         setFinishing(true);
         try {
-            const res = await axiosFinishGame(game.id);
-            console.log("TEST" ,res);
-            
+            await axiosFinishGame(game.id);
             console.log(`Игра ${game.id} завершена`);
             navigate(-1);
         } catch (err) {
+            const message = err instanceof Error ? err.message : "Не удалось завершить игру";
+            setNotify({ variant: "danger", text: message });
             console.error("Ошибка при завершении игры:", err);
         } finally {
             setFinishing(false);
@@ -112,7 +125,7 @@ const GameVotePage: React.FC = () => {
 
     const renderTeam = (teamName: string, team: ParticipantResponseDTO[], key: string) => (
         <Accordion.Item eventKey={key} className="liquid-glass-bg">
-            <Accordion.Header >{teamName}</Accordion.Header>
+            <Accordion.Header>{teamName}</Accordion.Header>
             <Accordion.Body>
                 {team.length === 0 ? (
                     <Alert variant="light">Нет участников</Alert>
@@ -136,6 +149,7 @@ const GameVotePage: React.FC = () => {
                                             size="sm"
                                             variant="outline-success"
                                             onClick={() => handleScoreChange(p.id, val)}
+                                            disabled={game.game_status !== GameStatus.NotFinished}
                                         >
                                             +{val}
                                         </Button>
@@ -148,6 +162,7 @@ const GameVotePage: React.FC = () => {
                                             size="sm"
                                             variant="outline-danger"
                                             onClick={() => handleScoreChange(p.id, -val)}
+                                            disabled={game.game_status !== GameStatus.NotFinished}
                                         >
                                             -{val}
                                         </Button>
@@ -161,10 +176,19 @@ const GameVotePage: React.FC = () => {
         </Accordion.Item>
     );
 
+
     return (
         <Container className="py-4">
-            <SubmissionSidebar eventId={mainEventId}/>
+            <SubmissionSidebar eventId={mainEventId} />
             <h2 className="mb-4 fw-bold text-center display-6">Оценка игр тура</h2>
+
+            {notify && (
+                <div ref={alertRef}>
+                    <Alert variant={notify.variant} className="text-center">
+                        {notify.text}
+                    </Alert>
+                </div>
+            )}
 
             <div className="d-flex justify-content-center flex-wrap align-items-center mb-4">
                 <h4 className="fw-bold me-3">{game.team_a_name}</h4>
@@ -183,14 +207,22 @@ const GameVotePage: React.FC = () => {
                         {renderTeam(game.team_b_name, teamB, "1")}
                     </Accordion>
 
+
                     <div className="text-center mt-5">
-                        <Button
-                            variant="outline-danger"
-                            size="lg"
-                            onClick={() => setShowConfirm(true)}
-                        >
-                            Завершить игру
-                        </Button>
+                        {game.game_status == GameStatus.NotFinished ? (
+                            <Button
+                                variant="outline-danger"
+                                size="lg"
+                                onClick={() => setShowConfirm(true)}
+                            >
+                                Завершить игру
+                            </Button>
+                        ) : (
+                            <div>
+                                Игра завершена
+                            </div>
+                        )}
+
                     </div>
                 </>
             )}
