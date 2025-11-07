@@ -182,67 +182,54 @@ export default function LiveTable<T>({
                 <AnimatePresence>
                     {rows.map((row, index) => {
                         const teamName = teamColumnKey ? String(row[teamColumnKey]) : "";
-                        const teamColor = colorMap[teamName] || "#ffffff"; // Белый по умолчанию
+                        const teamColor = colorMap[teamName] || "#ffffff";
 
-                        // Определение цвета для места (серебро темнее для контраста с #e0e0e0)
                         let placeColor: string | undefined;
-                        if (index === 0) {
-                            placeColor = "gold";
-                        } else if (index === 1) {
-                            placeColor = "#a0a0a0"; // Темнее серебра для контраста
-                        } else if (index === 2) {
-                            placeColor = "#cd7f32"; // Бронза
-                        }
+                        if (index === 0) placeColor = "gold";
+                        else if (index === 1) placeColor = "#a0a0a0";
+                        else if (index === 2) placeColor = "#cd7f32";
 
-                        // Анимация мигания (пульсации) с уменьшенными размерами теней
+                        // Плавная пульсация рамки и масштабирования
                         const placeAnimate = placeColor
                             ? {
-                                boxShadow: [
-                                    `0 0 2px 1px ${placeColor}`,
-                                    `0 0 5px 3px ${placeColor}`,
-                                ],
+                                borderColor: [placeColor, "transparent", placeColor],
+                                scale: [1, 1.005, 1],
                             }
-                            : undefined;
+                            : {};
 
-                        // Transition с разделением: layout - spring, boxShadow - tween
-                        const rowTransition = {
-                            layout: { type: "spring", stiffness: 300, damping: 30 },
-                        };
-
-                        if (placeColor) {
-                            rowTransition.boxShadow = {
-                                type: "tween",
+                        const placeTransition = placeColor
+                            ? {
                                 repeat: Infinity,
-                                repeatType: "reverse", // Для пульсации назад без третьего keyframe
+                                repeatType: "reverse" as const,
                                 duration: 1.5,
-                                ease: "easeInOut",
-                            };
-                        }
+                                ease: "easeInOut" as const,
+                            }
+                            : {};
 
                         return (
                             <motion.tr
                                 key={row[idKey] as string}
                                 layout
                                 animate={placeAnimate}
-                                transition={rowTransition}
+                                transition={placeTransition}
                                 className="hover:bg-gray-100"
-                                // Если хотите раскрасить всю строку: style={{ backgroundColor: teamColor }}
+                                style={{
+                                    border: placeColor ? `2px solid ${placeColor}` : undefined,
+                                    borderRadius: "8px",
+                                    backgroundColor: teamColor,
+                                }}
                             >
                                 {columns.map((col) => {
                                     const isTeamCell = col.key === teamColumnKey;
                                     return (
                                         <td
                                             key={col.key as string}
-                                            className={`border-b p-3 transition-colors duration-300 ${isTeamCell ? 'cursor-pointer' : ''}`}
-                                            style={
-                                                isTeamCell
-                                                    ? { backgroundColor: teamColor }
-                                                    : undefined
-                                            }
+                                            className={`border-b p-3 transition-colors duration-300 ${
+                                                isTeamCell ? "cursor-pointer" : ""
+                                            }`}
                                             onClick={
                                                 isTeamCell
                                                     ? () => {
-                                                        // Открываем color-picker при клике
                                                         const input = document.createElement("input");
                                                         input.type = "color";
                                                         input.value = teamColor;
@@ -263,6 +250,7 @@ export default function LiveTable<T>({
                             </motion.tr>
                         );
                     })}
+
                 </AnimatePresence>
                 </tbody>
             </table>
