@@ -57,7 +57,7 @@ func (r *SessionRepository) Update(ctx context.Context, db *gorm.DB, entity sess
 
 func (r *SessionRepository) DeleteByToken(ctx context.Context, db *gorm.DB, token string) error {
 	const op = "repositories.SessionRepository.DeleteByToken"
-	if err := db.WithContext(ctx).Delete(&session_storage.UserSession{}, "session_token = ?", token).Error; err != nil {
+	if err := db.WithContext(ctx).Delete(&session_storage.UserSession{}, "id = ?", token).Error; err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
