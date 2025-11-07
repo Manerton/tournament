@@ -13,6 +13,12 @@ export interface GameParticipant {
     score: number
 }
 
+export const GameStatus = {
+    NotFinished: 3,
+    TeamAWon: 1,
+    TeamBWon: 2
+}
+
 export interface GameAllInformation {
     id: string
     team_a_id: string
