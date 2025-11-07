@@ -10,7 +10,7 @@ import {
 } from "react-bootstrap";
 import { EventStatus, type EventResponse } from "../../types/TournamentTypes";
 import { TeamStatus, type TeamResponseDTO } from "../../types/teamType";
-import { axiosGetEventByStatus } from "../../requests/tournamentRequests";
+import { axiosGetEventByStatus, GetSchoolById, } from "../../requests/tournamentRequests";
 import {
   GetTeamsByEvent,
   GetTeamMembers,
@@ -29,6 +29,7 @@ const TeamApplicationsPage: React.FC = () => {
     Record<string, ParticipantResponseDTO[]>
   >({});
   const [loadingMembers, setLoadingMembers] = useState<string | null>(null);
+    const [schools, setSchools] = useState<Record<string, string>>({});
 
   // Загружаем турниры при монтировании
   useEffect(() => {
@@ -44,24 +45,41 @@ const TeamApplicationsPage: React.FC = () => {
   }, []);
 
   // Загружаем команды по выбранному турниру
-  useEffect(() => {
-    if (!selectedTournament) return;
-    const fetchTeams = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await GetTeamsByEvent(selectedTournament);
-        setTeams(data);
-      } catch (err: any) {
-        setError(err.message || "Ошибка при загрузке команд");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTeams();
-  }, [selectedTournament]);
+    useEffect(() => {
+        if (!selectedTournament) return;
+        const fetchTeams = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const data = await GetTeamsByEvent(selectedTournament);
+                setTeams(data);
 
-  // Запрос на участников
+                // --- дополнительная логика: подгружаем школы ---
+                const uniqueSchoolIds = [...new Set(data.map((t) => t.school_id))];
+                const schoolNames: Record<string, string> = {};
+
+                for (const id of uniqueSchoolIds) {
+                    try {
+                        const school = await GetSchoolById(id);
+                        schoolNames[id] = school.name;
+                    } catch {
+                        schoolNames[id] = "—";
+                    }
+                }
+                setSchools(schoolNames);
+                // ------------------------------------------------
+
+            } catch (err: any) {
+                setError(err.message || "Ошибка при загрузке команд");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchTeams();
+    }, [selectedTournament]);
+
+
+    // Запрос на участников
   const handleToggleMembers = async (teamId: string) => {
     if (expandedTeam === teamId) {
       setExpandedTeam(null);
@@ -143,6 +161,9 @@ const TeamApplicationsPage: React.FC = () => {
                     Ответственный: {team.responsible_name} • {" "}
                     {team.responsible_phone}
                   </div>
+                    <div className="text-muted small">
+                        Школа: {schools[team.school_id] || "Загрузка..."}
+                    </div>
                   <div className="mt-1">
                     <span
                       className={`badge ${

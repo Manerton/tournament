@@ -17,7 +17,7 @@ import (
 type SchoolRepositoryInterface interface {
 	GetAll(context.Context, *gorm.DB) ([]school.School, error)
 	GetByDistrictID(context.Context, *gorm.DB, uuid.UUID) ([]school.School, error)
-
+	GetByID(context.Context, *gorm.DB, uuid.UUID) (school.School, error)
 	Create(context.Context, *gorm.DB, *school.School) error
 	DeleteByID(context.Context, *gorm.DB, uuid.UUID) error
 }
@@ -80,4 +80,19 @@ func (s *SchoolService) DeleteByID(ctx context.Context, id string) error {
 		return fmt.Errorf("%s: failed delete school: %w", op, err)
 	}
 	return nil
+}
+
+func (s *SchoolService) GetByID(ctx context.Context, id string) (location_dto.SchoolDTOResponse, error) {
+	const op = "service.SchoolService.DeleteByID"
+
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return location_dto.SchoolDTOResponse{}, fmt.Errorf("%s: failed pares uid: %w", op, err)
+	}
+
+	entity, err := s.repository.GetByID(ctx, s.db, uid)
+	if err != nil {
+		return location_dto.SchoolDTOResponse{}, fmt.Errorf("%s: %w", op, err)
+	}
+	return location_mapper.ToDTOShcool(entity), nil
 }

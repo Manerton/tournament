@@ -3,6 +3,7 @@ import type { EventCreate, EventResponse, EventUpdate } from "../types/Tournamen
 import { API_URL } from "../config/routes";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
 import { getCRFCookie } from "../components/helpers/AuthContext";
+import type {SchoolDTOResponse} from "../types/locationTypes.ts";
 
 
 // import type {
@@ -177,4 +178,15 @@ export async function axiosDeleteEvent(id: string) {
   } catch (error: any) {
     throw new Error(error.response?.data?.message || "Ошибка при удалении события");
   }
+}
+
+export async function GetSchoolById(id: string): Promise<SchoolDTOResponse> {
+    const res = await fetch(`${API_URL}/api/locations/school/${id}`);
+    const json: ApiResponse<SchoolDTOResponse> = await res.json();
+
+    if (!res.ok) {
+        throw new Error(json.message || "Ошибка при загрузке школы");
+    }
+
+    return json.data;
 }

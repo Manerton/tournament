@@ -179,6 +179,7 @@ func (a *App) initRoutes(router *chi.Mux,
 	router.Route("/api/locations", func(r chi.Router) {
 		r.Get("/districts", locationHandler.GetAllDistrict)
 		r.Get("/districts/{id}/schools", locationHandler.GetSchoolsByDistrictId)
+		r.Get("/school/{id}", locationHandler.GetById)
 	})
 
 	// Группа маршрутов для команд

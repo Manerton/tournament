@@ -20,7 +20,7 @@ const WinLeaderboard: React.FC = () => {
                     /*{ key: "id", label: "ID" },*/
                     { key: "name", label: "Название команды" },
                     { key: "scoreWins", label: "Победы" },
-                    { key: "score", label: "Очки" },
+                    // { key: "score", label: "Очки" },
                 ]}
             />
         </div>

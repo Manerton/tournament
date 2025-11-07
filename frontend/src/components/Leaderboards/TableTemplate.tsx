@@ -1,6 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
+import { FaCrown } from "react-icons/fa6";
+import { GiBlackKnightHelm, GiWingedSword, GiWingedShield  } from "react-icons/gi";
+
 
 interface Column<T> {
     key: keyof T;
@@ -120,7 +123,7 @@ export default function LiveTable<T>({
                 // Генерация цветов для новых команд (если teamColumnKey есть)
                 if (teamColumnKey) {
                     setColorMap((prevMap) => {
-                        const newMap = { ...prevMap };
+                        const newMap = {...prevMap};
                         const existingColors = Object.values(newMap);
                         data.forEach((row) => {
                             const teamName = String(row[teamColumnKey]);
@@ -158,21 +161,21 @@ export default function LiveTable<T>({
             return;
         }
 
-        setColorMap((prev) => ({ ...prev, [teamName]: newColor }));
+        setColorMap((prev) => ({...prev, [teamName]: newColor}));
     };
 
     return (
         <div className="p-1">
             <h2 className="text-xl font-bold mb-2">{title}</h2>
-            <hr />
-            <table className="table-hover table-bordered w-100 liquid-glass-bg shadow overflow-auto" style={{ borderCollapse: "separate", borderSpacing: "0 10px" }}>
+            <hr/>
+            <table
+                className="table-bordered w-100 liquid-glass-bg shadow overflow-auto"
+                style={{borderCollapse: "separate", borderSpacing: "0 10px"}}
+            >
                 <thead>
                 <tr>
                     {columns.map((col) => (
-                        <th
-                            key={col.key as string}
-                            className="border-b p-3 text-left font-semibold"
-                        >
+                        <th key={col.key as string} className="border-b p-3 text-left font-semibold">
                             {col.label}
                         </th>
                     ))}
@@ -184,47 +187,33 @@ export default function LiveTable<T>({
                         const teamName = teamColumnKey ? String(row[teamColumnKey]) : "";
                         const teamColor = colorMap[teamName] || "#ffffff";
 
-                        let placeColor: string | undefined;
-                        if (index === 0) placeColor = "gold";
-                        else if (index === 1) placeColor = "#a0a0a0";
-                        else if (index === 2) placeColor = "#cd7f32";
+                        // --- убрали пульсацию и анимацию
+                        const placeIcons = [
+                            <FaCrown color="gold" size={32} title="1 место" />,
+                            <GiBlackKnightHelm color="#a0a0a0" size={32} title="2 место" />,
+                            <GiWingedSword color="#cd7f32" size={32} title="3 место" />,
+                            <GiWingedShield color="#4682B4" size={32} title="4 место" />,
+                        ];
 
-                        // Плавная пульсация рамки и масштабирования
-                        const placeAnimate = placeColor
-                            ? {
-                                borderColor: [placeColor, "transparent", placeColor],
-                                scale: [1, 1.005, 1],
-                            }
-                            : {};
-
-                        const placeTransition = placeColor
-                            ? {
-                                repeat: Infinity,
-                                repeatType: "reverse" as const,
-                                duration: 1.5,
-                                ease: "easeInOut" as const,
-                            }
-                            : {};
 
                         return (
                             <motion.tr
                                 key={row[idKey] as string}
                                 layout
-                                animate={placeAnimate}
-                                transition={placeTransition}
-                                className="hover:bg-gray-100"
+                                className="hover:bg-gray-100 align-middle"
                                 style={{
-                                    border: placeColor ? `2px solid ${placeColor}` : undefined,
-                                    borderRadius: "8px",
                                     backgroundColor: teamColor,
+                                    borderRadius: "8px",
                                 }}
                             >
-                                {columns.map((col) => {
+                                {columns.map((col, colIndex) => {
                                     const isTeamCell = col.key === teamColumnKey;
+                                    const isFirstColumn = colIndex === 0;
+
                                     return (
                                         <td
                                             key={col.key as string}
-                                            className={`border-b p-3 transition-colors duration-300 ${
+                                            className={`border-b p-3 position-relative transition-colors duration-300 ${
                                                 isTeamCell ? "cursor-pointer" : ""
                                             }`}
                                             onClick={
@@ -242,15 +231,32 @@ export default function LiveTable<T>({
                                                     }
                                                     : undefined
                                             }
+                                            style={{ textAlign: "center", verticalAlign: "middle" }}
                                         >
+                                            {/* Иконка прижата влево */}
+                                            {isFirstColumn && index < 4 && (
+                                                <span
+                                                    style={{
+                                                        position: "absolute",
+                                                        left: "6px",
+                                                        top: "50%",
+                                                        transform: "translateY(-50%)",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                    }}
+                                                >
+                                                      {placeIcons[index]}
+                                                </span>
+                                            )}
+                                            {/* Название команды по центру */}
                                             {row[col.key] as React.ReactNode}
                                         </td>
+
                                     );
                                 })}
                             </motion.tr>
                         );
                     })}
-
                 </AnimatePresence>
                 </tbody>
             </table>

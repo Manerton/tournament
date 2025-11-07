@@ -17,6 +17,7 @@ type DistrictServiceInterface interface {
 
 type SchoolServiceInterface interface {
 	GetByDistrictId(ctx context.Context, id string) ([]location_dto.SchoolDTOResponse, error)
+	GetByID(ctx context.Context, id string) (location_dto.SchoolDTOResponse, error)
 }
 
 type LocationHandler struct {
@@ -76,4 +77,22 @@ func (h *LocationHandler) GetSchoolsByDistrictId(w http.ResponseWriter, r *http.
 		Data:       results,
 	})
 
+}
+
+func (h *LocationHandler) GetById(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := chi.URLParam(r, "id")
+	results, err := h.schoolService.GetByID(ctx, id)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+	}
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.StatusOK,
+		StatusCode: http.StatusOK,
+		Data:       results,
+	})
 }
