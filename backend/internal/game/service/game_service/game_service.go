@@ -23,7 +23,9 @@ import (
 
 type GameRepositoryInterface interface {
 	Create(ctx context.Context, db *gorm.DB, _ *game.Game) error
+	GetByIDPreload(ctx context.Context, db *gorm.DB, _ uuid.UUID) (game.Game, error)
 	GetByID(ctx context.Context, db *gorm.DB, _ uuid.UUID) (game.Game, error)
+
 	GetByEventId(ctx context.Context, db *gorm.DB, eventId uuid.UUID) ([]game.Game, error)
 
 	UpdateByID(ctx context.Context, db *gorm.DB, game game.Game) error
@@ -468,10 +470,53 @@ func (s *GameService) GetGamesAllInformation(ctx context.Context, eventId string
 	return allGamesInfo, nil
 }
 
+func (s *GameService) GetGameAllInformation(ctx context.Context, gameId string) (game_dto.GameAllInfoResponse, error) {
+	const op = "service.GameService.GetGameAllInformation"
+
+	log := s.log.With(slog.String("op", op))
+
+	uid, err := uuid.Parse(gameId)
+	if err != nil {
+		log.Error("failed parse id to uuid", logger.Err(err))
+		return game_dto.GameAllInfoResponse{}, errs.ErrInternalError
+	}
+
+	gameModel, err := s.gameRepository.GetByIDPreload(ctx, s.db, uid)
+	if err != nil {
+		log.Error("failed get game by id", logger.Err(err))
+		return game_dto.GameAllInfoResponse{}, errs.ErrInternalError
+	}
+
+	teamAScore, err := s.getScoreTeamParticipants(ctx, gameModel.ID, gameModel.TeamAId)
+	if err != nil {
+		log.Error("failed get score team A", logger.Err(err))
+		return game_dto.GameAllInfoResponse{}, errs.ErrInternalError
+	}
+
+	teamBScore, err := s.getScoreTeamParticipants(ctx, gameModel.ID, gameModel.TeamBId)
+	if err != nil {
+		log.Error("failed get score team B", logger.Err(err))
+		return game_dto.GameAllInfoResponse{}, errs.ErrInternalError
+	}
+
+	newGamesInfo := game_dto.GameAllInfoResponse{
+		ID:         gameModel.ID.String(),
+		TeamAName:  gameModel.TeamA.Name,
+		TeamAId:    gameModel.TeamA.ID.String(),
+		TeamBName:  gameModel.TeamB.Name,
+		TeamBId:    gameModel.TeamB.ID.String(),
+		TeamAScore: teamAScore,
+		TeamBScore: teamBScore,
+		GameStatus: gameModel.Finished,
+	}
+
+	return newGamesInfo, nil
+}
+
 func (s *GameService) getScoreTeamParticipants(ctx context.Context, gameId uuid.UUID, teamId uuid.UUID) (int, error) {
 	const op = "service.GameService.getScoreTeamParticipants"
 
-	log := slog.With(slog.String("op", op))
+	log := s.log.With(slog.String("op", op))
 
 	allParticipantsTeam, err := s.teamParticipantRepository.GetAllByTeamID(ctx, s.db, teamId)
 	if err != nil {

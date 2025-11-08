@@ -28,3 +28,14 @@ func (r *GameRespository) GetByEventId(ctx context.Context, db *gorm.DB, eventId
 	}
 	return games, nil
 }
+
+func (r *GameRespository) GetByIDPreload(ctx context.Context, db *gorm.DB, id uuid.UUID) (game.Game, error) {
+	const op = "repository.GameRepository.GetByIDPreload"
+
+	result := game.Game{}
+	err := db.WithContext(ctx).Preload("TeamA").Preload("TeamB").Where(game.Game{ID: id}).First(&result).Error
+	if err != nil {
+		return game.Game{}, fmt.Errorf("%s: %w", op, err)
+	}
+	return result, nil
+}

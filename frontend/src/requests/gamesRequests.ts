@@ -36,6 +36,21 @@ export async function axiosGetGames(id: string) {
   }
 }
 
+export async function axiosGetGameById(id: string) {
+  try {
+    const res = await api.get<ApiResponse<GameAllInformation>>(`/api/games/${id}/one`)
+    const json = res.data
+
+    if (json.status == ResponseStatus.Error) {
+      throw new Error(json.message || "")
+    }
+
+    return json.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "")
+  }
+}
+
 export async function axiosGetGameParticipantsByListId(partisipantIds: string[]) {
   try {
     const res = await api.post<ApiResponse<GameParticipant[]>>(`/api/games/participants/by-list-id`, {

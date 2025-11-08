@@ -17,6 +17,8 @@ type GameServiceInterface interface {
 	GetGamesAllInformation(ctx context.Context, eventId string) ([]game_dto.GameAllInfoResponse, error)
 	GetGameParticipantsByListIDs(ctx context.Context, ids []string) ([]game_dto.GameParticipantDTOResponse, error)
 
+	GetGameAllInformation(ctx context.Context, id string) (game_dto.GameAllInfoResponse, error)
+
 	UpdateScore(ctx context.Context, gameId string, participantId string, score string) (int, error)
 }
 
@@ -77,6 +79,29 @@ func (h *GameHandler) GetGamesAllInformation(w http.ResponseWriter, r *http.Requ
 
 	id := chi.URLParam(r, "id")
 	result, err := h.gameService.GetGamesAllInformation(ctx, id)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.StatusOK,
+		StatusCode: http.StatusOK,
+		Data:       result,
+	})
+}
+
+func (h *GameHandler) GetOneGameAllInformation(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id := chi.URLParam(r, "id")
+	result, err := h.gameService.GetGameAllInformation(ctx, id)
 	if err != nil {
 		if apiErr, ok := errs.IsApiError(err); ok {
 			render.Status(r, apiErr.HttpCode)

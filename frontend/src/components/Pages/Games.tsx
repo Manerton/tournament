@@ -145,7 +145,7 @@ const GamesPage: React.FC = () => {
 
     const handleTeamClick = (game: GameAllInformation) => {
         if (!initialized || game.game_status !== GameStatus.NotFinished) return;
-        navigate(`/vote`, { state: { game, mainEventId: tour?.previous_event_id } });
+        navigate(`/vote`, { state: { id: game.id, mainEventId: tour?.previous_event_id } });
     };
 
     const handleFinishTour = async () => {

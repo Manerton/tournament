@@ -202,6 +202,7 @@ func (a *App) initRoutes(router *chi.Mux,
 	router.Route("/api/games", func(r chi.Router) {
 		r.Get("/{id}/tours", gameHandler.GetByEventId)
 		r.Get("/{id}/all-info", gameHandler.GetGamesAllInformation)
+		r.Get("/{id}/one", gameHandler.GetOneGameAllInformation)
 		r.With(authMiddleware.AuthVerify).Post("/{id}/finish", gameHandler.FinisheGame)
 		r.With(authMiddleware.AuthVerify).Post("/vote/{id}", gameHandler.UpdateScore)
 
