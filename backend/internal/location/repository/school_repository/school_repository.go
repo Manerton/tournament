@@ -28,3 +28,14 @@ func (r *SchoolRepository) GetByDistrictID(ctx context.Context, db *gorm.DB, dis
 	}
 	return schools, nil
 }
+
+func (r *SchoolRepository) GetByIdPrelaod(ctx context.Context, db *gorm.DB, id uuid.UUID) (school.School, error) {
+	const op = "repository.SchoolRepostitory.GetByIdPrelaod"
+
+	result := school.School{}
+	err := db.WithContext(ctx).Model(school.School{}).Preload("District").Where(school.School{ID: id}).First(&result).Error
+	if err != nil {
+		return school.School{}, fmt.Errorf("%s: %w", op, err)
+	}
+	return result, nil
+}

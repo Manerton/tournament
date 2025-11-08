@@ -21,6 +21,8 @@ import (
 	"main/internal/location/repository/school_repository"
 	"main/internal/location/service/district_service"
 	"main/internal/location/service/school_service"
+	"main/internal/report/handler/report_handler"
+	"main/internal/report/service/report_service"
 	"main/internal/submission/handler/submission_handler"
 	"main/internal/submission/repository/submission_repository"
 	"main/internal/submission/service/submission_service"
@@ -85,6 +87,8 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	participantService := participant_service.New(log, storage, participantRepository, teamParticipantRepository)
 	submissionService := submission_service.New(log, storage, submissionRepository)
 
+	reportService := report_service.New(log, storage, teamRepository, teamParticipantRepository, schoolRepository)
+
 	// init handler
 	locationHandler := location_handler.New(districtService, schoolService)
 	gameHandler := game_handler.New(gameService)
@@ -95,6 +99,8 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	participantHandler := participant_handler.NewParticipantHandler(participantService)
 	leaderboardhandler := leadeboard_handler.New(leaderboardService)
 	submissionHandler := submission_handler.New(submissionService)
+
+	reportHandler := report_handler.New(reportService)
 
 	//init auth
 	// init auth middleware
@@ -124,6 +130,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		participantHandler,
 		leaderboardhandler,
 		submissionHandler,
+		reportHandler,
 		authMiddleware)
 
 	// init server
@@ -145,6 +152,7 @@ func (a *App) initRoutes(router *chi.Mux,
 	participantHandler *participant_handler.ParticipantHandler,
 	leadeboardHandler *leadeboard_handler.LeaderboardHandler,
 	submissionHandler *submission_handler.SubmissionHandler,
+	reportHandler *report_handler.ReportHandler,
 
 	authMiddleware *auth_verification.AuthMiddleware) {
 
@@ -227,6 +235,10 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Get("/participants/{id}", leadeboardHandler.GetAllParticipantsScore)
 	})
 
+	router.Route("/api/report", func(r chi.Router) {
+		r.Use(authMiddleware.AuthVerify)
+		r.Get("/teams-report/{id}", reportHandler.ExportTeamsToXLSX)
+	})
 }
 
 func (a *App) initCors(router *chi.Mux, frontedUrl string) {

@@ -102,7 +102,7 @@ const AdminSidebar: React.FC = () => {
                   </Nav.Link>
                 </LinkContainer>
 
-                <LinkContainer to="/report">
+                <LinkContainer to="/Report">
                   <Nav.Link className="d-flex align-items-center text">
                     <CreditCard className="me-2" />
                     {!collapsed && "Отчеты"}
