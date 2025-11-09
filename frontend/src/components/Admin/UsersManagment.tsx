@@ -4,10 +4,20 @@ import { Table, Button, Form, Modal, Spinner, Alert } from "react-bootstrap";
 import axios from "axios";
 import { API_URL } from "../../config/routes";
 import { ResponseStatus, type ApiResponse } from "../../types/responseTypes";
-import { getCRFCookie } from "../../components/helpers/AuthContext"; // <-- убедись, что путь верный
+import { getCRFCookie } from "../../components/helpers/AuthContext";
 
 // -------- axios instance with CSRF interceptor ----------
 const API_BASE = API_URL || "http://172.16.0.196:8080";
+
+const convertRoleToString = (role: number): string => {
+    if (role === 1) {
+        return "Администратор";
+    } else if (role === 2) {
+        return "Жюри";
+    } else {
+        return "Не указано";
+    }
+}
 
 const api = axios.create({
     baseURL: API_BASE,
@@ -36,16 +46,19 @@ api.interceptors.request.use((config) => {
 interface UserResponseDTO {
     id: string;
     login: string;
+    role: number;
 }
 
 interface UserCreateDTO {
     login: string;
     password: string;
+    role: number;
 }
 
 interface UserUpdateDTO {
     login?: string;
     password?: string;
+    role?: number;
 }
 
 // -------- компонент ----------
@@ -55,7 +68,7 @@ const UsersManagement: React.FC = () => {
     const [error, setError] = useState("");
     const [showModal, setShowModal] = useState(false);
     const [editUser, setEditUser] = useState<UserResponseDTO | null>(null);
-    const [form, setForm] = useState<UserCreateDTO>({ login: "", password: "" });
+    const [form, setForm] = useState<UserCreateDTO>({ login: "", password: "", role: 0 });
 
     // ---- загрузка списка ----
     async function loadUsers() {
@@ -93,7 +106,7 @@ const UsersManagement: React.FC = () => {
         try {
             await api.post<ApiResponse<any>>("/api/users", form);
             setShowModal(false);
-            setForm({ login: "", password: "" });
+            setForm({ login: "", password: "", role: 0 });
             await loadUsers();
         } catch (err: any) {
             alert(err.response?.data?.message || "Ошибка при создании пользователя");
@@ -107,11 +120,12 @@ const UsersManagement: React.FC = () => {
             const dto: UserUpdateDTO = {};
             if (form.login) dto.login = form.login;
             if (form.password) dto.password = form.password;
+            if (form.role !== 0) dto.role = form.role;
 
             await api.put<ApiResponse<any>>(`/api/users/${id}`, dto);
             setShowModal(false);
             setEditUser(null);
-            setForm({ login: "", password: "" });
+            setForm({ login: "", password: "", role: 0 });
             await loadUsers();
         } catch (err: any) {
             alert(err.response?.data?.message || "Ошибка при обновлении пользователя");
@@ -133,10 +147,14 @@ const UsersManagement: React.FC = () => {
     function openModal(user?: UserResponseDTO) {
         if (user) {
             setEditUser(user);
-            setForm({ login: user.login, password: "" });
+            setForm({
+                login: user.login,
+                password: "",
+                role: user.role
+            });
         } else {
             setEditUser(null);
-            setForm({ login: "", password: "" });
+            setForm({ login: "", password: "", role: 0 });
         }
         setShowModal(true);
     }
@@ -158,17 +176,19 @@ const UsersManagement: React.FC = () => {
                     <tr>
                         <th>ID</th>
                         <th>Логин</th>
+                        <th>Роль</th>
                         <th>Действия</th>
                     </tr>
                     </thead>
                     <tbody>
                     {users.length === 0 ? (
-                        <tr><td colSpan={3} className="text-center">Нет пользователей</td></tr>
+                        <tr><td colSpan={4} className="text-center">Нет пользователей</td></tr>
                     ) : (
                         users.map((u) => (
                             <tr key={u.id}>
                                 <td>{u.id}</td>
                                 <td>{u.login}</td>
+                                <td>{convertRoleToString(u.role)}</td>
                                 <td>
                                     <Button
                                         variant="outline-primary"
@@ -217,6 +237,23 @@ const UsersManagement: React.FC = () => {
                                 required={!editUser}
                                 placeholder={editUser ? "Оставьте пустым, если не нужно менять" : ""}
                             />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Роль</Form.Label>
+                            <Form.Select
+                                value={form.role}
+                                onChange={(e) => setForm({ ...form, role: parseInt(e.target.value) })}
+                                required
+                            >
+                                <option value={0}>Выберите роль</option>
+                                <option value={1}>Администратор</option>
+                                <option value={2}>Жюри</option>
+                            </Form.Select>
+                            {form.role !== 0 && (
+                                <Form.Text className="text-muted">
+                                    Выбрана роль: {convertRoleToString(form.role)}
+                                </Form.Text>
+                            )}
                         </Form.Group>
                         <div className="text-end">
                             <Button variant="secondary" onClick={() => setShowModal(false)} className="me-2">

@@ -3,6 +3,7 @@ package session_handler
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	sso_dto "main/internal/SSO/dto"
@@ -26,8 +27,8 @@ type SessionServiceInterface interface {
 	DeleteSession(ctx context.Context, id string) error
 	DeleteSessionByToken(ctx context.Context, token string) error
 	DeleteExpiredSessions(ctx context.Context) error
-	Login(ctx context.Context, login, password string) (uuid.UUID, string, string, error)
-	Refresh(ctx context.Context, token string) (uuid.UUID, string, string, error)
+	Login(ctx context.Context, login, password string) (sso_dto.SessionResponseDTO, error)
+	Refresh(ctx context.Context, token string) (sso_dto.SessionResponseDTO, error)
 	Logout(ctx context.Context, sessionID string) error
 }
 
@@ -50,7 +51,7 @@ func (h *SessionHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId, sessionToken, csrfToken, err := h.service.Login(ctx, dto.Login, dto.Password)
+	session, err := h.service.Login(ctx, dto.Login, dto.Password)
 	if err != nil {
 		render.Status(r, http.StatusUnauthorized)
 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap(err.Error())))
@@ -60,7 +61,7 @@ func (h *SessionHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Ставим session_token в HttpOnly cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
-		Value:    sessionToken,
+		Value:    session.SessionToken,
 		Expires:  time.Now().Add(30 * time.Minute),
 		Path:     "/",
 		HttpOnly: true,  // запрещает доступ из JS
@@ -70,7 +71,7 @@ func (h *SessionHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "csrf_token",
-		Value:    csrfToken,
+		Value:    session.CSRFToken,
 		Expires:  time.Now().Add(30 * time.Minute),
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
@@ -82,7 +83,8 @@ func (h *SessionHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Status:     response.StatusOK,
 		StatusCode: http.StatusOK,
 		Data: map[string]string{
-			"user_id": userId.String(),
+			"user_id": session.UserId.String(),
+			"role":    strconv.Itoa(int(session.Role)),
 		},
 	})
 }
@@ -100,7 +102,7 @@ func (h *SessionHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Вызываем сервис для обновления токенов
-	userId, sessionToken, csrfToken, err := h.service.Refresh(ctx, cookie.Value)
+	session, err := h.service.Refresh(ctx, cookie.Value)
 	if err != nil {
 		render.Status(r, http.StatusInternalServerError)
 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError.Wrap(err.Error())))
@@ -110,7 +112,7 @@ func (h *SessionHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	// Ставим session_token в HttpOnly cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_token",
-		Value:    sessionToken,
+		Value:    session.SessionToken,
 		Expires:  time.Now().Add(30 * time.Minute),
 		Path:     "/",
 		HttpOnly: true,  // запрещает доступ из JS
@@ -120,7 +122,7 @@ func (h *SessionHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "csrf_token",
-		Value:    csrfToken,
+		Value:    session.CSRFToken,
 		Expires:  time.Now().Add(30 * time.Minute),
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
@@ -132,7 +134,8 @@ func (h *SessionHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		Status:     response.StatusOK,
 		StatusCode: http.StatusOK,
 		Data: map[string]string{
-			"user_id": userId.String(),
+			"user_id": session.UserId.String(),
+			"role":    strconv.Itoa(int(session.Role)),
 		},
 	})
 }
@@ -140,9 +143,18 @@ func (h *SessionHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 // POST /sessions/logout/{id}
 func (h *SessionHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := chi.URLParam(r, "id")
 
-	if err := h.service.Logout(ctx, id); err != nil {
+	// Достаём cookie
+	cookie, err := r.Cookie("session_token")
+	if err != nil {
+		render.Status(r, http.StatusUnauthorized)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError.Wrap("session cookie not found")))
+		return
+	}
+
+	sessionToken := cookie.Value
+	// Теперь можешь передать sessionToken в сервис
+	if err := h.service.Logout(ctx, sessionToken); err != nil {
 		render.Status(r, http.StatusInternalServerError)
 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError.Wrap(err.Error())))
 		return
@@ -161,7 +173,7 @@ func (h *SessionHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Name:     "csrf_token",
 		Value:    "",
 		Expires:  time.Now().Add(-time.Minute),
-		HttpOnly: false, // запрещает доступ из JS
+		HttpOnly: false,
 	})
 
 	render.JSON(w, r, response.ApiResponse{

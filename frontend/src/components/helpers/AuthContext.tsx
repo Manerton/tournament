@@ -58,8 +58,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await axiosLoginSession(login, password);
       const userId = response.data.data.user_id;
-
-      setUser({ id: userId, email: login });
+      const userRole = response.data.data.role;
+      setUser({ id: userId,role: userRole, email: login });
       setExpires(Date.now() + 30 * 60 * 1000);
 
       // Читаем CSRF из cookie после логина
@@ -88,14 +88,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await axiosRefreshSession();
       const refreshedUserId = response.data.data.user_id;
-
+      const userRole = response.data.data.role;
       setExpires(Date.now() + 30 * 60 * 1000);
 
       // Обновляем CSRF токен после refresh
       const token = getCookie("csrf_token");
       if (token) setCsrfToken(token);
 
-      const updatedUser = { id: refreshedUserId, email: "" };
+      const updatedUser = { id: refreshedUserId,role: userRole,  email: "" };
       setUser(updatedUser);
       return updatedUser;
 

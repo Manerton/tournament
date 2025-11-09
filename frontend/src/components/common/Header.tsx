@@ -68,7 +68,7 @@ function Header() {
                                     <Nav.Link>Турниры</Nav.Link>
                                 </LinkContainer>
 
-                                {isAuthenticated && (
+                                {isAuthenticated && user?.role == "1" &&  (
                                     <LinkContainer to="/AdminPanel">
                                         <Nav.Link>Админ панель</Nav.Link>
                                     </LinkContainer>

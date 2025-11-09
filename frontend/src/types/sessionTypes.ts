@@ -1,5 +1,6 @@
 export interface UserAuth {
   id: string;
+  role: string;
   email?: string;
 }
 
@@ -8,18 +9,20 @@ export interface LoginResponse {
   status_code: number;
   data: {
     user_id: string;
+    role: string;
   };
   error?: string;
 }
 
-export interface RefreshResponse {
-  status: string;
-  status_code: number;
-  data: {
-    message: string;
-  };
-  error?: string;
-}
+// export interface RefreshResponse {
+//   status: string;
+//   status_code: number;
+//   data: {
+//       user_id: string;
+//       role: string;
+//   };
+//   error?: string;
+// }
 
 export interface LogoutResponse {
   status: string;
