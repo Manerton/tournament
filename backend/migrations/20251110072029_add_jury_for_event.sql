@@ -1,10 +1,4 @@
 -- +goose Up
--- +goose StatementBegin
-SELECT 'up SQL query';
--- +goose StatementEnd
-
--- +goose Down
--- +goose StatementBegin-- +goose Up
 INSERT INTO users (login, password, role)
 VALUES
 ('ngarin', 'ngarin', 2),
@@ -52,4 +46,3 @@ WHERE login IN (
 );
 
 SELECT 'down SQL query';
--- +goose StatementEnd
