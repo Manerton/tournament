@@ -8,6 +8,7 @@ import { useAuth } from "../helpers/AuthContext";
 import { ThemeContext } from "../helpers/ThemeContext";
 import { EventStatus, type EventResponse } from "../../types/TournamentTypes";
 import { axiosFinishTour, axiosGetEventById, axiosNextTour } from "../../requests/tournamentRequests";
+import { UserRole } from "../../types/userType";
 
 const REFRESH_INTERVAL = 1000;
 const REFRESH_INTERVAL_TOUR = 5000;
@@ -18,6 +19,8 @@ const getTableNumbersKey = (tourId: string) => `tableNumbers_tour_${tourId}`;
 const GamesPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+
+    const {user} = useAuth();
     const alertRef = useRef<HTMLDivElement | null>(null);
 
     const [tour, setTour] = useState<EventResponse | null>(null);
@@ -272,7 +275,7 @@ const GamesPage: React.FC = () => {
                     </Row>
 
                     <div className="text-center mt-5">
-                        {tour?.status === EventStatus.Active ? (
+                        {tour?.status === EventStatus.Active && user?.role === UserRole.Admin ? (
                             <button className="btn btn-lg btn-outline-danger" onClick={handleFinishTour}>
                                 Завершить тур
                             </button>
@@ -280,11 +283,11 @@ const GamesPage: React.FC = () => {
                             <Alert variant="info" className="d-inline-block">
                                 Достигнуто максимальное количество туров
                             </Alert>
-                        ) : (
+                        ) : tour?.status === EventStatus.Closed ? (
                             <button className="btn btn-lg btn-outline-primary" onClick={handleNextTour}>
                                 Перейти к следующему туру
                             </button>
-                        )}
+                        ) : null} 
                     </div>
                 </>
             )}
