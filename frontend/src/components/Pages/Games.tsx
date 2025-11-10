@@ -9,6 +9,7 @@ import { ThemeContext } from "../helpers/ThemeContext";
 import { EventStatus, type EventResponse } from "../../types/TournamentTypes";
 import { axiosFinishTour, axiosGetEventById, axiosNextTour } from "../../requests/tournamentRequests";
 import { UserRole } from "../../types/userType";
+import { API_URL } from "../../config/routes";
 
 const REFRESH_INTERVAL = 1000;
 const REFRESH_INTERVAL_TOUR = 5000;
@@ -171,34 +172,102 @@ const GamesPage: React.FC = () => {
         }
     };
 
-    // Таймер (оставляем как есть)
-    const [timeLeft, setTimeLeft] = useState(300);
-    const [isRunning, setIsRunning] = useState(false);
+    // === ЗАМЕНИ ЭТОТ БЛОК (вместо useState(timeLeft), isRunning и т.д.) ===
 
-    const toggleTimer = () => setIsRunning(prev => !prev);
-    const resetTimer = () => {
-        setIsRunning(false);
-        setTimeLeft(300);
+    const [serverStartTime, setServerStartTime] = useState<number | null>(null); // когда стартанул таймер (unix sec)
+    const [timeLeft, setTimeLeft] = useState<number>(300);
+    const [ws, setWs] = useState<WebSocket | null>(null);
+
+    // Подключаемся к WS при монтировании
+    useEffect(() => {
+        if (!id) return;
+
+        // Самый лучший вариант — работает везде:
+        const wsUrl = `${API_URL}/api/ws/${id}`.replace(/^http/, 'ws');
+        const socket = new WebSocket(wsUrl);
+
+        socket.onopen = () => {
+            console.log("[ws] connected to", wsUrl);
+            setWs(socket);
+        };
+
+        socket.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                console.log("[ws] received:", msg);
+
+                switch (msg.action) {
+                    case "start_timer":
+                        const startAt = msg.payload?.start_at;
+                        if (typeof startAt === "number") {
+                            setServerStartTime(startAt);
+                            // Синхронизируем время с учётом задержки сети
+                            const elapsed = Math.floor(Date.now() / 1000) - startAt;
+                            const remaining = Math.max(300 - elapsed, 0);
+                            setTimeLeft(remaining);
+                        }
+                        break;
+
+                    case "reset_timer":
+                        setServerStartTime(null);
+                        setTimeLeft(300);
+                        break;
+                }
+            } catch (err) {
+                console.error("[ws] parse error:", err);
+            }
+        };
+
+        socket.onclose = () => {
+            console.log("[ws] disconnected");
+            setWs(null);
+        };
+
+        socket.onerror = (err) => {
+            console.error("[ws] error:", err);
+            setNotify({ variant: "danger", text: "Ошибка WebSocket" });
+        };
+
+        return () => {
+            socket.close();
+        };
+    }, [id]);
+
+    // Синхронный тик каждую секунду (только если таймер запущен сервером)
+    useEffect(() => {
+        if (serverStartTime === null) return;
+
+        const tick = () => {
+            const elapsed = Math.floor(Date.now() / 1000) - serverStartTime;
+            const remaining = Math.max(300 - elapsed, 0);
+            setTimeLeft(remaining);
+
+            if (remaining <= 0) {
+                setServerStartTime(null);
+                setNotify({ variant: "success", text: "Время вышло!" });
+            }
+        };
+
+        tick(); // сразу обновить
+        const interval = setInterval(tick, 1000);
+        return () => clearInterval(interval);
+    }, [serverStartTime]);
+
+    // Функции для админа
+    const handleStart = () => {
+        if (ws?.readyState === WebSocket.OPEN) {
+            ws.send("start_timer");
+        }
     };
 
-    useEffect(() => {
-        if (!isRunning) return;
-
-        const interval = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    setIsRunning(false);
-                    setNotify({ variant: "success", text: "Время вышло!" });
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [isRunning]);
+    const handleReset = () => {
+        if (ws?.readyState === WebSocket.OPEN) {
+            ws.send("reset_timer");
+        }
+    };
 
     const progress = (timeLeft / 300) * 100;
+    const isRunning = serverStartTime !== null;
 
     return (
         <Container className="py-4">
@@ -216,16 +285,26 @@ const GamesPage: React.FC = () => {
                         style={{ height: "8px" }}
                         className="mb-1 w-100"
                     />
-                    { user?.role === UserRole.Admin &&
-                        <div className="d-flex justify-content-center gap-2">
-                            <button className={`btn btn-sm ${isRunning ? "btn-outline-danger" : "btn-outline-success"}`} onClick={toggleTimer}>
-                                {isRunning ? "Пауза" : "Старт"}
+
+                    {/* Кнопки ТОЛЬКО для админа */}
+                    {user?.role === UserRole.Admin && (
+                        <div className="d-flex justify-content-center gap-2 mt-2">
+                            <button
+                                className={`btn btn-sm ${isRunning ? "btn-outline-danger" : "btn-outline-success"}`}
+                                onClick={handleStart}
+                                disabled={!ws || ws.readyState !== WebSocket.OPEN}
+                            >
+                                {isRunning ? "Идёт..." : "Старт"}
                             </button>
-                            <button className="btn btn-sm btn-outline-danger" onClick={resetTimer}>
+                            <button
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={handleReset}
+                                disabled={!ws || ws.readyState !== WebSocket.OPEN || !isRunning}
+                            >
                                 Сброс
                             </button>
                         </div>
-                    }
+                    )}
                 </div>
             </h2>
 
