@@ -14,6 +14,7 @@ import { useAuth } from "../helpers/AuthContext";
 import logoRHTYellow from "/RST logo yellow.png";
 import logoRHTBlue from "/RST logo blue.png";
 import { ThemeContext } from "../helpers/ThemeContext";
+import { UserRole } from "../../types/userType";
 
 function Header() {
     const { user, logout, initialized } = useAuth();
@@ -68,7 +69,7 @@ function Header() {
                                     <Nav.Link>Турниры</Nav.Link>
                                 </LinkContainer>
 
-                                {isAuthenticated && user?.role == "1" &&  (
+                                {isAuthenticated && user?.role == UserRole.Admin &&  (
                                     <LinkContainer to="/AdminPanel">
                                         <Nav.Link>Админ панель</Nav.Link>
                                     </LinkContainer>
