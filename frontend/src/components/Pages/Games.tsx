@@ -34,6 +34,18 @@ const GamesPage: React.FC = () => {
     // Загружаем номера столов из localStorage при смене тура
     const [tableAssignments, setTableAssignments] = useState<Record<string, number>>({});
 
+    const startSoundRef = useRef<HTMLAudioElement | null>(null);
+    const finishSoundRef = useRef<HTMLAudioElement | null>(null);
+
+    useEffect(() => {
+        startSoundRef.current = new Audio("/start.mp3");
+        finishSoundRef.current = new Audio("/end.mp3");
+
+        // Опционально: уменьшить громкость, если слишком громко
+        if (startSoundRef.current) startSoundRef.current.volume = 0.7;
+        if (finishSoundRef.current) finishSoundRef.current.volume = 0.8;
+    }, []);
+
     useEffect(() => {
         if (!id) return;
 
@@ -172,7 +184,6 @@ const GamesPage: React.FC = () => {
         }
     };
 
-    // === ЗАМЕНИ ЭТОТ БЛОК (вместо useState(timeLeft), isRunning и т.д.) ===
 
     const [serverStartTime, setServerStartTime] = useState<number | null>(null); // когда стартанул таймер (unix sec)
     const [timeLeft, setTimeLeft] = useState<number>(300);
@@ -245,6 +256,10 @@ const GamesPage: React.FC = () => {
             if (remaining <= 0) {
                 setServerStartTime(null);
                 setNotify({ variant: "success", text: "Время вышло!" });
+
+                finishSoundRef.current?.play().catch(() => {
+                console.warn("Звук финиша не воспроизвёлся");
+            });
             }
         };
 
@@ -257,6 +272,11 @@ const GamesPage: React.FC = () => {
     const handleStart = () => {
         if (ws?.readyState === WebSocket.OPEN) {
             ws.send("start_timer");
+
+            startSoundRef.current?.play().catch(() => {
+            // Игнорируем ошибку, если пользователь ещё не взаимодействовал со страницей
+            console.warn("Звук старта не воспроизвёлся — требуется взаимодействие пользователя");
+        });
         }
     };
 
