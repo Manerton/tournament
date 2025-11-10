@@ -18,6 +18,7 @@ interface LiveTableProps<T> {
     columns: Column<T>[];
     sortKey: keyof T;
     sortKey2?: keyof T | null;
+    hideScore?: keyof T | null;
 }
 
 const STORAGE_KEY = "teamColors"; // Ключ для localStorage
@@ -74,6 +75,7 @@ export default function LiveTable<T>({
                                          columns,
                                          sortKey,
                                          sortKey2 = null,
+                                         hideScore = null, // Новый пропс
                                      }: LiveTableProps<T>) {
     const [rows, setRows] = useState<T[]>([]);
     const [colorMap, setColorMap] = useState<Record<string, string>>({});
@@ -164,6 +166,27 @@ export default function LiveTable<T>({
         setColorMap((prev) => ({...prev, [teamName]: newColor}));
     };
 
+    // Функция для рендеринга ячейки с учетом скрытия счета
+    const renderCellContent = (row: T, col: Column<T>, index: number) => {
+        const value = row[col.key] as React.ReactNode;
+
+        // Если это поле, которое нужно скрывать
+        if (hideScore && col.key === hideScore) {
+            // Показываем счет только для позиций 2, 3, 4, 5 (индексы 1, 2, 3, 4)
+            // index 0 = 1 место (скрыть)
+            // index 1 = 2 место (показать)
+            // index 2 = 3 место (показать)
+            // index 3 = 4 место (показать)
+            // index 4 = 5 место (показать)
+            // index >= 5 = остальные (скрыть)
+            if (index === 0 || index >= 5) {
+                return "***"; // Скрываем для 1 места и всех после 5 места
+            }
+        }
+
+        return value;
+    };
+
     return (
         <div className="p-1">
             <h2 className="text-xl font-bold mb-2">{title}</h2>
@@ -187,14 +210,12 @@ export default function LiveTable<T>({
                         const teamName = teamColumnKey ? String(row[teamColumnKey]) : "";
                         const teamColor = colorMap[teamName] || "#ffffff";
 
-                        // --- убрали пульсацию и анимацию
                         const placeIcons = [
                             <FaCrown color="gold" size={32} title="1 место" />,
                             <GiBlackKnightHelm color="#a0a0a0" size={32} title="2 место" />,
                             <GiWingedSword color="#cd7f32" size={32} title="3 место" />,
                             <GiWingedShield color="#4682B4" size={32} title="4 место" />,
                         ];
-
 
                         return (
                             <motion.tr
@@ -245,13 +266,12 @@ export default function LiveTable<T>({
                                                         alignItems: "center",
                                                     }}
                                                 >
-                                                      {placeIcons[index]}
+                                                    {placeIcons[index]}
                                                 </span>
                                             )}
-                                            {/* Название команды по центру */}
-                                            {row[col.key] as React.ReactNode}
+                                            {/* Содержимое ячейки с учетом скрытия счета */}
+                                            {renderCellContent(row, col, index)}
                                         </td>
-
                                     );
                                 })}
                             </motion.tr>

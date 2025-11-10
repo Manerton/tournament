@@ -20,6 +20,7 @@ import WinLeaderboard from "./components/Leaderboards/WinLeaderboard.tsx";
 import GlobalLeaderboard from "./components/Leaderboards/GlobalLeaderboard.tsx";
 import UsersManagement from "./components/Admin/UsersManagment.tsx";
 import ReportPage from './components/Admin/Report.tsx';
+import WinLeaderboardHide from "./components/Leaderboards/WinLeaderboardHide.tsx";
 
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
               <Route path="/tournaments/:id/players" element={<PlayersTemplate />} />
               <Route path="/tournaments/:id/score" element={<ScoreTemplate />} />
               <Route path="/tournaments/:id/wins" element={<WinLeaderboard />} />
+              <Route path="/tournaments/:id/winsspecial" element={<WinLeaderboardHide />} />
               <Route path="/tournaments/:id/leaderboard" element={<GlobalLeaderboard />} />
           </Route>
            <Route element={<AdminLayout />}>

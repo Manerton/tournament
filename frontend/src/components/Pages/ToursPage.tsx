@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { EventStatus, type EventResponse } from "../../types/TournamentTypes";
 import { Alert, Button, Card, Container, Spinner } from "react-bootstrap";
 import { axiosGetTours, axiosStartTournament } from "../../requests/tournamentRequests";
+import {useAuth} from "../helpers/AuthContext.tsx";
+import {UserRole} from "../../types/userType.ts";
 
 const ToursPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -10,7 +12,7 @@ const ToursPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [starting, setStarting] = useState(false);
-
+    const { user} = useAuth();
     const navigate = useNavigate();
 
     const loadTours = async () => {
@@ -65,53 +67,62 @@ const ToursPage: React.FC = () => {
         <Container className="py-4">
 
             {/* Добавляем раздел с кнопками для лидербордов */}
-            <div className="mb-5">
-                <h3 className="mb-3 fw-bold text-center fs-4">Таблицы лидеров</h3>
-                <div className="d-flex justify-content-around gap-3">
-                    <Button
-                        variant="outline-primary"
-                        size="lg"
-                        className="flex-grow-1"
-                        onClick={() => navigate(`/tournaments/${id}/leaderboard`)}
-                    >
-                        Глобальная
-                    </Button>
+            {user?.role === UserRole.Admin && (
+                <div className="mb-5">
+                    <h3 className="mb-3 fw-bold text-center fs-4">Таблицы лидеров</h3>
+                    <div className="d-flex justify-content-around gap-3">
+                        <Button
+                            variant="outline-primary"
+                            size="lg"
+                            className="flex-grow-1"
+                            onClick={() => navigate(`/tournaments/${id}/wins`)}
+                        >
+                            Результат матчей
+                        </Button>
 
+                            <Button
+                                variant="outline-primary"
+                                size="lg"
+                                className="flex-grow-1"
+                                onClick={() => navigate(`/tournaments/${id}/winsspecial`)}
+                            >
+                                Распределение 2-4 места
+                            </Button>
 
-                    <Button
-                        variant="outline-primary"
-                        size="lg"
-                        className="flex-grow-1"
-                        onClick={() => navigate(`/tournaments/${id}/players`)}
-                    >
-                        Участники
-                    </Button>
-                    <Button
-                        variant="outline-primary"
-                        size="lg"
-                        className="flex-grow-1"
-                        onClick={() => navigate(`/tournaments/${id}/score`)}
-                    >
-                        По очкам
-                    </Button>
-                    <Button
-                        variant="outline-primary"
-                        size="lg"
-                        className="flex-grow-1"
-                        onClick={() => navigate(`/tournaments/${id}/wins`)}
-                    >
-                        По победам
-                    </Button>
+                        <Button
+                            variant="outline-primary"
+                            size="lg"
+                            className="flex-grow-1"
+                            onClick={() => navigate(`/tournaments/${id}/leaderboard`)}
+                        >
+                            Глобальная
+                        </Button>
 
-
-
+                        <Button
+                            variant="outline-primary"
+                            size="lg"
+                            className="flex-grow-1"
+                            onClick={() => navigate(`/tournaments/${id}/players`)}
+                        >
+                            Участники
+                        </Button>
+                        <Button
+                            variant="outline-primary"
+                            size="lg"
+                            className="flex-grow-1"
+                            onClick={() => navigate(`/tournaments/${id}/score`)}
+                        >
+                            По очкам
+                        </Button>
+                    </div>
                 </div>
-            </div>
+            )}
 
 
             <h2 className="mb-4 fw-bold text-center display-6">Список туров</h2>
 
-            {tours.length === 0 ? (
+            {tours.length === 0 && user?.role === UserRole.Admin ? (
+
                 <div className="d-flex flex-column align-items-center justify-content-center py-5">
                     <Button
                         variant="primary"
@@ -135,6 +146,7 @@ const ToursPage: React.FC = () => {
                         ) : (
                             <>🚀 Начать турнир</>
                         )}
+
                     </Button>
                 </div>
             ) : (
