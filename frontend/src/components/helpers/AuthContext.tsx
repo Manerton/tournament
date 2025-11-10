@@ -81,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    const refresh = async (): Promise<UserAuth | null> => {
     if (!hasCookies()) {
       console.log("No cookies found, skipping refresh");
-      setInitialized(true);
+      setInitialized(false);
       return null;
     }
 
@@ -97,15 +97,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const updatedUser = { id: refreshedUserId,role: userRole,  email: "" };
       setUser(updatedUser);
+      setInitialized(true);
       return updatedUser;
-
     } catch (err) {
       console.error("Session refresh failed:", err);
       setUser(null);
+      setInitialized(false);
       setCsrfToken(null);
       return null;
     } finally {
-      setInitialized(true);
+      
     }
   };
 
@@ -128,6 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       console.error("Logout failed:", err);
     } finally {
+      setInitialized(false);
       setUser(null);
     }
   };
