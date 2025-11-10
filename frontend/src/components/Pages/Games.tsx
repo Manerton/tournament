@@ -20,7 +20,7 @@ const GamesPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
-    const {user} = useAuth();
+    const { user } = useAuth();
     const alertRef = useRef<HTMLDivElement | null>(null);
 
     const [tour, setTour] = useState<EventResponse | null>(null);
@@ -216,14 +216,16 @@ const GamesPage: React.FC = () => {
                         style={{ height: "8px" }}
                         className="mb-1 w-100"
                     />
-                    <div className="d-flex justify-content-center gap-2">
-                        <button className={`btn btn-sm ${isRunning ? "btn-outline-danger" : "btn-outline-success"}`} onClick={toggleTimer}>
-                            {isRunning ? "Пауза" : "Старт"}
-                        </button>
-                        <button className="btn btn-sm btn-outline-danger" onClick={resetTimer}>
-                            Сброс
-                        </button>
-                    </div>
+                    { user?.role === UserRole.Admin &&
+                        <div className="d-flex justify-content-center gap-2">
+                            <button className={`btn btn-sm ${isRunning ? "btn-outline-danger" : "btn-outline-success"}`} onClick={toggleTimer}>
+                                {isRunning ? "Пауза" : "Старт"}
+                            </button>
+                            <button className="btn btn-sm btn-outline-danger" onClick={resetTimer}>
+                                Сброс
+                            </button>
+                        </div>
+                    }
                 </div>
             </h2>
 
@@ -287,7 +289,7 @@ const GamesPage: React.FC = () => {
                             <button className="btn btn-lg btn-outline-primary" onClick={handleNextTour}>
                                 Перейти к следующему туру
                             </button>
-                        ) : null} 
+                        ) : null}
                     </div>
                 </>
             )}
