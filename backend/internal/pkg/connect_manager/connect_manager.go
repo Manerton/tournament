@@ -18,7 +18,6 @@ type Message struct {
 type Client struct {
 	Conn    *websocket.Conn
 	EventID string
-	// можно добавить info о пользователе: UserID, Role и т.д.
 }
 
 // Hub хранит клиентов по eventId
