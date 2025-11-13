@@ -31,7 +31,7 @@ func (r *TeamParticipantRepository) GetAllByTeamID(ctx context.Context, db *gorm
 func (r *TeamParticipantRepository) GetAllByTeamIDPreload(ctx context.Context, db *gorm.DB, teamID uuid.UUID) ([]team_participant.TeamParticipant, error) {
 	const op = "repository.TeamParticipantRepository.GetAllByTeamID"
 	var TeamParticipants []team_participant.TeamParticipant
-	err := db.WithContext(ctx).Preload("Team").Preload("Participant").Where(team_participant.TeamParticipant{TeamID: teamID}, teamID).Find(&TeamParticipants).Error
+	err := db.WithContext(ctx).Preload("Team").Preload("Participant.School").Where(team_participant.TeamParticipant{TeamID: teamID}, teamID).Find(&TeamParticipants).Error
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
