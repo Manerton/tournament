@@ -117,6 +117,26 @@ func (s *TeamService) GetAcceptTeamsByEventId(ctx context.Context, eventId strin
 	return team_mapper.ToTeamsDTO(models), nil
 }
 
+func (s *TeamService) UpdateTeam(ctx context.Context, dto team_dto.TeamUpdateDTO, id string) error {
+	const op = "service.TeamService.UpdateTeam"
+
+	log := s.log.With(slog.String("op", op))
+
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		log.Error("failed parse id to uuid", slog.String("id", id), logger.Err(err))
+		return errs.ErrBadRequest
+	}
+
+	teamModel := team_mapper.UpdateToModel(dto, uid)
+	err = s.teamRepository.UpdateByID(ctx, s.db, teamModel)
+	if err != nil {
+		log.Error("failed update team", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	return nil
+}
+
 func (s *TeamService) RegisterTeam(ctx context.Context, dto team_dto.RegisterTeamRequestDTO) error {
 	const op = "service.TeamService.RegisterTeam"
 

@@ -49,3 +49,14 @@ func ToTeamsDTO(models []team.Team) []team_dto.TeamResponseDTO {
 	}
 	return dtos
 }
+
+func UpdateToModel(dto team_dto.TeamUpdateDTO, id uuid.UUID) team.Team {
+	model := team.Team{
+		ID:               id,
+		Name:             dto.Name,
+		ResponsibleName:  dto.ResponsibleName,
+		ResponsiblePhone: dto.ResponsiblePhone,
+	}
+
+	return model
+}

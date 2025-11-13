@@ -17,17 +17,10 @@ import { ThemeContext } from "../helpers/ThemeContext";
 import { UserRole } from "../../types/userType";
 
 function Header() {
-    const { user, logout, initialized } = useAuth();
+    const { user, logout } = useAuth();
     const [collapsed, setCollapsed] = useState(false);
     const { theme } = useContext(ThemeContext);
 
-    if (!initialized) {
-        return (
-            <Navbar className="bg-body-tertiary border border-1">
-                <Container>Загрузка...</Container>
-            </Navbar>
-        );
-    }
 
     const isAuthenticated = !!user;
 

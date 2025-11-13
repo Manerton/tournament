@@ -22,6 +22,13 @@ type TeamResponseDTO struct {
 	InitialScore     int    `json:"initial_score"`
 }
 
+type TeamUpdateDTO struct {
+	Name             string `json:"name" binding:"required"`
+	ResponsibleName  string `json:"responsible_name"`
+	ResponsiblePhone string `json:"responsible_phone"`
+	Status           int    `json:"status"`
+}
+
 type RegisterTeamRequestDTO struct {
 	TeamCreateDTO
 	Participants []participant_dto.ParticipantCreateDTO `json:"participants" binding:"required,dive,required"`

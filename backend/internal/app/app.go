@@ -26,6 +26,7 @@ import (
 	"main/internal/submission/handler/submission_handler"
 	"main/internal/submission/repository/submission_repository"
 	"main/internal/submission/service/submission_service"
+	"main/internal/websocket/handler/websocket_handler"
 
 	"main/internal/config"
 	"main/internal/event/handler/event_handler"
@@ -34,6 +35,7 @@ import (
 	participant_handler "main/internal/participant/handlers"
 	"main/internal/participant/repository/participant_repository"
 	participant_service "main/internal/participant/service"
+	"main/internal/pkg/connect_manager"
 	"main/internal/pkg/logger"
 	"main/internal/storage/postgresql"
 	"main/internal/team/handler/team_handler"
@@ -49,9 +51,11 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"golang.org/x/net/websocket"
 )
 
 type App struct {
+	wsHub  *connect_manager.Hub
 	server *http.Server
 	log    *slog.Logger
 }
@@ -100,6 +104,9 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	leaderboardhandler := leadeboard_handler.New(leaderboardService)
 	submissionHandler := submission_handler.New(submissionService)
 
+	wsHub := connect_manager.NewHub()
+	wsHandler := websocket_handler.New(wsHub)
+
 	reportHandler := report_handler.New(reportService)
 
 	//init auth
@@ -131,7 +138,10 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		leaderboardhandler,
 		submissionHandler,
 		reportHandler,
+		wsHandler,
 		authMiddleware)
+
+	app.wsHub = wsHub
 
 	// init server
 	app.server = &http.Server{
@@ -153,8 +163,11 @@ func (a *App) initRoutes(router *chi.Mux,
 	leadeboardHandler *leadeboard_handler.LeaderboardHandler,
 	submissionHandler *submission_handler.SubmissionHandler,
 	reportHandler *report_handler.ReportHandler,
+	wsHandler *websocket_handler.WebSocketHandler,
 
 	authMiddleware *auth_verification.AuthMiddleware) {
+
+	router.Handle("/api/ws/{id}", websocket.Handler(wsHandler.StartTimer))
 
 	router.Route("/api/submissions", func(r chi.Router) {
 		r.Use(authMiddleware.AuthVerify)
@@ -283,6 +296,10 @@ func (a *App) Run() error {
 }
 
 func (a *App) Stop() {
+	if a.wsHub != nil {
+		a.wsHub.CloseAll()
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
