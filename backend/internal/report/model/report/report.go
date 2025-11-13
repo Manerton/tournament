@@ -10,3 +10,22 @@ type TeamReport struct {
 	ResponsiblePhone string
 	Participants     []participant.Participant
 }
+
+type LeaderboardReport struct {
+	TeamName  string
+	ScoreWins int
+	Score     int
+}
+
+type LeaderboardPlayesReport struct {
+	TeamName     string
+	Score        int
+	Participants []ParticipantScore
+}
+
+type ParticipantScore struct {
+	FIO    string
+	Class  int
+	School string
+	Score  int
+}

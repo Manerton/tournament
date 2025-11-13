@@ -87,7 +87,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	participantService := participant_service.New(log, storage, participantRepository, teamParticipantRepository)
 	submissionService := submission_service.New(log, storage, submissionRepository)
 
-	reportService := report_service.New(log, storage, teamRepository, teamParticipantRepository, schoolRepository)
+	reportService := report_service.New(log, storage, teamRepository, teamParticipantRepository, schoolRepository, leaderboardRepository, eventRepository, gameRepository, gameParticpantRepository)
 
 	// init handler
 	locationHandler := location_handler.New(districtService, schoolService)
@@ -239,6 +239,7 @@ func (a *App) initRoutes(router *chi.Mux,
 	router.Route("/api/report", func(r chi.Router) {
 		r.Use(authMiddleware.AuthVerify)
 		r.Get("/teams-report/{id}", reportHandler.ExportTeamsToXLSX)
+		r.Get("/leaderboard-report/{id}", reportHandler.ExportLeaderBoardToXLSX)
 	})
 }
 
