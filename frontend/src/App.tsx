@@ -25,6 +25,8 @@ import QuizDisplay from "./components/Quiz/QuizDisplay.tsx";
 import QuizHerald from "./components/Quiz/QuizHerald.tsx";
 import QuizAdmin from "./components/Quiz/QuizAdmin.tsx";
 import QuizQuestionBank from "./components/Quiz/QuizQuestionBank.tsx";
+import AccessDenied from "./components/Pages/AccessDenied.tsx";
+import RequireAdmin from "./components/helpers/RequireAdmin.tsx";
 
 
 function App() {
@@ -45,13 +47,14 @@ function App() {
               <Route path="/tournaments/:id/wins" element={<WinLeaderboard />} />
               <Route path="/tournaments/:id/winsspecial" element={<WinLeaderboardHide />} />
               <Route path="/tournaments/:id/leaderboard" element={<GlobalLeaderboard />} />
+              <Route path="/access-denied" element={<AccessDenied />} />
           </Route>
 
           {/* Quiz screens run standalone: no site header/footer or nav buttons */}
           <Route path="/quiz/display/:eventId" element={<QuizDisplay />} />
           <Route path="/quiz/herald/:eventId" element={<QuizHerald />} />
 
-           <Route element={<AdminLayout />}>
+           <Route element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
             <Route path="/AdminPanel" element={<AdminPanel />} />
             <Route path="/quiz/admin/:eventId" element={<QuizAdmin />} />
             <Route path="/quiz/admin/:eventId/questions" element={<QuizQuestionBank />} />

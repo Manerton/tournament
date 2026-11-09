@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuizState } from "../helpers/useQuizState";
 import { BuzzStatus, type QuizTeamState } from "../../types/quizTypes";
+import BackgroundParticles from "../common/BackgroundParticles";
 import "../../assets/Quiz.css";
 
 function formatTime(totalSeconds: number): string {
@@ -136,7 +137,11 @@ export default function QuizDisplay() {
     }, [remainingMs, state]);
 
     if (!state) {
-        return <div className="quiz-display-root" />;
+        return (
+            <div className="quiz-display-root">
+                <BackgroundParticles />
+            </div>
+        );
     }
 
     const roundCfg = state.rounds.find((r) => r.round === state.current_round);
@@ -144,6 +149,7 @@ export default function QuizDisplay() {
 
     return (
         <div className="quiz-display-root">
+            <BackgroundParticles />
             <div className="quiz-display-header">
                 <div className="quiz-display-round">
                     {roundCfg ? `Раунд ${roundCfg.round} — «${roundCfg.name}»` : "Квиз-шоу"}

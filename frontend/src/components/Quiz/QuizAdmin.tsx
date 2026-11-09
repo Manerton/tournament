@@ -98,18 +98,18 @@ export default function QuizAdmin() {
             {notice && <div className="quiz-msg ok mb-3">{notice}</div>}
 
             {/* Teams & access codes */}
-            <div className="quiz-admin-section">
+            <div className="quiz-admin-section liquid-glass-bg">
                 <h4>Команды и коды доступа</h4>
                 <div className="quiz-admin-row mb-3">
                     <Button onClick={() => run(() => axiosQuizSetupTeams(eventId), "Команды подготовлены")}>
                         Подготовить / добавить команды
                     </Button>
-                    <span style={{ color: "#aeb9c9" }}>
+                    <span className="text-body-secondary">
                         Коды выдаются герольдам для входа на экраны оценки.
                     </span>
                 </div>
                 {teams.length > 0 && (
-                    <Table striped bordered hover variant="dark" size="sm">
+                    <Table striped bordered hover size="sm">
                         <thead>
                             <tr>
                                 <th>Команда</th>
@@ -159,29 +159,29 @@ export default function QuizAdmin() {
             </div>
 
             {/* Question bank (read-only: questions are preloaded via migrations) */}
-            <div className="quiz-admin-section">
+            <div className="quiz-admin-section liquid-glass-bg">
                 <div className="quiz-admin-row">
                     <h4 className="mb-0">Банк вопросов</h4>
                     <Button
-                        variant="outline-light"
+                        variant="outline-secondary"
                         onClick={() => navigate(`/quiz/admin/${eventId}/questions`)}
                     >
                         Открыть банк вопросов
                     </Button>
-                    <span style={{ color: "#aeb9c9" }}>
+                    <span className="text-body-secondary">
                         Вопросы загружаются в базу заранее (миграцией). Загружено: {questions.length}.
                     </span>
                 </div>
             </div>
 
             {/* Game flow */}
-            <div className="quiz-admin-section">
+            <div className="quiz-admin-section liquid-glass-bg">
                 <h4>Управление игрой</h4>
                 <div className="quiz-admin-row mb-3">
                     {[1, 2, 3].map((r) => (
                         <Button
                             key={r}
-                            variant={state?.current_round === r ? "success" : "outline-light"}
+                            variant={state?.current_round === r ? "success" : "outline-secondary"}
                             onClick={() =>
                                 run(() => axiosQuizStartRound(eventId, r), `Раунд ${r} начат`)
                             }
@@ -190,7 +190,7 @@ export default function QuizAdmin() {
                         </Button>
                     ))}
                     <Button
-                        variant={state?.leaderboard_shown ? "success" : "outline-light"}
+                        variant={state?.leaderboard_shown ? "success" : "outline-secondary"}
                         onClick={() =>
                             run(
                                 () => axiosQuizShowLeaderboard(eventId, !state?.leaderboard_shown),
@@ -204,7 +204,7 @@ export default function QuizAdmin() {
 
                 <div className="quiz-admin-row mb-2">
                     <span className="quiz-timer-big">{formatTime(Math.ceil(remainingMs / 1000))}</span>
-                    <span style={{ color: "#aeb9c9" }}>
+                    <span className="text-body-secondary">
                         {roundCfg
                             ? `Раунд ${roundCfg.round} — «${roundCfg.name}», вопрос ${state?.current_question ?? 0} из ${roundCfg.question_count}`
                             : "Раунд не начат"}
@@ -221,19 +221,19 @@ export default function QuizAdmin() {
                         {`Запустить вопрос ${nextQuestionNumber}`}
                     </Button>
                     <Button
-                        variant="outline-light"
+                        variant="outline-secondary"
                         onClick={() => run(() => axiosQuizPauseTimer(eventId), "Таймер приостановлен")}
                     >
                         Пауза
                     </Button>
                     <Button
-                        variant="outline-light"
+                        variant="outline-secondary"
                         onClick={() => run(() => axiosQuizResumeTimer(eventId), "Таймер продолжен")}
                     >
                         Продолжить
                     </Button>
                     <Button
-                        variant="outline-light"
+                        variant="outline-secondary"
                         onClick={() => run(() => axiosQuizCloseQuestion(eventId), "Вопрос закрыт")}
                     >
                         Закрыть вопрос
@@ -254,12 +254,12 @@ export default function QuizAdmin() {
 
                 {state?.current_round === 1 && state.current_question > 0 && (
                     <div className="mb-2">
-                        <div style={{ color: "#aeb9c9", marginBottom: "0.5rem" }}>
+                        <div className="text-body-secondary mb-2">
                             Очередь нажатий (попыток использовано: {state.attempts_used} /{" "}
                             {state.attempts_max})
                         </div>
                         {state.buzz_queue.length === 0 && (
-                            <span style={{ color: "#aeb9c9" }}>Нажатий пока не было.</span>
+                            <span className="text-body-secondary">Нажатий пока не было.</span>
                         )}
                         <div className="quiz-admin-row">
                             {state.buzz_queue.map((b, i) => (
@@ -280,20 +280,13 @@ export default function QuizAdmin() {
 
                 {state && roundCfg && state.current_question > 0 && (
                     <div className="mb-3" style={{ textAlign: "left" }}>
-                        <div style={{ color: "#aeb9c9", marginBottom: "0.5rem" }}>
+                        <div className="text-body-secondary mb-2">
                             Текущий вопрос для ведущего:
                         </div>
                         {currentQuestionData ? (
-                            <div
-                                style={{
-                                    background: "rgba(255,255,255,0.06)",
-                                    border: "1px solid rgba(255,255,255,0.15)",
-                                    borderRadius: "0.75rem",
-                                    padding: "1rem",
-                                }}
-                            >
+                            <div className="liquid-glass-bg rounded-3 p-3">
                                 <div>{currentQuestionData.text}</div>
-                                <div style={{ color: "#7bed9f", marginTop: "0.5rem" }}>
+                                <div className="text-success mt-2">
                                     Ответ: {currentQuestionData.answer}
                                 </div>
                             </div>

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Alert, Button, Card, Container, Spinner, Table } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { useQuizState } from "../helpers/useQuizState";
+import { useAuth } from "../helpers/AuthContext";
+import { UserRole } from "../../types/userType";
 import { axiosStartTournament } from "../../requests/tournamentRequests";
 import { Round3OrderNames } from "../../types/quizTypes";
 import "../../assets/Quiz.css";
@@ -9,6 +11,7 @@ import "../../assets/Quiz.css";
 export default function QuizToursPanel({ eventId }: { eventId: string }) {
     const navigate = useNavigate();
     const { state } = useQuizState(eventId);
+    const { user } = useAuth();
     const [starting, setStarting] = useState(false);
     const [error, setError] = useState("");
 
@@ -36,14 +39,16 @@ export default function QuizToursPanel({ eventId }: { eventId: string }) {
             {error && <Alert variant="danger">{error}</Alert>}
 
             <div className="d-flex justify-content-around gap-3 mb-4 flex-wrap">
-                <Button
-                    variant="primary"
-                    size="lg"
-                    className="flex-grow-1"
-                    onClick={() => navigate(`/quiz/admin/${eventId}`)}
-                >
-                    Панель ведущего
-                </Button>
+                {user?.role === UserRole.Admin && (
+                    <Button
+                        variant="primary"
+                        size="lg"
+                        className="flex-grow-1"
+                        onClick={() => navigate(`/quiz/admin/${eventId}`)}
+                    >
+                        Панель ведущего
+                    </Button>
+                )}
                 <Button
                     variant="outline-primary"
                     size="lg"
@@ -94,7 +99,7 @@ export default function QuizToursPanel({ eventId }: { eventId: string }) {
                         </Alert>
                     ) : (
                         <>
-                            <div className="mb-2" style={{ color: "#6c757d" }}>
+                            <div className="mb-2 text-body-secondary">
                                 {state.round_active
                                     ? `Идёт раунд ${state.current_round}` +
                                       (state.current_question > 0

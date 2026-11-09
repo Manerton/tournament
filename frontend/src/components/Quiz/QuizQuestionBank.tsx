@@ -30,7 +30,7 @@ export default function QuizQuestionBank() {
         <div className="quiz-admin-root">
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2 className="mb-0">Банк вопросов</h2>
-                <Button variant="outline-light" onClick={() => navigate(`/quiz/admin/${eventId}`)}>
+                <Button variant="outline-primary" onClick={() => navigate(`/quiz/admin/${eventId}`)}>
                     ← Назад к панели ведущего
                 </Button>
             </div>
@@ -40,12 +40,12 @@ export default function QuizQuestionBank() {
             {rounds.map(({ round, name }) => {
                 const list = questions.filter((q) => q.round === round);
                 return (
-                    <div className="quiz-admin-section" key={round}>
+                    <div className="quiz-admin-section liquid-glass-bg" key={round}>
                         <h4>{name}</h4>
                         {list.length === 0 ? (
-                            <span style={{ color: "#aeb9c9" }}>Вопросы не загружены.</span>
+                            <span className="text-body-secondary">Вопросы не загружены.</span>
                         ) : (
-                            <Table striped bordered hover variant="dark" size="sm">
+                            <Table striped bordered hover size="sm">
                                 <thead>
                                     <tr>
                                         <th style={{ width: "60px" }}>№</th>

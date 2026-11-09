@@ -8,6 +8,7 @@ import {
     axiosQuizBuzz,
 } from "../../requests/quizRequests";
 import { BuzzStatus, Round3OrderNames, type HeraldLoginResponse } from "../../types/quizTypes";
+import BackgroundParticles from "../common/BackgroundParticles";
 import "../../assets/Quiz.css";
 
 const ORDER_OPTIONS = [
@@ -121,6 +122,7 @@ export default function QuizHerald() {
     if (!team) {
         return (
             <div className="quiz-herald-root">
+                <BackgroundParticles />
                 <div className="quiz-herald-body">
                     <h2>Экран герольда</h2>
                     <input
@@ -147,6 +149,7 @@ export default function QuizHerald() {
 
     return (
         <div className="quiz-herald-root">
+            <BackgroundParticles />
             <div className="quiz-herald-header">
                 <div className="quiz-herald-team">
                     Команда №{team.number} — {team.name}
@@ -327,7 +330,7 @@ export default function QuizHerald() {
             {orderPending && (
                 <div className="quiz-overlay-eliminated">
                     <div>Вы уверены?</div>
-                    <div style={{ color: "#aeb9c9", marginTop: "1vh" }}>
+                    <div className="text-body-secondary" style={{ marginTop: "1vh" }}>
                         Этот выбор нельзя будет изменить.
                     </div>
                     <div className="quiz-herald-actions" style={{ marginTop: "3vh" }}>
