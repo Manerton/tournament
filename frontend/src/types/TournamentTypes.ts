@@ -36,3 +36,9 @@ export const EventStatus = {
   Closed: 2,
   Registration: 3
 } as const
+
+export const DrawType = {
+  None: 0,
+  Swiss: 3,
+  Quiz: 4,
+} as const

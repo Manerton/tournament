@@ -38,6 +38,13 @@ import (
 	"main/internal/pkg/connect_manager"
 	"main/internal/pkg/logger"
 	"main/internal/storage/postgresql"
+	"main/internal/quiz/handler/quiz_handler"
+	"main/internal/quiz/repository/quiz_answer_repository"
+	"main/internal/quiz/repository/quiz_buzz_repository"
+	"main/internal/quiz/repository/quiz_question_repository"
+	"main/internal/quiz/repository/quiz_session_repository"
+	"main/internal/quiz/repository/quiz_team_repository"
+	"main/internal/quiz/service/quiz_service"
 	"main/internal/team/handler/team_handler"
 	"main/internal/team/repository/team_participant_repository"
 	"main/internal/team/repository/team_repository"
@@ -79,14 +86,32 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	sessionRepository := session_repository.New()
 	submissionRepository := submission_repository.New()
 
+	quizSessionRepository := quiz_session_repository.New()
+	quizQuestionRepository := quiz_question_repository.New()
+	quizTeamRepository := quiz_team_repository.New()
+	quizBuzzRepository := quiz_buzz_repository.New()
+	quizAnswerRepository := quiz_answer_repository.New()
+
 	// init service
+	wsHub := connect_manager.NewHub()
+
 	schoolService := school_service.New(log, storage, schoolRepository)
 	districtService := district_service.New(log, storage, distrcitRepository)
 
 	leaderboardService := leaderboard_service.New(log, storage, leaderboardRepository, teamRepository, teamParticipantRepository, eventRepository, gameRepository, gameParticpantRepository)
 	gameService := game_service.New(log, storage, gameRepository, leaderboardRepository, gameParticpantRepository, teamParticipantRepository, teamRepository, leaderboardService)
-	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, log, storage)
-	eventService := event_service.New(log, storage, eventRepository, teamRepository, gameService, leaderboardService)
+
+	quizService := quiz_service.New(log, storage,
+		quizSessionRepository,
+		quizQuestionRepository,
+		quizTeamRepository,
+		quizBuzzRepository,
+		quizAnswerRepository,
+		teamRepository,
+		wsHub)
+
+	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, quizTeamRepository, eventRepository, log, storage)
+	eventService := event_service.New(log, storage, eventRepository, teamRepository, gameService, leaderboardService, quizService)
 	ssoService := sso_service.New(storage, log, userRepository, sessionRepository)
 	participantService := participant_service.New(log, storage, participantRepository, teamParticipantRepository)
 	submissionService := submission_service.New(log, storage, submissionRepository)
@@ -103,8 +128,8 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	participantHandler := participant_handler.NewParticipantHandler(participantService)
 	leaderboardhandler := leadeboard_handler.New(leaderboardService)
 	submissionHandler := submission_handler.New(submissionService)
+	quizHandler := quiz_handler.New(quizService)
 
-	wsHub := connect_manager.NewHub()
 	wsHandler := websocket_handler.New(wsHub)
 
 	reportHandler := report_handler.New(reportService)
@@ -137,6 +162,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		participantHandler,
 		leaderboardhandler,
 		submissionHandler,
+		quizHandler,
 		reportHandler,
 		wsHandler,
 		authMiddleware)
@@ -162,12 +188,44 @@ func (a *App) initRoutes(router *chi.Mux,
 	participantHandler *participant_handler.ParticipantHandler,
 	leadeboardHandler *leadeboard_handler.LeaderboardHandler,
 	submissionHandler *submission_handler.SubmissionHandler,
+	quizHandler *quiz_handler.QuizHandler,
 	reportHandler *report_handler.ReportHandler,
 	wsHandler *websocket_handler.WebSocketHandler,
 
 	authMiddleware *auth_verification.AuthMiddleware) {
 
 	router.Handle("/api/ws/{id}", websocket.Handler(wsHandler.StartTimer))
+
+	// Quiz show (brain-ring format)
+	router.Route("/api/quiz", func(r chi.Router) {
+		r.Get("/state/{id}", quizHandler.GetPublicState)
+		r.Post("/buzz/{id}", quizHandler.Buzz) // ESP32 buttons + manual herald buzz
+
+		r.Route("/herald", func(r chi.Router) {
+			r.Post("/login/{id}", quizHandler.HeraldLogin)
+			r.Post("/grade/{id}", quizHandler.Grade)
+			r.Post("/order/{id}", quizHandler.ChooseOrder)
+		})
+
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(authMiddleware.AuthVerify)
+			r.Post("/{id}/setup-teams", quizHandler.SetupTeams)
+			r.Get("/{id}/teams", quizHandler.ListTeams)
+			r.Get("/{id}/questions", quizHandler.ListQuestions)
+			r.Post("/{id}/questions", quizHandler.UpsertQuestion)
+			r.Delete("/{id}/questions/{questionId}", quizHandler.DeleteQuestion)
+
+			r.Post("/{id}/round/start", quizHandler.StartRound)
+			r.Post("/{id}/question/start", quizHandler.StartQuestion)
+			r.Post("/{id}/question/pause", quizHandler.PauseTimer)
+			r.Post("/{id}/question/resume", quizHandler.ResumeTimer)
+			r.Post("/{id}/question/close", quizHandler.CloseQuestion)
+			r.Post("/{id}/question/reveal", quizHandler.RevealAnswer)
+			r.Post("/{id}/question/reset", quizHandler.ResetQuestion)
+			r.Post("/{id}/leaderboard", quizHandler.ShowLeaderboard)
+			r.Post("/{id}/grant", quizHandler.GrantTurn)
+		})
+	})
 
 	router.Route("/api/submissions", func(r chi.Router) {
 		r.Use(authMiddleware.AuthVerify)

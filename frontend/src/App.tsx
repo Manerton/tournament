@@ -21,6 +21,10 @@ import GlobalLeaderboard from "./components/Leaderboards/GlobalLeaderboard.tsx";
 import UsersManagement from "./components/Admin/UsersManagment.tsx";
 import ReportPage from './components/Admin/Report.tsx';
 import WinLeaderboardHide from "./components/Leaderboards/WinLeaderboardHide.tsx";
+import QuizDisplay from "./components/Quiz/QuizDisplay.tsx";
+import QuizHerald from "./components/Quiz/QuizHerald.tsx";
+import QuizAdmin from "./components/Quiz/QuizAdmin.tsx";
+import QuizQuestionBank from "./components/Quiz/QuizQuestionBank.tsx";
 
 
 function App() {
@@ -42,8 +46,15 @@ function App() {
               <Route path="/tournaments/:id/winsspecial" element={<WinLeaderboardHide />} />
               <Route path="/tournaments/:id/leaderboard" element={<GlobalLeaderboard />} />
           </Route>
+
+          {/* Quiz screens run standalone: no site header/footer or nav buttons */}
+          <Route path="/quiz/display/:eventId" element={<QuizDisplay />} />
+          <Route path="/quiz/herald/:eventId" element={<QuizHerald />} />
+
            <Route element={<AdminLayout />}>
             <Route path="/AdminPanel" element={<AdminPanel />} />
+            <Route path="/quiz/admin/:eventId" element={<QuizAdmin />} />
+            <Route path="/quiz/admin/:eventId/questions" element={<QuizQuestionBank />} />
             <Route path="/Report" element={<ReportPage />} />
             R
             <Route path='/TeamsApplications' element={<TeamApplicationsPage/>} />

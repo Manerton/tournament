@@ -44,6 +44,10 @@ type GameServiceInterface interface {
 	CreateFirstGamesByInitialScores(ctx context.Context, transactionDB *gorm.DB, mainEventId uuid.UUID, tourEventId uuid.UUID) error
 }
 
+type QuizServiceInterface interface {
+	SetupTeams(ctx context.Context, eventID uuid.UUID) error
+}
+
 type TeamRepositoryInterface interface {
 	GetCountTeams(ctx context.Context, db *gorm.DB, eventId uuid.UUID) (int, error)
 }
@@ -57,11 +61,13 @@ type EventService struct {
 
 	gameService        GameServiceInterface
 	leaderboardService LeaderboardServiceInterface
+	quizService        QuizServiceInterface
 }
 
 func New(log *slog.Logger, db *gorm.DB,
 	repository EventRepositoryInterface, teamRepository TeamRepositoryInterface,
-	gameService GameServiceInterface, leaderboardService LeaderboardServiceInterface) *EventService {
+	gameService GameServiceInterface, leaderboardService LeaderboardServiceInterface,
+	quizService QuizServiceInterface) *EventService {
 	return &EventService{
 		db:  db,
 		log: log,
@@ -71,6 +77,7 @@ func New(log *slog.Logger, db *gorm.DB,
 
 		gameService:        gameService,
 		leaderboardService: leaderboardService,
+		quizService:        quizService,
 	}
 }
 
@@ -266,6 +273,21 @@ func (s *EventService) StartTournament(ctx context.Context, eventId string) erro
 	if countTeams == 0 {
 		log.Warn("count teams is 0")
 		return errs.ErrStartTournament
+	}
+
+	eventModel, err := s.repository.GetByID(ctx, s.db, uid)
+	if err != nil {
+		log.Error("failed get event", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	// Quiz-show format: no Swiss games/tours — provision quiz teams and go.
+	if eventModel.TypeDraws == event.QuizDraw {
+		if err := s.quizService.SetupTeams(ctx, uid); err != nil {
+			log.Error("failed setup quiz teams", logger.Err(err))
+			return errs.ErrInternalError
+		}
+		return nil
 	}
 
 	transactionDB := s.db.Begin()

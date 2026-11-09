@@ -2,17 +2,22 @@ package team_service
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/big"
 	participant_dto "main/internal/participant/dto"
 	"main/internal/participant/model/participant"
 	"main/internal/pkg/errs"
 	"main/internal/pkg/logger"
+	"main/internal/event/model/event"
+	"main/internal/quiz/model/quiz_team"
 	"main/internal/team/dto/team_dto"
 	"main/internal/team/model/team"
 	"main/internal/team/model/team_participant"
 	"main/internal/team/team_mapper"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -39,10 +44,23 @@ type ParticipantRepositoryInterface interface {
 	Create(context.Context, *gorm.DB, *participant.Participant) error
 }
 
+type QuizTeamRepositoryInterface interface {
+	GetByTeamID(ctx context.Context, db *gorm.DB, eventID uuid.UUID, teamID uuid.UUID) (quiz_team.QuizTeam, error)
+	GetByAccessCode(ctx context.Context, db *gorm.DB, eventID uuid.UUID, code string) (quiz_team.QuizTeam, error)
+	Save(ctx context.Context, db *gorm.DB, team quiz_team.QuizTeam) error
+	DeleteByEventAndTeamID(ctx context.Context, db *gorm.DB, eventID uuid.UUID, teamID uuid.UUID) error
+}
+
+type EventRepositoryInterface interface {
+	GetByID(ctx context.Context, db *gorm.DB, id uuid.UUID) (event.Event, error)
+}
+
 type TeamService struct {
 	teamRepository            TeamRepositoryInterface
 	participantRepository     ParticipantRepositoryInterface
 	teamParticipantRepository TeamParticipantRepositoryInterface
+	quizTeamRepository        QuizTeamRepositoryInterface
+	eventRepository           EventRepositoryInterface
 	log                       *slog.Logger
 	db                        *gorm.DB
 }
@@ -50,11 +68,15 @@ type TeamService struct {
 func New(teamRepository TeamRepositoryInterface,
 	participantRepository ParticipantRepositoryInterface,
 	teamParticipantRepository TeamParticipantRepositoryInterface,
+	quizTeamRepository QuizTeamRepositoryInterface,
+	eventRepository EventRepositoryInterface,
 	log *slog.Logger, db *gorm.DB) *TeamService {
 	return &TeamService{
 		teamRepository:            teamRepository,
 		participantRepository:     participantRepository,
 		teamParticipantRepository: teamParticipantRepository,
+		quizTeamRepository:        quizTeamRepository,
+		eventRepository:           eventRepository,
 		log:                       log,
 		db:                        db,
 	}
@@ -216,5 +238,62 @@ func (s *TeamService) SwitchTeamStatus(ctx context.Context, id string) error {
 		return errs.ErrInternalError
 	}
 
+	if teamModel.Status == team.AcceptStatus {
+		err = s.provisionQuizTeam(ctx, teamModel)
+	} else {
+		err = s.unprovisionQuizTeam(ctx, teamModel)
+	}
+	if err != nil {
+		log.Error("failed sync quiz team", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
 	return nil
+}
+
+// provisionQuizTeam creates a quiz_team row with an access code when a team
+// is accepted into a quiz-show event.
+func (s *TeamService) provisionQuizTeam(ctx context.Context, teamModel team.Team) error {
+	const op = "service.TeamService.provisionQuizTeam"
+
+	eventModel, err := s.eventRepository.GetByID(ctx, s.db, teamModel.EventID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if eventModel.TypeDraws != event.QuizDraw {
+		return nil
+	}
+
+	if _, err := s.quizTeamRepository.GetByTeamID(ctx, s.db, teamModel.EventID, teamModel.ID); err == nil {
+		return nil // already provisioned
+	}
+
+	code := generateAccessCode()
+	for {
+		if _, err := s.quizTeamRepository.GetByAccessCode(ctx, s.db, teamModel.EventID, code); err != nil {
+			break
+		}
+		code = generateAccessCode()
+	}
+
+	return s.quizTeamRepository.Save(ctx, s.db, quiz_team.QuizTeam{
+		EventID:    teamModel.EventID,
+		TeamID:     teamModel.ID,
+		AccessCode: code,
+	})
+}
+
+// unprovisionQuizTeam removes the quiz_team row when a team loses its accepted status.
+func (s *TeamService) unprovisionQuizTeam(ctx context.Context, teamModel team.Team) error {
+	const op = "service.TeamService.unprovisionQuizTeam"
+
+	return s.quizTeamRepository.DeleteByEventAndTeamID(ctx, s.db, teamModel.EventID, teamModel.ID)
+}
+
+func generateAccessCode() string {
+	n, err := rand.Int(rand.Reader, big.NewInt(10000))
+	if err != nil {
+		return fmt.Sprintf("%04d", time.Now().UnixNano()%10000)
+	}
+	return fmt.Sprintf("%04d", n.Int64())
 }

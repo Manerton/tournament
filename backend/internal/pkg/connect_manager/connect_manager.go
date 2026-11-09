@@ -4,9 +4,14 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
+	"time"
 
 	"golang.org/x/net/websocket"
 )
+
+// writeTimeout bounds a single client send so one dead/slow socket
+// can't block the whole broadcast (and the HTTP handler that triggered it).
+const writeTimeout = 5 * time.Second
 
 // Сообщение стандартное
 type Message struct {
@@ -71,6 +76,7 @@ func (h *Hub) BroadcastToEvent(eventID string, msg Message) {
 	}
 
 	for c := range set {
+		_ = c.Conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 		if err := websocket.Message.Send(c.Conn, string(data)); err != nil {
 			log.Println("[hub] send error, removing client:", err)
 			// при ошибке закрываем соединение и удаляем клиента
@@ -94,6 +100,7 @@ func (h *Hub) BroadcastAll(msg Message) {
 	data, _ := json.Marshal(msg)
 	for _, lst := range clientsCopy {
 		for _, c := range lst {
+			_ = c.Conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 			if err := websocket.Message.Send(c.Conn, string(data)); err != nil {
 				log.Println("[hub] send all error:", err)
 				_ = c.Conn.Close()

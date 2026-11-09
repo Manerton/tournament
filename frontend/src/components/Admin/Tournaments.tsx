@@ -12,8 +12,10 @@ import {
     type EventUpdate,
 } from "../../types/TournamentTypes";
 import formatDateForInput from "../../pkg/dateFormater";
+import { useNavigate } from "react-router-dom";
 
 const Tournaments: React.FC = () => {
+    const navigate = useNavigate();
     const [notify, setNotify] = useState<{ variant: "success" | "danger"; text: string } | null>(
         null
     );
@@ -171,6 +173,12 @@ const Tournaments: React.FC = () => {
                         </div>
                         <div className="me-3 d-flex gap-3">
                             <button
+                                className="btn btn-outline-success"
+                                onClick={() => navigate(`/quiz/admin/${tournament.id}`)}
+                            >
+                                Квиз-шоу
+                            </button>
+                            <button
                                 className="btn btn-outline-primary"
                                 onClick={() => handleEditClick(tournament)}
                             >
@@ -236,6 +244,7 @@ const Tournaments: React.FC = () => {
                                 >
                                     <option value={0}>Не указано</option>
                                     <option value={3}>Швейцарская</option>
+                                    <option value={4}>Квиз-шоу</option>
                                 </Form.Select>
                             </Form.Group>
                         )}

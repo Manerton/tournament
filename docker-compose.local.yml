@@ -1,11 +1,10 @@
 name: tournament-local
 
-# Dev environment: provides only the database (with migrations applied).
-# The Go server and the Vite frontend run on the host for hot reload:
+# Dev environment: database (with migrations) + backend packed in Docker.
+# The Vite frontend still runs on the host for hot reload:
 #
-#   terminal 1: docker compose -f docker-compose.local.yml up -d
-#   terminal 2: cd backend && go run ./cmd/server          # uses config-yaml/local.yaml
-#   terminal 3: cd frontend && deno task dev               # http://localhost:5173
+#   terminal 1: docker compose -f docker-compose.local.yml up -d --build
+#   terminal 2: cd frontend && deno task dev               # http://localhost:5173
 
 services:
   db:
@@ -34,6 +33,19 @@ services:
     environment:
       DSN: postgres://${DB_USER:-postgres}:${DB_PASS:-root}@db:5432/${DB_NAME:-tournamentDB}
     command: ["/app/bin/migrator", "-migration-path", "/app/migrations", "up"]
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      CONFIG_PATH: /app/config-yaml/local-docker.yaml
+    volumes:
+      - ./backend/config-yaml/local-docker.yaml:/app/config-yaml/local-docker.yaml:ro
+    ports:
+      - "8080:8080"
 
 volumes:
   pgdata:

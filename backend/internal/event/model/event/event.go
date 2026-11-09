@@ -10,6 +10,7 @@ const (
 	KnockoutDraw   = 1
 	RoundRobinDraw = 2
 	SwissDraw      = 3
+	QuizDraw       = 4
 )
 
 const (

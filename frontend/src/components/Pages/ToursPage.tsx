@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { EventStatus, type EventResponse } from "../../types/TournamentTypes";
+import { EventStatus, DrawType, type EventResponse } from "../../types/TournamentTypes";
 import { Alert, Button, Card, Container, Spinner } from "react-bootstrap";
-import { axiosGetTours, axiosStartTournament } from "../../requests/tournamentRequests";
+import { axiosGetEventById, axiosGetTours, axiosStartTournament } from "../../requests/tournamentRequests";
 import {useAuth} from "../helpers/AuthContext.tsx";
 import {UserRole} from "../../types/userType.ts";
+import QuizToursPanel from "../Quiz/QuizToursPanel.tsx";
 
 const ToursPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [tours, setTours] = useState<EventResponse[]>([]);
+    const [mainEvent, setMainEvent] = useState<EventResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [starting, setStarting] = useState(false);
@@ -18,8 +20,12 @@ const ToursPage: React.FC = () => {
     const loadTours = async () => {
         try {
             setLoading(true);
-            const res = await axiosGetTours(id!);
-            setTours(res);
+            const [toursRes, eventRes] = await Promise.all([
+                axiosGetTours(id!),
+                axiosGetEventById(id!),
+            ]);
+            setTours(toursRes);
+            setMainEvent(eventRes);
             setError(null);
         } catch (err) {
             console.error(err);
@@ -61,6 +67,11 @@ const ToursPage: React.FC = () => {
                 <Alert variant="danger">{error}</Alert>
             </Container>
         );
+    }
+
+    // Quiz-show format: instead of Swiss tours show the quiz control panel with live data.
+    if (mainEvent?.type_draws === DrawType.Quiz) {
+        return <QuizToursPanel eventId={id!} />;
     }
 
     return (
