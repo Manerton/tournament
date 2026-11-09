@@ -1,0 +1,14 @@
+env: "prod"
+
+DB_INFO:
+  host: "db"
+  user: "tournament_user"
+  pass: "vcMzeyYOoWmKS24"
+  name: "tournament_db"
+  ssl_model: "disable"
+
+HTTP_SERVER_INFO:
+  host: "0.0.0.0"
+  port: "8080"
+
+FRONTEND_INFO: "https://tournament.schooltech.ru"

@@ -1,0 +1,64 @@
+name: tournament
+
+# Production for a shared VPS where host nginx is the edge (TLS + routing).
+# Both app containers are published on 127.0.0.1 only; host nginx proxies
+# to the frontend container, which in turn serves static files and proxies
+# /backend/* to the backend over the internal compose network.
+# Nothing needs to be built or installed on the host itself.
+#
+# Host nginx config sample: deploy/nginx-tournament.conf
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-tournament_user}
+      POSTGRES_PASSWORD: ${DB_PASS:?Set DB_PASS in .env}
+      POSTGRES_DB: ${DB_NAME:-tournament_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-tournament_user} -d ${DB_NAME:-tournament_db}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrator:
+    build: ./backend
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DSN: postgres://${DB_USER:-tournament_user}:${DB_PASS}@db:5432/${DB_NAME:-tournament_db}
+    command: ["/app/bin/migrator", "-migration-path", "/app/migrations", "up"]
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      CONFIG_PATH: /app/config-yaml/docker.yaml
+    volumes:
+      - ./backend/config-yaml/docker.yaml:/app/config-yaml/docker.yaml:ro
+    # reachable only from the host (frontend container proxies here), not from the internet
+    expose:
+      - "8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /backend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    # reachable only from host nginx, not from the internet
+    ports:
+      - "127.0.0.1:8081:80"
+
+volumes:
+  pgdata:
