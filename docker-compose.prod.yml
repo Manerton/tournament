@@ -43,7 +43,7 @@ services:
     environment:
       CONFIG_PATH: /app/config-yaml/docker.yaml
     volumes:
-      - ./backend/config-yaml/docker.yaml:/app/config-yaml/docker.yaml:ro
+      - ${APP_ROOT:-.}/shared/docker.yaml:/app/config-yaml/docker.yaml:ro
     # reachable only from the host (frontend container proxies here), not from the internet
     expose:
       - "8080"
