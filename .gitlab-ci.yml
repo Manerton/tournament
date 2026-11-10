@@ -1,0 +1,63 @@
+stages:
+  - test
+  - deploy
+
+# ==========================================
+# 1. ТЕСТИРОВАНИЕ И ЛИНТИНГ
+# ==========================================
+
+test_backend:
+  stage: test
+  image: golang:1.25-alpine
+  before_script:
+    - apk add --no-cache git gcc musl-dev
+    - cd backend
+    - go mod download
+  script:
+    - echo "=== Проверка компиляции и тестов Go бэкенда ==="
+    - go vet ./...
+    - go test -v -race ./...
+    # Проверка, что оба бинарника собираются без ошибок
+    - CGO_ENABLED=0 go build -o /dev/null ./cmd/server
+    - CGO_ENABLED=0 go build -o /dev/null ./cmd/migrator
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+test_frontend:
+  stage: test
+  image: denoland/deno:alpine-2
+  before_script:
+    - cd frontend
+    - deno install
+  script:
+    - echo "=== Проверка сборки и линтинга Frontend (Deno) ==="
+    # Проверка линтером/форматтером (если используются)
+    - deno lint || true
+    # Тестовая сборка фронтенда
+    - deno task build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+# ==========================================
+# 2. РАЗВЁРТЫВАНИЕ (DEPLOY)
+# ==========================================
+
+deploy_prod:
+  stage: deploy
+  image: alpine:3.21
+  resource_group: tournament-deploy   # Блокирует одновременные запуски деплоя
+  rules:
+    # Автоматический запуск в main, если добавлен приватный SSH-ключ
+    - if: '$CI_COMMIT_BRANCH == "main" && $TOURNAMENT_SSH_KEY'
+      when: on_success
+    # Ручной запуск в main, если ключ ещё не настроен в CI/CD Settings
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  before_script:
+    - apk add --no-cache openssh-client git tar bash
+  script:
+    - echo "=== Запуск развёртывания релиза ${CI_COMMIT_SHA} ==="
+    # Запускаем подготовленный скрипт deploy/deploy.sh
+    - bash deploy/deploy.sh
