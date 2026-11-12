@@ -1,0 +1,19 @@
+[Unit]
+Description=Tournament GitLab Runner
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+User=su
+Group=su
+SupplementaryGroups=docker
+WorkingDirectory=/home/su
+ExecStart=/usr/bin/gitlab-runner run --config /home/su/.gitlab-runner/config.toml --working-directory /home/su
+Restart=always
+RestartSec=5
+KillSignal=SIGQUIT
+TimeoutStopSec=7200
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

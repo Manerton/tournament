@@ -20,6 +20,13 @@ Deployment jobs are serialized with the `tournament-deploy` resource group.
    deployment jobs** to prevent an older queued pipeline from replacing a
    newer release.
 
+The tournament runner's existing user configuration is
+`/home/su/.gitlab-runner/config.toml`. Run it through
+`gitlab-runner-tournament.service`, which grants the service the supplementary
+`docker` group and starts it after reboot. The separate system runner service
+and `/etc/gitlab-runner/config.toml` remain managed independently. Do not start
+an additional manual `gitlab-runner run` process for the same user configuration.
+
 | Variable | Type | Required / default |
 | --- | --- | --- |
 | `TOURNAMENT_SSH_KEY` | File | Required; protected SSH private key without a passphrase |
