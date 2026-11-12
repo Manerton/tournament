@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.25-alpine AS builder
+FROM docker.io/library/golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o bin/server ./cmd/server \
     && CGO_ENABLED=0 GOOS=linux go build -o bin/migrator ./cmd/migrator
 
 # Runtime stage
-FROM alpine:3.21
+FROM docker.io/library/alpine:3.21
 
 RUN adduser -D -u 10001 appuser
 

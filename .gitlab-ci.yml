@@ -2,9 +2,24 @@ stages:
   - test
   - deploy
 
-# ==========================================
-# 1. ТЕСТИРОВАНИЕ И ЛИНТИНГ
-# ==========================================
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+default:
+  interruptible: true
+  tags:
+    - tournament
+
+check_deploy:
+  stage: test
+  image: alpine:3.21
+  before_script:
+    - apk add --no-cache bash shellcheck
+  script:
+    - bash -n deploy/deploy.sh deploy/release.sh
+    - shellcheck deploy/deploy.sh deploy/release.sh
 
 test_backend:
   stage: test
@@ -14,50 +29,36 @@ test_backend:
     - cd backend
     - go mod download
   script:
-    - echo "=== Проверка компиляции и тестов Go бэкенда ==="
+    - echo "Checking the Go backend"
     - go vet ./...
     - go test -v -race ./...
-    # Проверка, что оба бинарника собираются без ошибок
+    # Compile both production entry points.
     - CGO_ENABLED=0 go build -o /dev/null ./cmd/server
     - CGO_ENABLED=0 go build -o /dev/null ./cmd/migrator
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
 
 test_frontend:
   stage: test
-  image: denoland/deno:alpine-2
+  image: denoland/deno:alpine-2.9.8
   before_script:
     - cd frontend
-    - deno install
+    - deno install --frozen
   script:
-    - echo "=== Проверка сборки и линтинга Frontend (Deno) ==="
-    # Проверка линтером/форматтером (если используются)
-    - deno lint || true
-    # Тестовая сборка фронтенда
+    - echo "Building the frontend with Deno"
     - deno task build
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-
-# ==========================================
-# 2. РАЗВЁРТЫВАНИЕ (DEPLOY)
-# ==========================================
 
 deploy_prod:
   stage: deploy
   image: alpine:3.21
-  resource_group: tournament-deploy   # Блокирует одновременные запуски деплоя
+  resource_group: tournament-deploy
+  interruptible: false
+  environment:
+    name: production
+    url: https://tournament.schooltech.ru
   rules:
-    # Автоматический запуск в main, если добавлен приватный SSH-ключ
-    - if: '$CI_COMMIT_BRANCH == "main" && $TOURNAMENT_SSH_KEY'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true"'
       when: on_success
-    # Ручной запуск в main, если ключ ещё не настроен в CI/CD Settings
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
   before_script:
     - apk add --no-cache openssh-client git tar bash
   script:
-    - echo "=== Запуск развёртывания релиза ${CI_COMMIT_SHA} ==="
-    # Запускаем подготовленный скрипт deploy/deploy.sh
+    - echo "Deploying release ${CI_COMMIT_SHA}"
     - bash deploy/deploy.sh
