@@ -402,7 +402,7 @@ func (s *ReportService) fillingFile(headers []string, data []report.TeamReport) 
 func colIndexToLetters(idx int) string {
 	result := ""
 	for idx >= 0 {
-		result = string('A'+(idx%26)) + result
+		result = string(rune('A'+(idx%26))) + result
 		idx = idx/26 - 1
 	}
 	return result
