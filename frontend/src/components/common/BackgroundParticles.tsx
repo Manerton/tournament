@@ -4,6 +4,11 @@ import { loadFull } from "tsparticles";
 import type { ISourceOptions } from "@tsparticles/engine";
 import { ThemeContext } from "../helpers/ThemeContext";
 
+// @tsparticles/react re-creates the container on ANY props-object change,
+// so the props must stay referentially stable between parent re-renders
+const StableParticles = React.memo(Particles);
+const PARTICLES_STYLE = { pointerEvents: "none" } as const;
+
 const BackgroundParticles: React.FC = () => {
   const [particlesReady, setParticlesReady] = useState(false);
   const { theme } = useContext(ThemeContext);
@@ -63,11 +68,11 @@ const BackgroundParticles: React.FC = () => {
   return (
     <>
       {particlesReady && options && (
-        <Particles
+        <StableParticles
           id="tsparticles"
           key={theme}
           options={options}
-          style={{ pointerEvents: "none" }} // ✅ чтобы не мешал кликам
+          style={PARTICLES_STYLE} // ✅ чтобы не мешал кликам
         />
       )}
     </>

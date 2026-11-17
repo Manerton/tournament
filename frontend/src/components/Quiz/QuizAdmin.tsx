@@ -37,6 +37,7 @@ export default function QuizAdmin() {
 
     const [remainingMs, setRemainingMs] = useState(0);
     const deadlineRef = useRef(0);
+    const runningRef = useRef(false);
 
     const loadTeams = useCallback(() => {
         if (!eventId) return;
@@ -53,14 +54,28 @@ export default function QuizAdmin() {
         loadQuestions();
     }, [loadTeams, loadQuestions]);
 
+    // track a local deadline so the timer ticks smoothly between broadcasts;
+    // re-sync only on real discontinuities: start/resume or a new duration
     useEffect(() => {
         if (!state) return;
-        deadlineRef.current = Date.now() + state.timer.remaining_ms;
-        setRemainingMs(state.timer.remaining_ms);
+        const t = state.timer;
+        if (!t.running) {
+            runningRef.current = false;
+            deadlineRef.current = Date.now() + t.remaining_ms;
+            setRemainingMs(t.remaining_ms);
+            return;
+        }
+        const localRem = Math.max(deadlineRef.current - Date.now(), 0);
+        if (!runningRef.current || Math.abs(t.remaining_ms - localRem) > 1000) {
+            deadlineRef.current = Date.now() + t.remaining_ms;
+            setRemainingMs(t.remaining_ms);
+        }
+        runningRef.current = true;
     }, [state]);
 
     useEffect(() => {
         const tick = setInterval(() => {
+            if (!runningRef.current) return; // stay frozen while paused
             setRemainingMs(Math.max(deadlineRef.current - Date.now(), 0));
         }, 250);
         return () => clearInterval(tick);
