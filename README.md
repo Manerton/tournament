@@ -1,5 +1,6 @@
 # Tournament
 
+CI/CD setup and deployment: [deploy/README.md](deploy/README.md).
 
 
 ## Getting started

@@ -25,6 +25,7 @@ services:
       retries: 10
 
   migrator:
+    image: tournament-backend:${RELEASE_REVISION:-local}
     build: ./backend
     restart: "no"
     depends_on:
@@ -35,6 +36,7 @@ services:
     command: ["/app/bin/migrator", "-migration-path", "/app/migrations", "up"]
 
   backend:
+    image: tournament-backend:${RELEASE_REVISION:-local}
     build: ./backend
     restart: unless-stopped
     depends_on:
@@ -49,6 +51,7 @@ services:
       - "8080"
 
   frontend:
+    image: tournament-frontend:${RELEASE_REVISION:-local}
     build:
       context: ./frontend
       args:

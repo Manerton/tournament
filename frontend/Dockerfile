@@ -1,10 +1,10 @@
 # Build stage (Deno only — do not use npm)
-FROM denoland/deno:alpine-2 AS builder
+FROM docker.io/denoland/deno:alpine-2.9.8 AS builder
 
 WORKDIR /app
 
 COPY package.json deno.lock* ./
-RUN deno install
+RUN deno install --frozen
 
 COPY . .
 
@@ -15,7 +15,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 RUN deno task build
 
 # Runtime stage
-FROM nginx:1.27-alpine
+FROM docker.io/library/nginx:1.27-alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
