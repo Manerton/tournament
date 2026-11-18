@@ -24,6 +24,8 @@ type BuzzEntry struct {
 	TeamName string `json:"team_name"`
 	Status   int    `json:"status"`
 	IsActive bool   `json:"is_active"`
+	// OffsetMs is the press time relative to the window start; 0 for the winner.
+	OffsetMs int `json:"offset_ms"`
 }
 
 type TeamState struct {
@@ -75,6 +77,9 @@ type AdminTeam struct {
 	Round1Score      int    `json:"round1_score"`
 	Round2Score      int    `json:"round2_score"`
 	Round3Score      int    `json:"round3_score"`
+	Round1Adjust     int    `json:"round1_adjust"`
+	Round2Adjust     int    `json:"round2_adjust"`
+	Round3Adjust     int    `json:"round3_adjust"`
 	Round3Order      int    `json:"round3_order"`
 	Round3WrongCount int    `json:"round3_wrong_count"`
 	Round3Eliminated bool   `json:"round3_eliminated"`
@@ -83,4 +88,12 @@ type AdminTeam struct {
 type BuzzResult struct {
 	Position int  `json:"position"`
 	QueueFull bool `json:"queue_full"`
+	// OffsetMs is the press time relative to the window start; 0 for the winner.
+	OffsetMs int `json:"offset_ms"`
+}
+
+type AdminButton struct {
+	ButtonID string `json:"button_id"`
+	TeamID   string `json:"team_id"`
+	TeamName string `json:"team_name"`
 }

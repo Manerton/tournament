@@ -11,11 +11,13 @@ import (
 	"main/internal/quiz/dto/quiz_dto"
 	"main/internal/quiz/model/quiz_answer"
 	"main/internal/quiz/model/quiz_buzz"
+	"main/internal/quiz/model/quiz_button"
 	"main/internal/quiz/model/quiz_question"
 	"main/internal/quiz/model/quiz_session"
 	"main/internal/quiz/model/quiz_team"
 	"main/internal/team/model/team"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,12 +31,16 @@ const (
 	Round3 = 3
 
 	MaxAttemptsRound1 = 3
-	MaxQueueRound1    = 3
+
+	// BuzzWindowDuration is the 1-second collection window opened by the first press:
+	// all presses inside the window are recorded with their offsets, only the
+	// fastest team gets the attempt.
+	BuzzWindowDuration = time.Second
 )
 
 var RoundConfigs = []quiz_dto.RoundConfig{
 	{Round: 1, Name: "Стрелы логики", QuestionCount: 10, TimeSec: 60},
-	{Round: 2, Name: "Ударный вектор", QuestionCount: 7, TimeSec: 60},
+	{Round: 2, Name: "Вектор удара", QuestionCount: 7, TimeSec: 60},
 	{Round: 3, Name: "Формула клинка", QuestionCount: 5, TimeSec: 120},
 }
 
@@ -68,6 +74,14 @@ func (t *timerRuntime) remainingNow() time.Duration {
 		return rem
 	}
 	return t.remaining
+}
+
+// buzzWindowState tracks the currently open 1-second press window of an event.
+type buzzWindowState struct {
+	question int // question number the window belongs to
+	index    int // window number within the question
+	start    time.Time
+	deadline time.Time
 }
 
 type QuizSessionRepositoryInterface interface {
@@ -106,21 +120,30 @@ type TeamRepositoryInterface interface {
 	GetAcceptTeamsByEventId(ctx context.Context, db *gorm.DB, eventID uuid.UUID) ([]team.Team, error)
 }
 
+type QuizButtonRepositoryInterface interface {
+	GetByID(ctx context.Context, db *gorm.DB, id string) (quiz_button.QuizButton, error)
+	Upsert(ctx context.Context, db *gorm.DB, button quiz_button.QuizButton) error
+	Delete(ctx context.Context, db *gorm.DB, id string) error
+	ListByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) ([]quiz_button.QuizButton, error)
+}
+
 type QuizService struct {
 	log *slog.Logger
 	db  *gorm.DB
 
-	sessionRepository  QuizSessionRepositoryInterface
-	questionRepository QuizQuestionRepositoryInterface
-	teamRepository     QuizTeamRepositoryInterface
-	buzzRepository     QuizBuzzRepositoryInterface
-	answerRepository   QuizAnswerRepositoryInterface
+	sessionRepository   QuizSessionRepositoryInterface
+	questionRepository  QuizQuestionRepositoryInterface
+	teamRepository      QuizTeamRepositoryInterface
+	buzzRepository      QuizBuzzRepositoryInterface
+	answerRepository    QuizAnswerRepositoryInterface
 	eventTeamRepository TeamRepositoryInterface
+	buttonRepository    QuizButtonRepositoryInterface
 
 	hub *connect_manager.Hub
 
-	mu     sync.Mutex
-	timers map[uuid.UUID]*timerRuntime
+	mu          sync.Mutex
+	timers      map[uuid.UUID]*timerRuntime
+	buzzWindows map[uuid.UUID]*buzzWindowState
 }
 
 func New(log *slog.Logger, db *gorm.DB,
@@ -130,6 +153,7 @@ func New(log *slog.Logger, db *gorm.DB,
 	buzzRepository QuizBuzzRepositoryInterface,
 	answerRepository QuizAnswerRepositoryInterface,
 	eventTeamRepository TeamRepositoryInterface,
+	buttonRepository QuizButtonRepositoryInterface,
 	hub *connect_manager.Hub) *QuizService {
 	return &QuizService{
 		log:                 log,
@@ -140,8 +164,10 @@ func New(log *slog.Logger, db *gorm.DB,
 		buzzRepository:      buzzRepository,
 		answerRepository:    answerRepository,
 		eventTeamRepository: eventTeamRepository,
+		buttonRepository:    buttonRepository,
 		hub:                 hub,
 		timers:              make(map[uuid.UUID]*timerRuntime),
+		buzzWindows:         make(map[uuid.UUID]*buzzWindowState),
 	}
 }
 
@@ -174,15 +200,10 @@ func (s *QuizService) getTimer(eventID uuid.UUID, cfg quiz_dto.RoundConfig) *tim
 // activeBuzz returns the buzz that currently holds the answering turn:
 // the first pending buzz within the queue window.
 func activeBuzz(buzzes []quiz_buzz.QuizBuzz) *quiz_buzz.QuizBuzz {
-	pending := 0
 	for i := range buzzes {
-		if buzzes[i].Status != quiz_buzz.StatusPending {
-			continue
-		}
-		if pending < MaxQueueRound1 {
+		if buzzes[i].Status == quiz_buzz.StatusPending {
 			return &buzzes[i]
 		}
-		pending++
 	}
 	return nil
 }
@@ -195,6 +216,64 @@ func attemptsUsed(buzzes []quiz_buzz.QuizBuzz) int {
 		}
 	}
 	return used
+}
+
+// teamAttempted reports whether the team already got an attempt (graded) for this question.
+func teamAttempted(buzzes []quiz_buzz.QuizBuzz, teamID uuid.UUID) bool {
+	for _, b := range buzzes {
+		if b.TeamID == teamID && (b.Status == quiz_buzz.StatusCorrect || b.Status == quiz_buzz.StatusWrong) {
+			return true
+		}
+	}
+	return false
+}
+
+func maxWindowIdx(buzzes []quiz_buzz.QuizBuzz) int {
+	max := -1
+	for _, b := range buzzes {
+		if b.WindowIdx > max {
+			max = b.WindowIdx
+		}
+	}
+	return max
+}
+
+// pressesInWindow counts real presses (false starts excluded) of a window.
+func pressesInWindow(buzzes []quiz_buzz.QuizBuzz, windowIdx int) int {
+	n := 0
+	for _, b := range buzzes {
+		if b.WindowIdx == windowIdx && b.Status != quiz_buzz.StatusFalseStart {
+			n++
+		}
+	}
+	return n
+}
+
+// windowPlace returns the team's place in its window race (1 = fastest).
+func windowPlace(buzzes []quiz_buzz.QuizBuzz, buzz quiz_buzz.QuizBuzz) int {
+	place := 1
+	for _, b := range buzzes {
+		if b.WindowIdx == buzz.WindowIdx && b.OffsetMs < buzz.OffsetMs {
+			place++
+		}
+	}
+	return place
+}
+
+func nextSeq(buzzes []quiz_buzz.QuizBuzz) int64 {
+	var maxSeq int64 = 0
+	for _, b := range buzzes {
+		if b.Seq > maxSeq {
+			maxSeq = b.Seq
+		}
+	}
+	return maxSeq + 1
+}
+
+func (s *QuizService) clearBuzzWindow(eventID uuid.UUID) {
+	s.mu.Lock()
+	delete(s.buzzWindows, eventID)
+	s.mu.Unlock()
 }
 
 // ---------- setup & questions ----------
@@ -263,9 +342,12 @@ func (s *QuizService) ListTeams(ctx context.Context, eventID uuid.UUID) ([]quiz_
 			TeamID:           t.TeamID.String(),
 			Name:             t.Team.Name,
 			AccessCode:       t.AccessCode,
-			Round1Score:      t.Round1Score,
-			Round2Score:      t.Round2Score,
-			Round3Score:      t.Round3Score,
+			Round1Score:      t.Round1Score + t.Round1Adjust,
+			Round2Score:      t.Round2Score + t.Round2Adjust,
+			Round3Score:      t.Round3Score + t.Round3Adjust,
+			Round1Adjust:     t.Round1Adjust,
+			Round2Adjust:     t.Round2Adjust,
+			Round3Adjust:     t.Round3Adjust,
 			Round3Order:      t.Round3Order,
 			Round3WrongCount: t.Round3WrongCount,
 			Round3Eliminated: t.Round3Eliminated,
@@ -389,6 +471,7 @@ func (s *QuizService) StartQuestion(ctx context.Context, eventID uuid.UUID) erro
 		log.Error("failed clear buzzes", logger.Err(err))
 		return errs.ErrInternalError
 	}
+	s.clearBuzzWindow(eventID)
 
 	s.mu.Lock()
 	t := s.timers[eventID]
@@ -455,6 +538,7 @@ func (s *QuizService) CloseQuestion(ctx context.Context, eventID uuid.UUID) erro
 		t.started = true
 	}
 	s.mu.Unlock()
+	s.clearBuzzWindow(eventID)
 	return s.broadcastState(ctx, eventID)
 }
 
@@ -557,6 +641,7 @@ func (s *QuizService) ResetQuestion(ctx context.Context, eventID uuid.UUID) erro
 		log.Error("failed clear buzzes", logger.Err(err))
 		return errs.ErrInternalError
 	}
+	s.clearBuzzWindow(eventID)
 
 	s.mu.Lock()
 	if t, ok := s.timers[eventID]; ok && t.started && !t.running {
@@ -601,16 +686,38 @@ func (s *QuizService) HeraldLogin(ctx context.Context, eventID uuid.UUID, code s
 	}, nil
 }
 
-func (s *QuizService) Buzz(ctx context.Context, eventID uuid.UUID, code string) (quiz_dto.BuzzResult, error) {
+// resolveBuzzTeam identifies the pressing team: either by ESP32 button id
+// (preconfigured mapping) or by herald access code (manual press).
+func (s *QuizService) resolveBuzzTeam(ctx context.Context, eventID uuid.UUID, code string, buttonID string) (quiz_team.QuizTeam, error) {
+	if buttonID != "" {
+		button, err := s.buttonRepository.GetByID(ctx, s.db, buttonID)
+		if err != nil || button.QuizTeam.EventID != eventID {
+			return quiz_team.QuizTeam{}, errs.ErrBadRequest.Wrap("Неизвестная кнопка")
+		}
+		return button.QuizTeam, nil
+	}
+	qt, err := s.teamRepository.GetByAccessCode(ctx, s.db, eventID, code)
+	if err != nil {
+		return quiz_team.QuizTeam{}, errs.ErrBadRequest.Wrap("Неверный код команды")
+	}
+	return qt, nil
+}
+
+// Buzz handles a press (ESP32 button or manual herald buzz) in round 1.
+// The first press opens a 1-second window: the fastest team gets the attempt,
+// other presses inside the window are recorded with their offsets for display only.
+// After a failed attempt the next press opens a fresh window; a team that already
+// answered cannot press again for the same question.
+func (s *QuizService) Buzz(ctx context.Context, eventID uuid.UUID, code string, buttonID string) (quiz_dto.BuzzResult, error) {
 	const op = "service.QuizService.Buzz"
 	log := s.log.With(slog.String("op", op))
 
 	result := quiz_dto.BuzzResult{Position: -1}
 
-	qt, err := s.teamRepository.GetByAccessCode(ctx, s.db, eventID, code)
+	qt, err := s.resolveBuzzTeam(ctx, eventID, code, buttonID)
 	if err != nil {
-		log.Error("failed get quiz team by code", logger.Err(err))
-		return result, errs.ErrBadRequest.Wrap("Неверный код команды")
+		log.Error("failed resolve buzz team", logger.Err(err))
+		return result, err
 	}
 
 	session, err := s.getSession(ctx, eventID)
@@ -631,59 +738,104 @@ func (s *QuizService) Buzz(ctx context.Context, eventID uuid.UUID, code string) 
 		return result, errs.ErrInvalidGameState.Wrap("Ложный старт: вопрос ещё не начался")
 	}
 
-	// idempotent re-buzz
 	buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, Round1, session.CurrentQuestion)
 	if err != nil {
 		log.Error("failed get buzzes", logger.Err(err))
 		return result, errs.ErrInternalError
 	}
-	for i, b := range buzzes {
-		if b.TeamID == qt.TeamID {
-			if b.Status == quiz_buzz.StatusPending {
-				result.Position = i + 1
-				return result, nil
-			}
-			return result, errs.ErrInvalidGameState.Wrap("Команда уже отвечала на этот вопрос")
-		}
-	}
 
-	pendingCount := 0
-	var maxSeq int64 = 0
+	// idempotent re-buzz while this team holds the attempt
 	for _, b := range buzzes {
-		if b.Seq > maxSeq {
-			maxSeq = b.Seq
-		}
-		if b.Status == quiz_buzz.StatusPending {
-			pendingCount++
+		if b.TeamID == qt.TeamID && b.Status == quiz_buzz.StatusPending {
+			result.Position = windowPlace(buzzes, b)
+			result.OffsetMs = b.OffsetMs
+			return result, nil
 		}
 	}
+	if teamAttempted(buzzes, qt.TeamID) {
+		return result, errs.ErrInvalidGameState.Wrap("Команда уже отвечала на этот вопрос")
+	}
 
+	now := time.Now()
+
+	s.mu.Lock()
+	w := s.buzzWindows[eventID]
+	if w != nil && w.question != session.CurrentQuestion {
+		delete(s.buzzWindows, eventID)
+		w = nil
+	}
+
+	if w == nil {
+		// first press of a new window — this team gets the attempt
+		if attemptsUsed(buzzes) >= MaxAttemptsRound1 {
+			s.mu.Unlock()
+			return result, errs.ErrInvalidGameState.Wrap("Попытки на этот вопрос закончились")
+		}
+		w = &buzzWindowState{
+			question: session.CurrentQuestion,
+			index:    maxWindowIdx(buzzes) + 1,
+			start:    now,
+			deadline: now.Add(BuzzWindowDuration),
+		}
+		s.buzzWindows[eventID] = w
+		s.mu.Unlock()
+
+		buzz := quiz_buzz.QuizBuzz{
+			EventID:        eventID,
+			Round:          Round1,
+			QuestionNumber: session.CurrentQuestion,
+			TeamID:         qt.TeamID,
+			Seq:            nextSeq(buzzes),
+			Status:         quiz_buzz.StatusPending,
+			WindowIdx:      w.index,
+			OffsetMs:       0,
+		}
+		if err := s.buzzRepository.Save(ctx, s.db, buzz); err != nil {
+			log.Error("failed save buzz", logger.Err(err))
+			return result, errs.ErrInternalError
+		}
+
+		// pause the timer while the team answers
+		s.mu.Lock()
+		if t.running {
+			t.remaining = time.Until(t.deadline)
+			t.running = false
+		}
+		s.mu.Unlock()
+
+		result.Position = 1
+		result.OffsetMs = 0
+		if err := s.broadcastState(ctx, eventID); err != nil {
+			return result, err
+		}
+		return result, nil
+	}
+	window := *w
+	s.mu.Unlock()
+
+	// window already open — the press is recorded for the race display only
+	if now.After(window.deadline) {
+		return result, errs.ErrInvalidGameState.Wrap("Приём нажатий закрыт, отвечает другая команда")
+	}
+
+	offset := int(now.Sub(window.start).Milliseconds())
 	buzz := quiz_buzz.QuizBuzz{
 		EventID:        eventID,
 		Round:          Round1,
 		QuestionNumber: session.CurrentQuestion,
 		TeamID:         qt.TeamID,
-		Seq:            maxSeq + 1,
-		Status:         quiz_buzz.StatusPending,
+		Seq:            nextSeq(buzzes),
+		Status:         quiz_buzz.StatusOutpaced,
+		WindowIdx:      window.index,
+		OffsetMs:       offset,
 	}
 	if err := s.buzzRepository.Save(ctx, s.db, buzz); err != nil {
 		log.Error("failed save buzz", logger.Err(err))
 		return result, errs.ErrInternalError
 	}
 
-	// pause the timer on the first pending buzz
-	s.mu.Lock()
-	if t.running {
-		t.remaining = time.Until(t.deadline)
-		t.running = false
-	}
-	s.mu.Unlock()
-
-	if pendingCount+1 > MaxQueueRound1 {
-		result.QueueFull = true
-	}
-	result.Position = pendingCount + 1
-
+	result.Position = pressesInWindow(buzzes, window.index) + 1
+	result.OffsetMs = offset
 	if err := s.broadcastState(ctx, eventID); err != nil {
 		return result, err
 	}
@@ -711,6 +863,7 @@ func (s *QuizService) recordFalseStart(ctx context.Context, eventID uuid.UUID, q
 		TeamID:         teamID,
 		Seq:            maxSeq + 1,
 		Status:         quiz_buzz.StatusFalseStart,
+		WindowIdx:      -1, // false starts are not part of any window
 	})
 }
 
@@ -746,6 +899,122 @@ func (s *QuizService) ChooseOrder(ctx context.Context, eventID uuid.UUID, code s
 		return errs.ErrInternalError
 	}
 	return s.broadcastState(ctx, eventID)
+}
+
+// AdjustScore applies a manual score correction (delta) for one round of a team.
+// Corrections accumulate in per-round adjust columns so automatic round
+// recalculations (rounds 2/3 rebuild scores from answer records) never wipe them.
+func (s *QuizService) AdjustScore(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID, round int, delta int) error {
+	const op = "service.QuizService.AdjustScore"
+	log := s.log.With(slog.String("op", op))
+
+	if round < Round1 || round > Round3 {
+		return errs.ErrBadRequest.Wrap("Некорректный раунд")
+	}
+
+	qt, err := s.teamRepository.GetByTeamID(ctx, s.db, eventID, teamID)
+	if err != nil {
+		log.Error("failed get quiz team", logger.Err(err))
+		return errs.ErrBadRequest.Wrap("Команда не найдена")
+	}
+
+	switch round {
+	case Round1:
+		qt.Round1Adjust += delta
+	case Round2:
+		qt.Round2Adjust += delta
+	case Round3:
+		qt.Round3Adjust += delta
+	}
+	if err := s.teamRepository.Save(ctx, s.db, qt); err != nil {
+		log.Error("failed save quiz team", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	return s.broadcastState(ctx, eventID)
+}
+
+// AdminSetOrder sets (or resets, when order is OrderNone) a team's round-3 order,
+// bypassing the herald restriction — for correcting herald mistakes.
+func (s *QuizService) AdminSetOrder(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID, order int) error {
+	const op = "service.QuizService.AdminSetOrder"
+	log := s.log.With(slog.String("op", op))
+
+	if order < quiz_team.OrderNone || order > quiz_team.OrderGreen {
+		return errs.ErrBadRequest.Wrap("Некорректный орден")
+	}
+
+	qt, err := s.teamRepository.GetByTeamID(ctx, s.db, eventID, teamID)
+	if err != nil {
+		log.Error("failed get quiz team", logger.Err(err))
+		return errs.ErrBadRequest.Wrap("Команда не найдена")
+	}
+
+	qt.Round3Order = order
+	if err := s.teamRepository.Save(ctx, s.db, qt); err != nil {
+		log.Error("failed save quiz team", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	return s.broadcastState(ctx, eventID)
+}
+
+// ---------- buttons (ESP32) ----------
+
+func (s *QuizService) ListButtons(ctx context.Context, eventID uuid.UUID) ([]quiz_dto.AdminButton, error) {
+	const op = "service.QuizService.ListButtons"
+	log := s.log.With(slog.String("op", op))
+
+	buttons, err := s.buttonRepository.ListByEvent(ctx, s.db, eventID)
+	if err != nil {
+		log.Error("failed list buttons", logger.Err(err))
+		return nil, errs.ErrInternalError
+	}
+
+	result := make([]quiz_dto.AdminButton, 0, len(buttons))
+	for _, b := range buttons {
+		result = append(result, quiz_dto.AdminButton{
+			ButtonID: b.ID,
+			TeamID:   b.QuizTeam.TeamID.String(),
+			TeamName: b.QuizTeam.Team.Name,
+		})
+	}
+	return result, nil
+}
+
+// RegisterButton binds a physical button id to a quiz team (re-binding allowed).
+func (s *QuizService) RegisterButton(ctx context.Context, eventID uuid.UUID, buttonID string, teamID uuid.UUID) error {
+	const op = "service.QuizService.RegisterButton"
+	log := s.log.With(slog.String("op", op))
+
+	buttonID = strings.TrimSpace(buttonID)
+	if buttonID == "" || len(buttonID) > 64 {
+		return errs.ErrBadRequest.Wrap("Некорректный id кнопки")
+	}
+
+	qt, err := s.teamRepository.GetByTeamID(ctx, s.db, eventID, teamID)
+	if err != nil {
+		log.Error("failed get quiz team", logger.Err(err))
+		return errs.ErrBadRequest.Wrap("Команда не найдена")
+	}
+
+	if err := s.buttonRepository.Upsert(ctx, s.db, quiz_button.QuizButton{
+		ID:         buttonID,
+		QuizTeamID: qt.ID,
+	}); err != nil {
+		log.Error("failed upsert button", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	return s.broadcastState(ctx, eventID)
+}
+
+func (s *QuizService) DeleteButton(ctx context.Context, buttonID string) error {
+	const op = "service.QuizService.DeleteButton"
+	log := s.log.With(slog.String("op", op))
+
+	if err := s.buttonRepository.Delete(ctx, s.db, buttonID); err != nil {
+		log.Error("failed delete button", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	return nil
 }
 
 // Grade evaluates the current question for a team. grade values:
@@ -826,6 +1095,7 @@ func (s *QuizService) gradeRound1(ctx context.Context, eventID uuid.UUID, sessio
 			t.started = true
 		}
 		s.mu.Unlock()
+		s.clearBuzzWindow(eventID)
 		session.AnswerRevealed = true
 		if err := s.sessionRepository.Save(ctx, s.db, session); err != nil {
 			log.Error("failed save session", logger.Err(err))
@@ -846,10 +1116,8 @@ func (s *QuizService) gradeRound1(ctx context.Context, eventID uuid.UUID, sessio
 				t.running = false
 			}
 			s.mu.Unlock()
-		} else if next := activeBuzz(refreshBuzz(buzzes, *active)); next != nil {
-			// turn passes to the next queued team; timer stays paused
 		} else {
-			// nobody left in queue — resume the timer for remaining teams
+			// answer failed — resume the timer; the next press opens a fresh window
 			s.mu.Lock()
 			if t, ok := s.timers[eventID]; ok && t.started && !t.running && t.remaining > 0 {
 				t.deadline = time.Now().Add(t.remaining)
@@ -857,6 +1125,7 @@ func (s *QuizService) gradeRound1(ctx context.Context, eventID uuid.UUID, sessio
 			}
 			s.mu.Unlock()
 		}
+		s.clearBuzzWindow(eventID)
 	}
 
 	if err := s.broadcastState(ctx, eventID); err != nil {
@@ -927,7 +1196,7 @@ func (s *QuizService) recalculateRound2Score(ctx context.Context, eventID uuid.U
 	for _, a := range answers {
 		total += a.Points
 	}
-	qt.Round2Score = total
+	qt.Round2Score = total + qt.Round2Adjust
 	return s.teamRepository.Save(ctx, s.db, qt)
 }
 
@@ -986,7 +1255,7 @@ func (s *QuizService) gradeRound3(ctx context.Context, eventID uuid.UUID, sessio
 			wrongCount++
 		}
 	}
-	qt.Round3Score = total
+	qt.Round3Score = total + qt.Round3Adjust
 	qt.Round3WrongCount = wrongCount
 
 	if wrongCount > quiz_team.OrderAllowedMistakes(qt.Round3Order) {
@@ -1071,41 +1340,44 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 		for _, t := range teams {
 			teamNames[t.TeamID] = t.Team.Name
 		}
-		active := activeBuzz(buzzes)
-		pendingSeen := 0
+		// show the latest window race: the fastest team plus the others with their offsets
+		latestWindow := maxWindowIdx(buzzes)
 		for _, b := range buzzes {
-			if b.Status == quiz_buzz.StatusPending {
-				pendingSeen++
+			if b.WindowIdx != latestWindow {
+				continue
 			}
 			state.BuzzQueue = append(state.BuzzQueue, quiz_dto.BuzzEntry{
 				TeamID:   b.TeamID.String(),
 				TeamName: teamNames[b.TeamID],
 				Status:   b.Status,
-				IsActive: active != nil && active.TeamID == b.TeamID,
+				IsActive: b.Status == quiz_buzz.StatusPending,
+				OffsetMs: b.OffsetMs,
 			})
 		}
-		_ = pendingSeen
 		state.AttemptsUsed = attemptsUsed(buzzes)
 	}
 
 	for i, t := range teams {
-		total := t.Round1Score + t.Round2Score + t.Round3Score
+		r1 := t.Round1Score + t.Round1Adjust
+		r2 := t.Round2Score + t.Round2Adjust
+		r3 := t.Round3Score + t.Round3Adjust
+		total := r1 + r2 + r3
 		livesLeft := quiz_team.OrderAllowedMistakes(t.Round3Order) - t.Round3WrongCount
 		if livesLeft < 0 {
 			livesLeft = 0
 		}
 		state.Teams = append(state.Teams, quiz_dto.TeamState{
-			TeamID:             t.TeamID.String(),
-			Number:             i + 1,
-			Name:               t.Team.Name,
-			Round1Score:        t.Round1Score,
-			Round2Score:        t.Round2Score,
-			Round3Score:        t.Round3Score,
-			TotalScore:         total,
-			Round3Order:        t.Round3Order,
-			Round3WrongCount:   t.Round3WrongCount,
-			Round3LivesLeft:    livesLeft,
-			Round3Eliminated:   t.Round3Eliminated,
+			TeamID:           t.TeamID.String(),
+			Number:           i + 1,
+			Name:             t.Team.Name,
+			Round1Score:      r1,
+			Round2Score:      r2,
+			Round3Score:      r3,
+			TotalScore:       total,
+			Round3Order:      t.Round3Order,
+			Round3WrongCount: t.Round3WrongCount,
+			Round3LivesLeft:  livesLeft,
+			Round3Eliminated: t.Round3Eliminated,
 		})
 	}
 

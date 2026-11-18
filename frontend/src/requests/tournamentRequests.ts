@@ -3,6 +3,7 @@ import type { EventCreate, EventResponse, EventUpdate } from "../types/Tournamen
 import { API_URL } from "../config/routes";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
 import { getCRFCookie } from "../components/helpers/AuthContext";
+import { attachRefreshRetry } from "./globalAuth";
 import type {SchoolDTOResponse} from "../types/locationTypes.ts";
 
 
@@ -27,6 +28,8 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+attachRefreshRetry(api);
 
 
 export async function axiosGetEventById(id: string) {

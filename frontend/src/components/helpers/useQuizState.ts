@@ -4,7 +4,7 @@ import type { QuizPublicState } from "../../types/quizTypes";
 
 /**
  * Subscribes to the quiz public state: initial fetch, live WS updates,
- * and a polling fallback every 5 seconds in case the socket drops.
+ * and a polling fallback every second in case the socket drops.
  */
 export function useQuizState(eventId: string | undefined) {
     const [state, setState] = useState<QuizPublicState | null>(null);
@@ -47,7 +47,7 @@ export function useQuizState(eventId: string | undefined) {
                 .catch(() => {
                     /* transient network error */
                 });
-        }, 5000);
+        }, 1000);
 
         return () => {
             cancelled = true;

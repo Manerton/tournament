@@ -30,12 +30,17 @@ type QuizServiceInterface interface {
 	ShowLeaderboard(ctx context.Context, eventID uuid.UUID, show bool) error
 	GrantTurn(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID) error
 	ResetQuestion(ctx context.Context, eventID uuid.UUID) error
+	AdjustScore(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID, round int, delta int) error
+	AdminSetOrder(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID, order int) error
 
 	HeraldLogin(ctx context.Context, eventID uuid.UUID, code string) (quiz_dto.HeraldLoginResponse, error)
 	ListTeams(ctx context.Context, eventID uuid.UUID) ([]quiz_dto.AdminTeam, error)
-	Buzz(ctx context.Context, eventID uuid.UUID, code string) (quiz_dto.BuzzResult, error)
+	Buzz(ctx context.Context, eventID uuid.UUID, code string, buttonID string) (quiz_dto.BuzzResult, error)
 	ChooseOrder(ctx context.Context, eventID uuid.UUID, code string, order int) error
 	Grade(ctx context.Context, eventID uuid.UUID, code string, grade string) (quiz_dto.GradeResult, error)
+	ListButtons(ctx context.Context, eventID uuid.UUID) ([]quiz_dto.AdminButton, error)
+	RegisterButton(ctx context.Context, eventID uuid.UUID, buttonID string, teamID uuid.UUID) error
+	DeleteButton(ctx context.Context, buttonID string) error
 
 	GetPublicState(ctx context.Context, eventID uuid.UUID) (quiz_dto.PublicState, error)
 }
@@ -92,9 +97,10 @@ func (h *QuizHandler) GetPublicState(w http.ResponseWriter, r *http.Request) {
 
 type buzzRequest struct {
 	AccessCode string `json:"access_code"`
+	ButtonID   string `json:"button_id"` // ESP32 button: preconfigured id -> team
 }
 
-// Buzz handles buzzer presses from ESP32 buttons and manual herald buzzes.
+// Buzz handles buzzer presses from ESP32 buttons (by button_id) and manual herald buzzes (by access_code).
 func (h *QuizHandler) Buzz(w http.ResponseWriter, r *http.Request) {
 	eventID, ok := parseEventID(w, r)
 	if !ok {
@@ -102,13 +108,13 @@ func (h *QuizHandler) Buzz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req buzzRequest
-	if err := render.DecodeJSON(r.Body, &req); err != nil || req.AccessCode == "" {
+	if err := render.DecodeJSON(r.Body, &req); err != nil || (req.AccessCode == "" && req.ButtonID == "") {
 		render.Status(r, http.StatusBadRequest)
 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
 		return
 	}
 
-	result, err := h.quizService.Buzz(r.Context(), eventID, req.AccessCode)
+	result, err := h.quizService.Buzz(r.Context(), eventID, req.AccessCode, req.ButtonID)
 	if err != nil {
 		renderError(w, r, err)
 		return
@@ -444,4 +450,154 @@ func (h *QuizHandler) GrantTurn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, response.SuccessResponse("turn granted"))
+}
+
+type adjustScoreRequest struct {
+	TeamID string `json:"team_id"`
+	Round  int    `json:"round"`
+	Delta  int    `json:"delta"`
+}
+
+func (h *QuizHandler) AdjustScore(w http.ResponseWriter, r *http.Request) {
+	eventID, ok := parseEventID(w, r)
+	if !ok {
+		return
+	}
+
+	var req adjustScoreRequest
+	if err := render.DecodeJSON(r.Body, &req); err != nil || req.TeamID == "" || req.Round < 1 || req.Round > 3 || req.Delta == 0 {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	teamID, err := uuid.Parse(req.TeamID)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	if err := h.quizService.AdjustScore(r.Context(), eventID, teamID, req.Round, req.Delta); err != nil {
+		renderError(w, r, err)
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("score adjusted"))
+}
+
+type adminOrderRequest struct {
+	TeamID string `json:"team_id"`
+	Order  string `json:"order"`
+}
+
+// AdminSetOrder sets or resets a team's round-3 order (admin override of herald mistakes).
+// Accepts "none" to reset the order.
+func (h *QuizHandler) AdminSetOrder(w http.ResponseWriter, r *http.Request) {
+	eventID, ok := parseEventID(w, r)
+	if !ok {
+		return
+	}
+
+	var req adminOrderRequest
+	if err := render.DecodeJSON(r.Body, &req); err != nil || req.TeamID == "" || req.Order == "" {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	order, exists := orderValues[req.Order]
+	if !exists {
+		if req.Order == "none" {
+			order = quiz_team.OrderNone
+		} else {
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+			return
+		}
+	}
+
+	teamID, err := uuid.Parse(req.TeamID)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	if err := h.quizService.AdminSetOrder(r.Context(), eventID, teamID, order); err != nil {
+		renderError(w, r, err)
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("order set"))
+}
+
+// ---------- buttons (ESP32) ----------
+
+func (h *QuizHandler) ListButtons(w http.ResponseWriter, r *http.Request) {
+	eventID, ok := parseEventID(w, r)
+	if !ok {
+		return
+	}
+
+	buttons, err := h.quizService.ListButtons(r.Context(), eventID)
+	if err != nil {
+		renderError(w, r, err)
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.StatusOK,
+		StatusCode: http.StatusOK,
+		Data:       buttons,
+	})
+}
+
+type registerButtonRequest struct {
+	ButtonID string `json:"button_id"`
+	TeamID   string `json:"team_id"`
+}
+
+func (h *QuizHandler) RegisterButton(w http.ResponseWriter, r *http.Request) {
+	eventID, ok := parseEventID(w, r)
+	if !ok {
+		return
+	}
+
+	var req registerButtonRequest
+	if err := render.DecodeJSON(r.Body, &req); err != nil || req.ButtonID == "" || req.TeamID == "" {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	teamID, err := uuid.Parse(req.TeamID)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	if err := h.quizService.RegisterButton(r.Context(), eventID, req.ButtonID, teamID); err != nil {
+		renderError(w, r, err)
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("button registered"))
+}
+
+func (h *QuizHandler) DeleteButton(w http.ResponseWriter, r *http.Request) {
+	buttonID := chi.URLParam(r, "buttonId")
+	if buttonID == "" {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	if err := h.quizService.DeleteButton(r.Context(), buttonID); err != nil {
+		renderError(w, r, err)
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("button deleted"))
 }

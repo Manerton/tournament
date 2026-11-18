@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getCRFCookie } from "../components/helpers/AuthContext";
+import { attachRefreshRetry } from "./globalAuth";
 import { API_URL } from "../config/routes";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
 
@@ -18,6 +19,8 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+attachRefreshRetry(api);
 
 export async function axiosUpdateParticipantScore(gameId: string, userId:string, delta: number) {
     try {

@@ -20,8 +20,9 @@ export interface QuizQuestionState {
 export interface QuizBuzzEntry {
     team_id: string;
     team_name: string;
-    status: number; // 1 pending, 2 correct, 3 wrong, 4 false start
+    status: number; // 1 pending, 2 correct, 3 wrong, 4 false start, 5 outpaced
     is_active: boolean;
+    offset_ms: number; // press time relative to the window start; 0 for the winner
 }
 
 export interface QuizTeamState {
@@ -77,6 +78,13 @@ export interface GradeResult {
 export interface BuzzResult {
     position: number;
     queue_full: boolean;
+    offset_ms: number;
+}
+
+export interface QuizButtonAdmin {
+    button_id: string;
+    team_id: string;
+    team_name: string;
 }
 
 export interface QuizTeamAdmin {
@@ -87,6 +95,9 @@ export interface QuizTeamAdmin {
     round1_score: number;
     round2_score: number;
     round3_score: number;
+    round1_adjust: number;
+    round2_adjust: number;
+    round3_adjust: number;
     round3_order: number;
     round3_wrong_count: number;
     round3_eliminated: boolean;
@@ -97,6 +108,7 @@ export const BuzzStatus = {
     Correct: 2,
     Wrong: 3,
     FalseStart: 4,
+    Outpaced: 5,
 } as const;
 
 export const Round3OrderNames: Record<number, string> = {

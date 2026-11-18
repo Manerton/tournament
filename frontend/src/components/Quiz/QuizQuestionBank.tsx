@@ -22,7 +22,7 @@ export default function QuizQuestionBank() {
 
     const rounds = [
         { round: 1, name: "Раунд 1 — «Стрелы логики»" },
-        { round: 2, name: "Раунд 2 — «Ударный вектор»" },
+        { round: 2, name: "Раунд 2 — «Вектор удара»" },
         { round: 3, name: "Раунд 3 — «Формула клинка»" },
     ];
 

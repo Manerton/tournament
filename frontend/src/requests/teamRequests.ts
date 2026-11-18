@@ -5,6 +5,7 @@ import type { ParticipantResponseDTO } from "../types/participantTypes";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
 import type { RegisterTeamRequestDTO, TeamResponseDTO } from "../types/teamType";
 import { getCRFCookie } from "../components/helpers/AuthContext";
+import { attachRefreshRetry } from "./globalAuth";
 
 
 
@@ -23,6 +24,8 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+attachRefreshRetry(api);
 
 export async function GetDistricts() {
     const res = await fetch(`${API_URL}/api/locations/districts`);

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { API_URL } from "../config/routes";
 import { getCRFCookie } from "../components/helpers/AuthContext";
+import { attachRefreshRetry } from "./globalAuth";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
 import type { SubmissionDTOResponse } from "../types/submissionTypes";
 
@@ -19,6 +20,8 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+attachRefreshRetry(api);
 
 export async function axiosGetAllSubmissions(id: string) {
   try {

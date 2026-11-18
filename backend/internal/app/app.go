@@ -41,6 +41,7 @@ import (
 	"main/internal/quiz/handler/quiz_handler"
 	"main/internal/quiz/repository/quiz_answer_repository"
 	"main/internal/quiz/repository/quiz_buzz_repository"
+	"main/internal/quiz/repository/quiz_button_repository"
 	"main/internal/quiz/repository/quiz_question_repository"
 	"main/internal/quiz/repository/quiz_session_repository"
 	"main/internal/quiz/repository/quiz_team_repository"
@@ -91,6 +92,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	quizTeamRepository := quiz_team_repository.New()
 	quizBuzzRepository := quiz_buzz_repository.New()
 	quizAnswerRepository := quiz_answer_repository.New()
+	quizButtonRepository := quiz_button_repository.New()
 
 	// init service
 	wsHub := connect_manager.NewHub()
@@ -108,6 +110,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		quizBuzzRepository,
 		quizAnswerRepository,
 		teamRepository,
+		quizButtonRepository,
 		wsHub)
 
 	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, quizTeamRepository, eventRepository, log, storage)
@@ -224,6 +227,11 @@ func (a *App) initRoutes(router *chi.Mux,
 			r.Post("/{id}/question/reset", quizHandler.ResetQuestion)
 			r.Post("/{id}/leaderboard", quizHandler.ShowLeaderboard)
 			r.Post("/{id}/grant", quizHandler.GrantTurn)
+			r.Post("/{id}/adjust", quizHandler.AdjustScore)
+			r.Post("/{id}/order", quizHandler.AdminSetOrder)
+			r.Get("/{id}/buttons", quizHandler.ListButtons)
+			r.Post("/{id}/buttons", quizHandler.RegisterButton)
+			r.Delete("/{id}/buttons/{buttonId}", quizHandler.DeleteButton)
 		})
 	})
 

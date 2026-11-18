@@ -404,3 +404,108 @@
     font-weight: 800;
     font-variant-numeric: tabular-nums;
 }
+
+/* admin workspace: header, focal timer, collapsible teams table */
+.quiz-admin-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.quiz-admin-status {
+    color: var(--quiz-muted);
+}
+
+.quiz-admin-timer {
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: 1rem;
+    background: var(--quiz-panel);
+    border: 1px solid var(--quiz-border);
+}
+
+.quiz-admin-timer-value {
+    font-size: 4rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.quiz-admin-timer-state {
+    color: var(--quiz-muted);
+}
+
+.quiz-admin-timer.warning .quiz-admin-timer-value {
+    color: #e74c3c;
+    animation: quiz-pulse 1s infinite;
+}
+
+.quiz-admin-timer.paused .quiz-admin-timer-value,
+.quiz-admin-timer.idle {
+    color: var(--quiz-muted);
+}
+
+.quiz-admin-timer.idle .quiz-admin-timer-value {
+    color: var(--quiz-muted);
+}
+
+.quiz-admin-teams-head {
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.quiz-admin-teams-head h4 {
+    margin-bottom: 0;
+}
+
+.quiz-admin-table td {
+    vertical-align: middle;
+}
+
+.quiz-admin-adjust {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.quiz-admin-adjust-input {
+    width: 4.5rem;
+}
+
+.quiz-admin-adjust-note {
+    font-size: 0.75rem;
+    color: var(--quiz-muted);
+    margin-top: 0.15rem;
+}
+
+.quiz-admin-order-select {
+    min-width: 8rem;
+}
+
+.quiz-admin-eliminated {
+    color: var(--quiz-muted);
+}
+
+.quiz-button-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 0.6rem;
+    background: var(--quiz-panel);
+    border: 1px solid var(--quiz-border);
+}
+
+.quiz-admin-button-input {
+    width: 10rem;
+}
+
+.quiz-queue-chip.outpaced {
+    opacity: 0.65;
+}

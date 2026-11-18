@@ -1,11 +1,13 @@
 import axios from "axios";
 import { API_URL } from "../config/routes";
 import { getCRFCookie } from "../components/helpers/AuthContext";
+import { attachRefreshRetry } from "./globalAuth";
 import { ResponseStatus, type ApiResponse } from "../types/responseTypes";
 import type {
     BuzzResult,
     GradeResult,
     HeraldLoginResponse,
+    QuizButtonAdmin,
     QuizPublicState,
     QuizQuestion,
     QuizTeamAdmin,
@@ -29,6 +31,8 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+attachRefreshRetry(api);
+
 function unwrap<T>(json: ApiResponse<T>): T {
     if (json.status === ResponseStatus.Error) {
         throw new Error(json.message || "Ошибка запроса");
@@ -51,6 +55,17 @@ export async function axiosQuizBuzz(eventId: string, accessCode: string): Promis
     try {
         const res = await api.post<ApiResponse<BuzzResult>>(`/api/quiz/buzz/${eventId}`, {
             access_code: accessCode,
+        });
+        return unwrap(res.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Не удалось зафиксировать нажатие");
+    }
+}
+
+export async function axiosQuizBuzzByButton(eventId: string, buttonId: string): Promise<BuzzResult> {
+    try {
+        const res = await api.post<ApiResponse<BuzzResult>>(`/api/quiz/buzz/${eventId}`, {
+            button_id: buttonId,
         });
         return unwrap(res.data);
     } catch (error: any) {
@@ -193,6 +208,63 @@ export async function axiosQuizGrantTurn(eventId: string, teamId: string): Promi
         unwrap(res.data);
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Не удалось передать право ответа");
+    }
+}
+
+export async function axiosQuizAdjustScore(eventId: string, teamId: string, round: number, delta: number): Promise<void> {
+    try {
+        const res = await api.post<ApiResponse<void>>(`/api/quiz/admin/${eventId}/adjust`, {
+            team_id: teamId,
+            round,
+            delta,
+        });
+        unwrap(res.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Не удалось изменить очки");
+    }
+}
+
+export async function axiosQuizSetOrder(eventId: string, teamId: string, order: string): Promise<void> {
+    try {
+        const res = await api.post<ApiResponse<void>>(`/api/quiz/admin/${eventId}/order`, {
+            team_id: teamId,
+            order,
+        });
+        unwrap(res.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Не удалось изменить орден");
+    }
+}
+
+// ---------- buttons (ESP32) ----------
+
+export async function axiosQuizListButtons(eventId: string): Promise<QuizButtonAdmin[]> {
+    try {
+        const res = await api.get<ApiResponse<QuizButtonAdmin[]>>(`/api/quiz/admin/${eventId}/buttons`);
+        return unwrap(res.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Не удалось загрузить кнопки");
+    }
+}
+
+export async function axiosQuizRegisterButton(eventId: string, buttonId: string, teamId: string): Promise<void> {
+    try {
+        const res = await api.post<ApiResponse<void>>(`/api/quiz/admin/${eventId}/buttons`, {
+            button_id: buttonId,
+            team_id: teamId,
+        });
+        unwrap(res.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Не удалось привязать кнопку");
+    }
+}
+
+export async function axiosQuizDeleteButton(eventId: string, buttonId: string): Promise<void> {
+    try {
+        const res = await api.delete<ApiResponse<void>>(`/api/quiz/admin/${eventId}/buttons/${buttonId}`);
+        unwrap(res.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Не удалось удалить кнопку");
     }
 }
 

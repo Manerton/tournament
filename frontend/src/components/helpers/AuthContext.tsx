@@ -35,6 +35,10 @@ export interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Single-flight: concurrent refresh callers share one in-flight request,
+// so backend token rotation never races itself.
+let refreshInFlight: Promise<UserAuth | null> | null = null;
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserAuth | null>(null);
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
@@ -79,34 +83,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * Обновление session_token и csrf_token
    */
    const refresh = async (): Promise<UserAuth | null> => {
-    if (!hasCookies()) {
-      console.log("No cookies found, skipping refresh");
-      setInitialized(false);
-      return null;
-    }
+    if (refreshInFlight) return refreshInFlight;
+
+    refreshInFlight = (async (): Promise<UserAuth | null> => {
+      if (!hasCookies()) {
+        console.log("No cookies found, skipping refresh");
+        return null;
+      }
+
+      try {
+        const response = await axiosRefreshSession();
+        const refreshedUserId = response.data.data.user_id;
+        const userRole = response.data.data.role;
+        setExpires(Date.now() + 30 * 60 * 1000);
+
+        // Обновляем CSRF токен после refresh
+        const token = getCookie("csrf_token");
+        if (token) setCsrfToken(token);
+
+        const updatedUser = { id: refreshedUserId, role: userRole, email: "" };
+        setUser(updatedUser);
+        return updatedUser;
+      } catch (err) {
+        console.error("Session refresh failed:", err);
+        setUser(null);
+        setCsrfToken(null);
+        return null;
+      }
+    })();
 
     try {
-      const response = await axiosRefreshSession();
-      const refreshedUserId = response.data.data.user_id;
-      const userRole = response.data.data.role;
-      setExpires(Date.now() + 30 * 60 * 1000);
-
-      // Обновляем CSRF токен после refresh
-      const token = getCookie("csrf_token");
-      if (token) setCsrfToken(token);
-
-      const updatedUser = { id: refreshedUserId,role: userRole,  email: "" };
-      setUser(updatedUser);
-      setInitialized(true);
-      return updatedUser;
-    } catch (err) {
-      console.error("Session refresh failed:", err);
-      setUser(null);
-      setInitialized(false);
-      setCsrfToken(null);
-      return null;
+      return await refreshInFlight;
     } finally {
-      
+      refreshInFlight = null;
+      // Все пути разрешились — состояние сессии известно (initialized).
+      setInitialized(true);
     }
   };
 

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { API_URL } from "../config/routes";
 import { getCRFCookie } from "../components/helpers/AuthContext";
+import { attachRefreshRetry } from "./globalAuth";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -17,6 +18,8 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+attachRefreshRetry(api);
 
 export const axiosGetTeamReport = async (tournamentId: string) => {
     const response = await api.get(

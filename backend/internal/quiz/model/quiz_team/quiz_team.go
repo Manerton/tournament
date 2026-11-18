@@ -51,4 +51,9 @@ type QuizTeam struct {
 	Round3Order      int        `gorm:"type:int;not null;default:0" json:"round3_order"`
 	Round3WrongCount int        `gorm:"type:int;not null;default:0" json:"round3_wrong_count"`
 	Round3Eliminated bool       `gorm:"type:boolean;not null;default:false" json:"round3_eliminated"`
+	// RoundNAdjust are the host's manual per-round score corrections (herald mistakes).
+	// Kept separate from the round scores so automatic recalculations never wipe them.
+	Round1Adjust int `gorm:"type:int;not null;default:0" json:"round1_adjust"`
+	Round2Adjust int `gorm:"type:int;not null;default:0" json:"round2_adjust"`
+	Round3Adjust int `gorm:"type:int;not null;default:0" json:"round3_adjust"`
 }

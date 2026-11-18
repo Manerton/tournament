@@ -11,18 +11,13 @@ function formatTime(totalSeconds: number): string {
     return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function playBeep() {
+function playQuestionStartSound() {
     try {
-        const ctx = new AudioContext();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = 880;
-        gain.gain.setValueAtTime(0.4, ctx.currentTime);
-        osc.start();
-        osc.stop(ctx.currentTime + 1.2);
-        osc.onended = () => ctx.close();
+        const audio = new Audio("/start.mp3");
+        audio.volume = 0.5;
+        audio.play().catch(() => {
+            /* autoplay blocked or audio not available */
+        });
     } catch {
         /* audio not available */
     }
@@ -146,7 +141,7 @@ export default function QuizDisplay() {
         const key = `${state.current_round}:${state.current_question}`;
         if (beepedRef.current === key) return;
         beepedRef.current = key;
-        playBeep();
+        playQuestionStartSound();
     }, [remainingMs, state]);
 
     if (!state) {
@@ -194,9 +189,10 @@ export default function QuizDisplay() {
                                             b.is_active ? " active" : ""
                                         }${b.status === BuzzStatus.Wrong ? " wrong" : ""}${
                                             b.status === BuzzStatus.Correct ? " correct" : ""
-                                        }`}
+                                        }${b.status === BuzzStatus.Outpaced ? " outpaced" : ""}`}
                                     >
-                                        {i + 1}. {b.team_name}
+                                        {b.team_name}
+                                        {i > 0 && ` +${b.offset_ms} мс`}
                                     </div>
                                 ))}
                             </div>
