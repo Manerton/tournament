@@ -20,6 +20,7 @@ import WinLeaderboard from "./components/Leaderboards/WinLeaderboard.tsx";
 import GlobalLeaderboard from "./components/Leaderboards/GlobalLeaderboard.tsx";
 import UsersManagement from "./components/Admin/UsersManagment.tsx";
 import ReportPage from './components/Admin/Report.tsx';
+import DbAdminPage from './components/Admin/DbAdmin.tsx';
 import WinLeaderboardHide from "./components/Leaderboards/WinLeaderboardHide.tsx";
 import QuizDisplay from "./components/Quiz/QuizDisplay.tsx";
 import QuizHerald from "./components/Quiz/QuizHerald.tsx";
@@ -59,6 +60,7 @@ function App() {
             <Route path="/quiz/admin/:eventId" element={<QuizAdmin />} />
             <Route path="/quiz/admin/:eventId/questions" element={<QuizQuestionBank />} />
             <Route path="/Report" element={<ReportPage />} />
+            <Route path="/DbAdmin" element={<DbAdminPage />} />
             R
             <Route path='/TeamsApplications' element={<TeamApplicationsPage/>} />
                <Route path='/UsersManagment' element={<UsersManagement/>} />

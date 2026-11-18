@@ -12,6 +12,7 @@ import {
   PersonCircle,
   ChevronRight,
   ChevronLeft,
+  Database,
 } from "react-bootstrap-icons";
 import ThemeToggleButton from "../helpers/ThemeToggleButton";
 import { useAuth } from "../helpers/AuthContext";
@@ -106,6 +107,13 @@ const AdminSidebar: React.FC = () => {
                   <Nav.Link className="d-flex align-items-center text">
                     <CreditCard className="me-2" />
                     {!collapsed && "Отчеты"}
+                  </Nav.Link>
+                </LinkContainer>
+
+                <LinkContainer to="/DbAdmin">
+                  <Nav.Link className="d-flex align-items-center text">
+                    <Database className="me-2" />
+                    {!collapsed && "База данных"}
                   </Nav.Link>
                 </LinkContainer>
               </>

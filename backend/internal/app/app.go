@@ -29,6 +29,8 @@ import (
 	"main/internal/websocket/handler/websocket_handler"
 
 	"main/internal/config"
+	"main/internal/dbadmin/handler/dbadmin_handler"
+	"main/internal/dbadmin/service/dbadmin_service"
 	"main/internal/event/handler/event_handler"
 	event_repository "main/internal/event/repository"
 	event_service "main/internal/event/service"
@@ -121,6 +123,8 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 
 	reportService := report_service.New(log, storage, teamRepository, teamParticipantRepository, schoolRepository, leaderboardRepository, eventRepository, gameRepository, gameParticpantRepository)
 
+	dbAdminService := dbadmin_service.New(log, storage)
+
 	// init handler
 	locationHandler := location_handler.New(districtService, schoolService)
 	gameHandler := game_handler.New(gameService)
@@ -136,6 +140,8 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	wsHandler := websocket_handler.New(wsHub)
 
 	reportHandler := report_handler.New(reportService)
+
+	dbAdminHandler := dbadmin_handler.New(dbAdminService)
 
 	//init auth
 	// init auth middleware
@@ -167,6 +173,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		submissionHandler,
 		quizHandler,
 		reportHandler,
+		dbAdminHandler,
 		wsHandler,
 		authMiddleware)
 
@@ -193,6 +200,7 @@ func (a *App) initRoutes(router *chi.Mux,
 	submissionHandler *submission_handler.SubmissionHandler,
 	quizHandler *quiz_handler.QuizHandler,
 	reportHandler *report_handler.ReportHandler,
+	dbAdminHandler *dbadmin_handler.DbAdminHandler,
 	wsHandler *websocket_handler.WebSocketHandler,
 
 	authMiddleware *auth_verification.AuthMiddleware) {
@@ -319,6 +327,13 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Use(authMiddleware.AuthVerify)
 		r.Get("/teams-report/{id}", reportHandler.ExportTeamsToXLSX)
 		r.Get("/leaderboard-report/{id}", reportHandler.ExportLeaderBoardToXLSX)
+	})
+
+	router.Route("/api/db-admin", func(r chi.Router) {
+		r.Use(authMiddleware.AuthVerify)
+		r.Get("/tables", dbAdminHandler.ListTables)
+		r.Get("/export", dbAdminHandler.Export)
+		r.Post("/import", dbAdminHandler.Import)
 	})
 }
 
