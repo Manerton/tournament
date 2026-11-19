@@ -96,3 +96,20 @@ after successful HTTP checks. Automatic rollback uses the already built images.
 References: [GitLab SSH keys](https://docs.gitlab.com/ci/jobs/ssh_keys/),
 [deployment safety](https://docs.gitlab.com/ci/environments/deployment_safety/),
 [Deno images](https://docs.deno.com/runtime/reference/docker/).
+## Dependency and compiler caches
+
+GitLab CI caches downloaded Go modules and Deno packages separately from the
+Go compiler cache. Dependency archive keys include the dependency manifests;
+compiler keys include the toolchain and Linux/amd64 target. Cache archives use
+Zstandard with fast compression. Keep GitLab's separate caches for protected
+and non-protected branches enabled. Secrets and runtime data are not cached.
+
+Production Docker builds use BuildKit cache mounts for Go modules, Go compilation
+and Deno downloads. Mount IDs are scoped to the project, toolchain and target
+platform, and writes are locked. The Deno mount is present during installation
+and compilation. Go modules are verified before compilation.
+
+The first build fills an empty cache; later builds reuse it. A missing or pruned
+cache must remain safe: tools download the required versions again. Frozen
+Deno installation, release builds, health checks and rollback remain required.
+The deploy script still checks for updated base images with `--pull`.
