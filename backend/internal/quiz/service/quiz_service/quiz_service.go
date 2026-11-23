@@ -1130,23 +1130,50 @@ func (s *QuizService) gradeRound1(ctx context.Context, eventID uuid.UUID, sessio
 			return result, errs.ErrInternalError
 		}
 
-		if attemptsUsed(buzzes)+1 >= MaxAttemptsRound1 {
+		// count attempts exactly as they stand after this grade
+		// (the fetched slice is stale — it still has this buzz as pending)
+		used := attemptsUsed(refreshBuzz(buzzes, *active))
+
+		s.mu.Lock()
+		t, hasTimer := s.timers[eventID]
+		expired := !hasTimer || t.remainingNow() <= 0
+		if used >= MaxAttemptsRound1 {
 			// all attempts spent — question closes (host reveals manually)
-			s.mu.Lock()
-			if t, ok := s.timers[eventID]; ok {
+			log.Info("round 1 question closed: attempts spent",
+				slog.String("event_id", eventID.String()),
+				slog.Int("question", session.CurrentQuestion),
+				slog.Int("attempts_used", used))
+			if hasTimer {
 				t.remaining = 0
 				t.running = false
 			}
-			s.mu.Unlock()
+		} else if expired {
+			// time ran out (e.g. while no one was answering) — question closes
+			log.Info("round 1 question closed: time expired after wrong answer",
+				slog.String("event_id", eventID.String()),
+				slog.Int("question", session.CurrentQuestion),
+				slog.Int("attempts_used", used))
+			if hasTimer {
+				t.remaining = 0
+				t.running = false
+			}
+		} else if t.running {
+			// the timer was resumed mid-answer (manual resume) — let it keep running
+			log.Info("round 1 answer rejected: timer left running (resumed mid-answer)",
+				slog.String("event_id", eventID.String()),
+				slog.Int("question", session.CurrentQuestion),
+				slog.Int("attempts_used", used))
 		} else {
 			// answer failed — resume the timer; the next press opens a fresh window
-			s.mu.Lock()
-			if t, ok := s.timers[eventID]; ok && t.started && !t.running && t.remaining > 0 {
-				t.deadline = time.Now().Add(t.remaining)
-				t.running = true
-			}
-			s.mu.Unlock()
+			t.deadline = time.Now().Add(t.remaining)
+			t.running = true
+			log.Info("round 1 answer rejected: timer resumed",
+				slog.String("event_id", eventID.String()),
+				slog.Int("question", session.CurrentQuestion),
+				slog.Int("attempts_used", used),
+				slog.Int64("remaining_ms", t.remaining.Milliseconds()))
 		}
+		s.mu.Unlock()
 		s.clearBuzzWindow(eventID)
 	}
 
@@ -1156,10 +1183,11 @@ func (s *QuizService) gradeRound1(ctx context.Context, eventID uuid.UUID, sessio
 	return result, nil
 }
 
-// refreshBuzz returns the slice with the updated buzz swapped in.
+// refreshBuzz returns the slice with the updated buzz swapped in, matched by id
+// (a team may hold several entries in one question — e.g. outpaced + pending).
 func refreshBuzz(buzzes []quiz_buzz.QuizBuzz, updated quiz_buzz.QuizBuzz) []quiz_buzz.QuizBuzz {
 	for i := range buzzes {
-		if buzzes[i].TeamID == updated.TeamID {
+		if buzzes[i].ID == updated.ID {
 			buzzes[i] = updated
 		}
 	}
