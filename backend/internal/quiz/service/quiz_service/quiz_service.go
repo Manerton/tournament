@@ -73,6 +73,9 @@ func (t *timerRuntime) remainingNow() time.Duration {
 		}
 		return rem
 	}
+	if t.remaining < 0 {
+		return 0
+	}
 	return t.remaining
 }
 
@@ -573,6 +576,14 @@ func (s *QuizService) GrantTurn(ctx context.Context, eventID uuid.UUID, teamID u
 		return errs.ErrInvalidGameState.Wrap("Сейчас нет активного вопроса первого раунда")
 	}
 
+	s.mu.Lock()
+	t, hasTimer := s.timers[eventID]
+	s.mu.Unlock()
+	if !hasTimer || t.remainingNow() <= 0 {
+		// time is up — no answers can be accepted anymore
+		return errs.ErrInvalidGameState.Wrap("Время на вопрос вышло")
+	}
+
 	buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, session.CurrentRound, session.CurrentQuestion)
 	if err != nil {
 		log.Error("failed get buzzes", logger.Err(err))
@@ -614,8 +625,11 @@ func (s *QuizService) GrantTurn(ctx context.Context, eventID uuid.UUID, teamID u
 	}
 
 	s.mu.Lock()
-	if t, ok := s.timers[eventID]; ok && t.running {
+	if t.running {
 		t.remaining = time.Until(t.deadline)
+		if t.remaining < 0 {
+			t.remaining = 0
+		}
 		t.running = false
 	}
 	s.mu.Unlock()
@@ -737,6 +751,11 @@ func (s *QuizService) Buzz(ctx context.Context, eventID uuid.UUID, code string, 
 		s.recordFalseStart(ctx, eventID, session.CurrentQuestion, qt.TeamID)
 		return result, errs.ErrInvalidGameState.Wrap("Ложный старт: вопрос ещё не начался")
 	}
+	if t.remainingNow() <= 0 {
+		// time is up — the question is closed, no more presses are accepted
+		s.clearBuzzWindow(eventID)
+		return result, errs.ErrInvalidGameState.Wrap("Время на вопрос вышло")
+	}
 
 	buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, Round1, session.CurrentQuestion)
 	if err != nil {
@@ -799,6 +818,9 @@ func (s *QuizService) Buzz(ctx context.Context, eventID uuid.UUID, code string, 
 		s.mu.Lock()
 		if t.running {
 			t.remaining = time.Until(t.deadline)
+			if t.remaining < 0 {
+				t.remaining = 0
+			}
 			t.running = false
 		}
 		s.mu.Unlock()
