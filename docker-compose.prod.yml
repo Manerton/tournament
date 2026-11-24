@@ -49,6 +49,14 @@ services:
     # reachable only from the host (frontend container proxies here), not from the internet
     expose:
       - "8080"
+    # real readiness gate: up --wait blocks until the server answers from the DB,
+    # so a crash-looping backend fails the release here instead of at the curl check
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/api/locations/districts || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
 
   frontend:
     image: tournament-frontend:${RELEASE_REVISION:-local}

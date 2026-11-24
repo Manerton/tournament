@@ -7,6 +7,7 @@ import (
 
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"
+	"gopkg.in/yaml.v3"
 )
 
 type DBConfig struct {
@@ -30,11 +31,34 @@ func (c *ServerConfig) GetAddress() string {
 	return fmt.Sprintf("%s:%s", c.Host, c.Port)
 }
 
+// StringList accepts both a YAML sequence and a single scalar, so config files
+// with the old scalar form (`FRONTEND_INFO: "https://..."`) keep working after
+// the switch to a list. The server-mounted shared/docker.yaml is not updated
+// on deploy, so the parser must tolerate both forms.
+type StringList []string
+
+func (s *StringList) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		var single string
+		if err := value.Decode(&single); err != nil {
+			return err
+		}
+		*s = StringList{single}
+		return nil
+	}
+	var list []string
+	if err := value.Decode(&list); err != nil {
+		return err
+	}
+	*s = StringList(list)
+	return nil
+}
+
 type Config struct {
 	EnvLevel     string `yaml:"env"`
 	DBConfig     `yaml:"DB_INFO"`
 	ServerConfig `yaml:"HTTP_SERVER_INFO"`
-	FrontendURLs []string `yaml:"FRONTEND_INFO"`
+	FrontendURLs StringList `yaml:"FRONTEND_INFO"`
 }
 
 func init() {

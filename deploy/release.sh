@@ -38,9 +38,11 @@ previous_revision=$(cat "$deploy_root/current-revision" 2>/dev/null || true)
 
 check_application() {
     # Check both the static frontend and a public API that queries PostgreSQL.
-    curl --fail --silent --show-error --retry 12 --retry-connrefused \
+    # --retry-all-errors: right after container start docker-proxy can accept and
+    # immediately reset connections (curl 56) before nginx/backend are ready.
+    curl --fail --silent --show-error --retry 12 --retry-all-errors \
         --retry-delay 2 --max-time 5 -o /dev/null http://127.0.0.1:8081/ || return 1
-    curl --fail --silent --show-error --retry 12 --retry-connrefused \
+    curl --fail --silent --show-error --retry 12 --retry-all-errors \
         --retry-delay 2 --max-time 5 -o /dev/null \
         http://127.0.0.1:8081/backend/api/locations/districts || return 1
 }
@@ -49,6 +51,8 @@ echo '===> Starting services and checking application availability...'
 if ! "${compose[@]}" up -d --no-build --wait --wait-timeout 180 || ! check_application; then
     echo '!!! Release failed; inspecting service status.' >&2
     "${compose[@]}" ps || true
+    echo '!!! Service logs (backend, frontend, migrator):' >&2
+    "${compose[@]}" logs --tail 100 backend frontend migrator || true
 
     # Restore application images; applied database migrations remain in place.
     if [[ $previous_revision =~ ^[0-9a-f]{40}$ && $previous_revision != "$revision" ]]; then
