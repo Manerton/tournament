@@ -145,6 +145,8 @@ export async function axiosQuizSaveQuestion(
     questionNumber: number,
     text: string,
     answer: string,
+    explanation: string = "",
+    criteria: string = "",
 ): Promise<void> {
     try {
         const res = await api.post<ApiResponse<void>>(`/api/quiz/admin/${eventId}/questions`, {
@@ -152,6 +154,8 @@ export async function axiosQuizSaveQuestion(
             question_number: questionNumber,
             text,
             answer,
+            explanation,
+            criteria,
         });
         unwrap(res.data);
     } catch (error: any) {
@@ -165,6 +169,47 @@ export async function axiosQuizDeleteQuestion(eventId: string, questionId: strin
         unwrap(res.data);
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Не удалось удалить вопрос");
+    }
+}
+
+export async function axiosQuizStartTiebreak(eventId: string, teamIds: string[]): Promise<void> {
+    try {
+        const res = await api.post<ApiResponse<void>>(`/api/quiz/admin/${eventId}/tiebreak/start`, {
+            team_ids: teamIds,
+        });
+        unwrap(res.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Не удалось начать переигровку");
+    }
+}
+
+export async function axiosQuizStartTiebreakQuestion(eventId: string): Promise<void> {
+    try {
+        const res = await api.post<ApiResponse<void>>(`/api/quiz/admin/${eventId}/tiebreak/question`);
+        unwrap(res.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Не удалось начать резервный вопрос");
+    }
+}
+
+export async function axiosQuizEndTiebreak(eventId: string): Promise<void> {
+    try {
+        const res = await api.post<ApiResponse<void>>(`/api/quiz/admin/${eventId}/tiebreak/end`);
+        unwrap(res.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Не удалось завершить переигровку");
+    }
+}
+
+export async function axiosQuizJuryDecision(eventId: string, teamId: string, score: number): Promise<void> {
+    try {
+        const res = await api.post<ApiResponse<void>>(`/api/quiz/admin/${eventId}/tiebreak/jury`, {
+            team_id: teamId,
+            score,
+        });
+        unwrap(res.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Не удалось применить решение жюри");
     }
 }
 

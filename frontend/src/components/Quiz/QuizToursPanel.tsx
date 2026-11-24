@@ -29,7 +29,12 @@ export default function QuizToursPanel({ eventId }: { eventId: string }) {
     };
 
     const teams = state
-        ? [...state.teams].sort((a, b) => b.total_score - a.total_score || a.number - b.number)
+        ? [...state.teams].sort(
+              (a, b) =>
+                  b.total_score - a.total_score ||
+                  b.tiebreak_score - a.tiebreak_score ||
+                  a.number - b.number,
+          )
         : [];
 
     return (

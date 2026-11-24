@@ -9,4 +9,8 @@ type QuizSession struct {
 	AnswerRevealed   bool      `gorm:"type:boolean;not null;default:false" json:"answer_revealed"`
 	RoundActive      bool      `gorm:"type:boolean;not null;default:false" json:"round_active"`
 	LeaderboardShown bool      `gorm:"type:boolean;not null;default:false" json:"leaderboard_shown"`
+	// TiebreakActive marks the tie-break (переигровка) mode; TiebreakQuestion is
+	// the reserve-pool question (round 4) currently shown, 0 = none.
+	TiebreakActive   bool `gorm:"type:boolean;not null;default:false" json:"tiebreak_active"`
+	TiebreakQuestion int  `gorm:"type:int;not null;default:0" json:"tiebreak_question"`
 }

@@ -11,4 +11,5 @@ HTTP_SERVER_INFO:
   host: "0.0.0.0"
   port: "8080"
 
-FRONTEND_INFO: "https://tournament.schooltech.ru" 
+FRONTEND_INFO:
+  - "https://tournament.schooltech.ru"

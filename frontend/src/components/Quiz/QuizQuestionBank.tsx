@@ -24,6 +24,7 @@ export default function QuizQuestionBank() {
         { round: 1, name: "Раунд 1 — «Стрелы логики»" },
         { round: 2, name: "Раунд 2 — «Вектор удара»" },
         { round: 3, name: "Раунд 3 — «Формула клинка»" },
+        { round: 4, name: "Резерв — переигровка" },
     ];
 
     return (
@@ -51,14 +52,18 @@ export default function QuizQuestionBank() {
                                         <th style={{ width: "60px" }}>№</th>
                                         <th>Вопрос</th>
                                         <th>Правильный ответ</th>
+                                        <th>Пояснение</th>
+                                        <th>Критерии жюри</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {list.map((q) => (
                                         <tr key={q.id}>
                                             <td>{q.question_number}</td>
-                                            <td>{q.text}</td>
-                                            <td>{q.answer}</td>
+                                            <td className="quiz-bank-cell">{q.text}</td>
+                                            <td className="quiz-bank-cell">{q.answer}</td>
+                                            <td className="quiz-bank-cell">{q.explanation}</td>
+                                            <td className="quiz-bank-cell">{q.criteria}</td>
                                         </tr>
                                     ))}
                                 </tbody>

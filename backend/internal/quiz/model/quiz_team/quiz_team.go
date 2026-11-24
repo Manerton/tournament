@@ -56,4 +56,7 @@ type QuizTeam struct {
 	Round1Adjust int `gorm:"type:int;not null;default:0" json:"round1_adjust"`
 	Round2Adjust int `gorm:"type:int;not null;default:0" json:"round2_adjust"`
 	Round3Adjust int `gorm:"type:int;not null;default:0" json:"round3_adjust"`
+	// TiebreakScore is the secondary leaderboard sort key (higher = better place
+	// among tied teams). Never affects round scores or the total.
+	TiebreakScore int `gorm:"type:int;not null;default:0" json:"tiebreak_score"`
 }

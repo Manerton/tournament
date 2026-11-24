@@ -9,4 +9,9 @@ type QuizQuestion struct {
 	QuestionNumber int       `gorm:"type:int;not null" json:"question_number"`
 	Text           string    `gorm:"type:text;not null" json:"text"`
 	Answer         string    `gorm:"type:text;not null" json:"answer"`
+	Explanation    string    `gorm:"type:text;not null" json:"explanation"`
+	Criteria       string    `gorm:"type:text;not null" json:"criteria"`
+	// Used marks a reserve-pool (round 4) question as shown: the hall has seen it,
+	// so it must never be shown again.
+	Used bool `gorm:"type:boolean;not null;default:false" json:"used"`
 }

@@ -37,6 +37,8 @@ var allowedTables = []string{
 	"quiz_teams",
 	"quiz_buzzes",
 	"quiz_answers",
+	"quiz_buttons",
+	"quiz_tiebreak_teams",
 }
 
 type DbAdminService struct {

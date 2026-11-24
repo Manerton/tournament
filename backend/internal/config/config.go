@@ -34,7 +34,7 @@ type Config struct {
 	EnvLevel     string `yaml:"env"`
 	DBConfig     `yaml:"DB_INFO"`
 	ServerConfig `yaml:"HTTP_SERVER_INFO"`
-	FrontendURL  string `yaml:"FRONTEND_INFO"`
+	FrontendURLs []string `yaml:"FRONTEND_INFO"`
 }
 
 func init() {

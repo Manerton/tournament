@@ -15,6 +15,7 @@ import (
 	"main/internal/quiz/model/quiz_question"
 	"main/internal/quiz/model/quiz_session"
 	"main/internal/quiz/model/quiz_team"
+	"main/internal/quiz/model/quiz_tiebreak_team"
 	"main/internal/team/model/team"
 	"math/big"
 	"strings"
@@ -29,8 +30,13 @@ const (
 	Round1 = 1
 	Round2 = 2
 	Round3 = 3
+	// RoundReserve is the reserve question pool used by the tie-break (переигровка).
+	RoundReserve = 4
 
 	MaxAttemptsRound1 = 3
+
+	// TiebreakTimeSec is the per-question timer of a tie-break (brain-ring mechanics).
+	TiebreakTimeSec = 60
 
 	// BuzzWindowDuration is the 1-second collection window opened by the first press:
 	// all presses inside the window are recorded with their offsets, only the
@@ -39,9 +45,9 @@ const (
 )
 
 var RoundConfigs = []quiz_dto.RoundConfig{
-	{Round: 1, Name: "Стрелы логики", QuestionCount: 10, TimeSec: 60},
-	{Round: 2, Name: "Вектор удара", QuestionCount: 7, TimeSec: 60},
-	{Round: 3, Name: "Формула клинка", QuestionCount: 5, TimeSec: 120},
+	{Round: 1, Name: "Стрелы логики", QuestionCount: 20, TimeSec: 60},
+	{Round: 2, Name: "Вектор удара", QuestionCount: 15, TimeSec: 60},
+	{Round: 3, Name: "Формула клинка", QuestionCount: 10, TimeSec: 120},
 }
 
 func roundConfig(round int) (quiz_dto.RoundConfig, bool) {
@@ -130,6 +136,12 @@ type QuizButtonRepositoryInterface interface {
 	ListByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) ([]quiz_button.QuizButton, error)
 }
 
+type QuizTiebreakTeamRepositoryInterface interface {
+	GetByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) ([]quiz_tiebreak_team.QuizTiebreakTeam, error)
+	Save(ctx context.Context, db *gorm.DB, row quiz_tiebreak_team.QuizTiebreakTeam) error
+	DeleteByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) error
+}
+
 type QuizService struct {
 	log *slog.Logger
 	db  *gorm.DB
@@ -141,6 +153,7 @@ type QuizService struct {
 	answerRepository    QuizAnswerRepositoryInterface
 	eventTeamRepository TeamRepositoryInterface
 	buttonRepository    QuizButtonRepositoryInterface
+	tiebreakRepository  QuizTiebreakTeamRepositoryInterface
 
 	hub *connect_manager.Hub
 
@@ -157,6 +170,7 @@ func New(log *slog.Logger, db *gorm.DB,
 	answerRepository QuizAnswerRepositoryInterface,
 	eventTeamRepository TeamRepositoryInterface,
 	buttonRepository QuizButtonRepositoryInterface,
+	tiebreakRepository QuizTiebreakTeamRepositoryInterface,
 	hub *connect_manager.Hub) *QuizService {
 	return &QuizService{
 		log:                 log,
@@ -168,6 +182,7 @@ func New(log *slog.Logger, db *gorm.DB,
 		answerRepository:    answerRepository,
 		eventTeamRepository: eventTeamRepository,
 		buttonRepository:    buttonRepository,
+		tiebreakRepository:  tiebreakRepository,
 		hub:                 hub,
 		timers:              make(map[uuid.UUID]*timerRuntime),
 		buzzWindows:         make(map[uuid.UUID]*buzzWindowState),
@@ -371,7 +386,7 @@ func (s *QuizService) ListQuestions(ctx context.Context, eventID uuid.UUID) ([]q
 	return questions, nil
 }
 
-func (s *QuizService) UpsertQuestion(ctx context.Context, eventID uuid.UUID, round int, number int, text string, answer string) error {
+func (s *QuizService) UpsertQuestion(ctx context.Context, eventID uuid.UUID, round int, number int, text string, answer string, explanation string, criteria string) error {
 	const op = "service.QuizService.UpsertQuestion"
 	log := s.log.With(slog.String("op", op))
 
@@ -388,6 +403,8 @@ func (s *QuizService) UpsertQuestion(ctx context.Context, eventID uuid.UUID, rou
 		QuestionNumber: number,
 		Text:           text,
 		Answer:         answer,
+		Explanation:    explanation,
+		Criteria:       criteria,
 	}
 	if err := s.questionRepository.Upsert(ctx, s.db, q); err != nil {
 		log.Error("failed upsert question", logger.Err(err))
@@ -563,6 +580,7 @@ func (s *QuizService) ShowLeaderboard(ctx context.Context, eventID uuid.UUID, sh
 }
 
 // GrantTurn manually gives the answering turn to a team (human-error correction).
+// Works in round 1 and, while a tie-break is active, in the tie-break.
 func (s *QuizService) GrantTurn(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID) error {
 	const op = "service.QuizService.GrantTurn"
 	log := s.log.With(slog.String("op", op))
@@ -572,8 +590,15 @@ func (s *QuizService) GrantTurn(ctx context.Context, eventID uuid.UUID, teamID u
 		log.Error("failed get session", logger.Err(err))
 		return errs.ErrInternalError
 	}
-	if session.CurrentRound != Round1 || session.CurrentQuestion == 0 {
+
+	round, question := session.CurrentRound, session.CurrentQuestion
+	if session.TiebreakActive {
+		round, question = RoundReserve, session.TiebreakQuestion
+	} else if session.CurrentRound != Round1 {
 		return errs.ErrInvalidGameState.Wrap("Сейчас нет активного вопроса первого раунда")
+	}
+	if question == 0 {
+		return errs.ErrInvalidGameState.Wrap("Сейчас нет активного вопроса")
 	}
 
 	s.mu.Lock()
@@ -584,7 +609,7 @@ func (s *QuizService) GrantTurn(ctx context.Context, eventID uuid.UUID, teamID u
 		return errs.ErrInvalidGameState.Wrap("Время на вопрос вышло")
 	}
 
-	buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, session.CurrentRound, session.CurrentQuestion)
+	buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, round, question)
 	if err != nil {
 		log.Error("failed get buzzes", logger.Err(err))
 		return errs.ErrInternalError
@@ -612,8 +637,8 @@ func (s *QuizService) GrantTurn(ctx context.Context, eventID uuid.UUID, teamID u
 	} else {
 		buzz = quiz_buzz.QuizBuzz{
 			EventID:        eventID,
-			Round:          session.CurrentRound,
-			QuestionNumber: session.CurrentQuestion,
+			Round:          round,
+			QuestionNumber: question,
 			TeamID:         teamID,
 			Seq:            minSeq - 1,
 			Status:         quiz_buzz.StatusPending,
@@ -647,11 +672,19 @@ func (s *QuizService) ResetQuestion(ctx context.Context, eventID uuid.UUID) erro
 		log.Error("failed get session", logger.Err(err))
 		return errs.ErrInternalError
 	}
-	if session.CurrentQuestion == 0 {
+	if session.CurrentQuestion == 0 && !session.TiebreakActive {
+		return errs.ErrInvalidGameState.Wrap("Нет активного вопроса")
+	}
+	if session.TiebreakActive && session.TiebreakQuestion == 0 {
 		return errs.ErrInvalidGameState.Wrap("Нет активного вопроса")
 	}
 
-	if err := s.buzzRepository.DeleteByQuestion(ctx, s.db, eventID, session.CurrentRound, session.CurrentQuestion); err != nil {
+	round, question := session.CurrentRound, session.CurrentQuestion
+	if session.TiebreakActive {
+		round, question = RoundReserve, session.TiebreakQuestion
+	}
+
+	if err := s.buzzRepository.DeleteByQuestion(ctx, s.db, eventID, round, question); err != nil {
 		log.Error("failed clear buzzes", logger.Err(err))
 		return errs.ErrInternalError
 	}
@@ -717,7 +750,8 @@ func (s *QuizService) resolveBuzzTeam(ctx context.Context, eventID uuid.UUID, co
 	return qt, nil
 }
 
-// Buzz handles a press (ESP32 button or manual herald buzz) in round 1.
+// Buzz handles a press (ESP32 button or manual herald buzz) in round 1 and,
+// while a tie-break is active, in the tie-break (with the whitelist lock).
 // The first press opens a 1-second window: the fastest team gets the attempt,
 // other presses inside the window are recorded with their offsets for display only.
 // After a failed attempt the next press opens a fresh window; a team that already
@@ -739,16 +773,34 @@ func (s *QuizService) Buzz(ctx context.Context, eventID uuid.UUID, code string, 
 		log.Error("failed get session", logger.Err(err))
 		return result, errs.ErrInternalError
 	}
+
+	if session.TiebreakActive {
+		return s.buzzTiebreak(ctx, eventID, session, qt)
+	}
+
 	if session.CurrentRound != Round1 || !session.RoundActive || session.CurrentQuestion == 0 {
 		return result, errs.ErrInvalidGameState.Wrap("Сейчас нет активного вопроса")
 	}
+
+	return s.buzzWindowed(ctx, eventID, qt, Round1, session.CurrentQuestion, MaxAttemptsRound1)
+}
+
+// buzzWindowed runs the shared buzzer mechanics of round 1 and the tie-break:
+// the first press opens a 1-second window, the fastest team gets the attempt,
+// other presses inside the window are recorded with their offsets for display.
+// maxAttempts caps the graded attempts per question.
+func (s *QuizService) buzzWindowed(ctx context.Context, eventID uuid.UUID, qt quiz_team.QuizTeam, round int, questionNumber int, maxAttempts int) (quiz_dto.BuzzResult, error) {
+	const op = "service.QuizService.buzzWindowed"
+	log := s.log.With(slog.String("op", op))
+
+	result := quiz_dto.BuzzResult{Position: -1}
 
 	s.mu.Lock()
 	t := s.timers[eventID]
 	s.mu.Unlock()
 	if t == nil || !t.started {
 		// false start — record it, but the team may buzz again
-		s.recordFalseStart(ctx, eventID, session.CurrentQuestion, qt.TeamID)
+		s.recordFalseStart(ctx, eventID, round, questionNumber, qt.TeamID)
 		return result, errs.ErrInvalidGameState.Wrap("Ложный старт: вопрос ещё не начался")
 	}
 	if t.remainingNow() <= 0 {
@@ -757,7 +809,7 @@ func (s *QuizService) Buzz(ctx context.Context, eventID uuid.UUID, code string, 
 		return result, errs.ErrInvalidGameState.Wrap("Время на вопрос вышло")
 	}
 
-	buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, Round1, session.CurrentQuestion)
+	buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, round, questionNumber)
 	if err != nil {
 		log.Error("failed get buzzes", logger.Err(err))
 		return result, errs.ErrInternalError
@@ -779,19 +831,19 @@ func (s *QuizService) Buzz(ctx context.Context, eventID uuid.UUID, code string, 
 
 	s.mu.Lock()
 	w := s.buzzWindows[eventID]
-	if w != nil && w.question != session.CurrentQuestion {
+	if w != nil && w.question != questionNumber {
 		delete(s.buzzWindows, eventID)
 		w = nil
 	}
 
 	if w == nil {
 		// first press of a new window — this team gets the attempt
-		if attemptsUsed(buzzes) >= MaxAttemptsRound1 {
+		if attemptsUsed(buzzes) >= maxAttempts {
 			s.mu.Unlock()
 			return result, errs.ErrInvalidGameState.Wrap("Попытки на этот вопрос закончились")
 		}
 		w = &buzzWindowState{
-			question: session.CurrentQuestion,
+			question: questionNumber,
 			index:    maxWindowIdx(buzzes) + 1,
 			start:    now,
 			deadline: now.Add(BuzzWindowDuration),
@@ -801,8 +853,8 @@ func (s *QuizService) Buzz(ctx context.Context, eventID uuid.UUID, code string, 
 
 		buzz := quiz_buzz.QuizBuzz{
 			EventID:        eventID,
-			Round:          Round1,
-			QuestionNumber: session.CurrentQuestion,
+			Round:          round,
+			QuestionNumber: questionNumber,
 			TeamID:         qt.TeamID,
 			Seq:            nextSeq(buzzes),
 			Status:         quiz_buzz.StatusPending,
@@ -843,8 +895,8 @@ func (s *QuizService) Buzz(ctx context.Context, eventID uuid.UUID, code string, 
 	offset := int(now.Sub(window.start).Milliseconds())
 	buzz := quiz_buzz.QuizBuzz{
 		EventID:        eventID,
-		Round:          Round1,
-		QuestionNumber: session.CurrentQuestion,
+		Round:          round,
+		QuestionNumber: questionNumber,
 		TeamID:         qt.TeamID,
 		Seq:            nextSeq(buzzes),
 		Status:         quiz_buzz.StatusOutpaced,
@@ -864,8 +916,8 @@ func (s *QuizService) Buzz(ctx context.Context, eventID uuid.UUID, code string, 
 	return result, nil
 }
 
-func (s *QuizService) recordFalseStart(ctx context.Context, eventID uuid.UUID, questionNumber int, teamID uuid.UUID) {
-	buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, Round1, questionNumber)
+func (s *QuizService) recordFalseStart(ctx context.Context, eventID uuid.UUID, round int, questionNumber int, teamID uuid.UUID) {
+	buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, round, questionNumber)
 	if err != nil {
 		return
 	}
@@ -880,7 +932,7 @@ func (s *QuizService) recordFalseStart(ctx context.Context, eventID uuid.UUID, q
 	}
 	_ = s.buzzRepository.Save(ctx, s.db, quiz_buzz.QuizBuzz{
 		EventID:        eventID,
-		Round:          Round1,
+		Round:          round,
 		QuestionNumber: questionNumber,
 		TeamID:         teamID,
 		Seq:            maxSeq + 1,
@@ -1059,6 +1111,11 @@ func (s *QuizService) Grade(ctx context.Context, eventID uuid.UUID, code string,
 		log.Error("failed get session", logger.Err(err))
 		return result, errs.ErrInternalError
 	}
+
+	if session.TiebreakActive {
+		return s.gradeTiebreak(ctx, eventID, session, qt, grade)
+	}
+
 	if !session.RoundActive || session.CurrentQuestion == 0 {
 		return result, errs.ErrInvalidGameState.Wrap("Нет активного вопроса")
 	}
@@ -1327,6 +1384,344 @@ func (s *QuizService) gradeRound3(ctx context.Context, eventID uuid.UUID, sessio
 
 // ---------- state ----------
 
+// ---------- tie-break (переигровка) ----------
+
+// activeTiebreakTeams returns the group members that have not secured a place yet.
+func activeTiebreakTeams(rows []quiz_tiebreak_team.QuizTiebreakTeam) []quiz_tiebreak_team.QuizTiebreakTeam {
+	active := make([]quiz_tiebreak_team.QuizTiebreakTeam, 0, len(rows))
+	for _, r := range rows {
+		if !r.Won {
+			active = append(active, r)
+		}
+	}
+	return active
+}
+
+func findTiebreakTeam(rows []quiz_tiebreak_team.QuizTiebreakTeam, teamID uuid.UUID) *quiz_tiebreak_team.QuizTiebreakTeam {
+	for i := range rows {
+		if rows[i].TeamID == teamID {
+			return &rows[i]
+		}
+	}
+	return nil
+}
+
+// StartTiebreak opens a tie-break for the selected tied group (2+ teams).
+// Only these teams may buzz until the tie-break ends.
+func (s *QuizService) StartTiebreak(ctx context.Context, eventID uuid.UUID, teamIDs []uuid.UUID) error {
+	const op = "service.QuizService.StartTiebreak"
+	log := s.log.With(slog.String("op", op))
+
+	unique := make(map[uuid.UUID]bool, len(teamIDs))
+	for _, id := range teamIDs {
+		unique[id] = true
+	}
+	if len(unique) < 2 {
+		return errs.ErrBadRequest.Wrap("Для переигровки нужно выбрать минимум две команды")
+	}
+
+	session, err := s.getSession(ctx, eventID)
+	if err != nil {
+		log.Error("failed get session", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	if session.TiebreakActive {
+		return errs.ErrInvalidGameState.Wrap("Переигровка уже идёт")
+	}
+
+	for id := range unique {
+		if _, err := s.teamRepository.GetByTeamID(ctx, s.db, eventID, id); err != nil {
+			return errs.ErrBadRequest.Wrap("Команда не найдена")
+		}
+	}
+	if err := s.tiebreakRepository.DeleteByEvent(ctx, s.db, eventID); err != nil {
+		log.Error("failed clear tiebreak group", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	for id := range unique {
+		if err := s.tiebreakRepository.Save(ctx, s.db, quiz_tiebreak_team.QuizTiebreakTeam{
+			EventID: eventID,
+			TeamID:  id,
+		}); err != nil {
+			log.Error("failed save tiebreak team", logger.Err(err))
+			return errs.ErrInternalError
+		}
+	}
+
+	session.TiebreakActive = true
+	session.TiebreakQuestion = 0
+	session.AnswerRevealed = false
+	session.LeaderboardShown = false
+	if err := s.sessionRepository.Save(ctx, s.db, session); err != nil {
+		log.Error("failed save session", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	s.mu.Lock()
+	s.timers[eventID] = &timerRuntime{
+		duration:  TiebreakTimeSec * time.Second,
+		remaining: TiebreakTimeSec * time.Second,
+	}
+	s.mu.Unlock()
+
+	return s.broadcastState(ctx, eventID)
+}
+
+// StartTiebreakQuestion shows the next unused reserve question. A shown question
+// is marked used and never returns: the whole hall shares one projector.
+func (s *QuizService) StartTiebreakQuestion(ctx context.Context, eventID uuid.UUID) error {
+	const op = "service.QuizService.StartTiebreakQuestion"
+	log := s.log.With(slog.String("op", op))
+
+	session, err := s.getSession(ctx, eventID)
+	if err != nil {
+		log.Error("failed get session", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	if !session.TiebreakActive {
+		return errs.ErrInvalidGameState.Wrap("Переигровка не начата")
+	}
+
+	questions, err := s.questionRepository.GetByEventAndRound(ctx, s.db, eventID, RoundReserve)
+	if err != nil {
+		log.Error("failed get reserve questions", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	var next *quiz_question.QuizQuestion
+	for i := range questions {
+		if !questions[i].Used {
+			next = &questions[i]
+			break
+		}
+	}
+	if next == nil {
+		return errs.ErrInvalidGameState.Wrap("Резервные вопросы закончились — используйте решение жюри")
+	}
+
+	next.Used = true
+	if err := s.questionRepository.Upsert(ctx, s.db, *next); err != nil {
+		log.Error("failed mark question used", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	session.TiebreakQuestion = next.QuestionNumber
+	session.AnswerRevealed = false
+	if err := s.sessionRepository.Save(ctx, s.db, session); err != nil {
+		log.Error("failed save session", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	if err := s.buzzRepository.DeleteByQuestion(ctx, s.db, eventID, RoundReserve, next.QuestionNumber); err != nil {
+		log.Error("failed clear buzzes", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	s.clearBuzzWindow(eventID)
+
+	s.mu.Lock()
+	s.timers[eventID] = &timerRuntime{
+		duration:  TiebreakTimeSec * time.Second,
+		remaining: TiebreakTimeSec * time.Second,
+		deadline:  time.Now().Add(TiebreakTimeSec * time.Second),
+		running:   true,
+		started:   true,
+	}
+	s.mu.Unlock()
+
+	return s.broadcastState(ctx, eventID)
+}
+
+// EndTiebreak closes the tie-break mode and clears the tied group.
+func (s *QuizService) EndTiebreak(ctx context.Context, eventID uuid.UUID) error {
+	const op = "service.QuizService.EndTiebreak"
+	log := s.log.With(slog.String("op", op))
+
+	session, err := s.getSession(ctx, eventID)
+	if err != nil {
+		log.Error("failed get session", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	session.TiebreakActive = false
+	session.TiebreakQuestion = 0
+	session.AnswerRevealed = false
+	if err := s.sessionRepository.Save(ctx, s.db, session); err != nil {
+		log.Error("failed save session", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	if err := s.tiebreakRepository.DeleteByEvent(ctx, s.db, eventID); err != nil {
+		log.Error("failed clear tiebreak group", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	s.mu.Lock()
+	if t, ok := s.timers[eventID]; ok {
+		t.remaining = 0
+		t.running = false
+		t.started = true
+	}
+	s.mu.Unlock()
+	s.clearBuzzWindow(eventID)
+
+	return s.broadcastState(ctx, eventID)
+}
+
+// JuryDecision is the fallback for when reserve questions run out (or the jury
+// decides a place directly): the host manually sets a team's tiebreak score.
+func (s *QuizService) JuryDecision(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID, score int) error {
+	const op = "service.QuizService.JuryDecision"
+	log := s.log.With(slog.String("op", op))
+
+	qt, err := s.teamRepository.GetByTeamID(ctx, s.db, eventID, teamID)
+	if err != nil {
+		log.Error("failed get quiz team", logger.Err(err))
+		return errs.ErrBadRequest.Wrap("Команда не найдена")
+	}
+
+	qt.TiebreakScore = score
+	if err := s.teamRepository.Save(ctx, s.db, qt); err != nil {
+		log.Error("failed save quiz team", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	return s.broadcastState(ctx, eventID)
+}
+
+// buzzTiebreak applies the whitelist lock (only the tied group may buzz),
+// then runs the shared buzzer mechanics. Attempts per question equal the
+// number of teams still competing in the group.
+func (s *QuizService) buzzTiebreak(ctx context.Context, eventID uuid.UUID, session quiz_session.QuizSession, qt quiz_team.QuizTeam) (quiz_dto.BuzzResult, error) {
+	result := quiz_dto.BuzzResult{Position: -1}
+
+	if session.TiebreakQuestion == 0 {
+		return result, errs.ErrInvalidGameState.Wrap("Резервный вопрос ещё не начат")
+	}
+
+	rows, err := s.tiebreakRepository.GetByEvent(ctx, s.db, eventID)
+	if err != nil {
+		return result, errs.ErrInternalError
+	}
+	member := findTiebreakTeam(rows, qt.TeamID)
+	if member == nil || member.Won {
+		return result, errs.ErrInvalidGameState.Wrap("Команда не участвует в переигровке")
+	}
+
+	return s.buzzWindowed(ctx, eventID, qt, RoundReserve, session.TiebreakQuestion, len(activeTiebreakTeams(rows)))
+}
+
+// gradeTiebreak grades the current reserve question ("yes"/"no", brain-ring style).
+// A correct answer wins the step: the team secures the highest place still
+// contested in the tied group and leaves it. Round scores and the total are
+// never modified — only the tiebreak_score sort key.
+func (s *QuizService) gradeTiebreak(ctx context.Context, eventID uuid.UUID, session quiz_session.QuizSession, qt quiz_team.QuizTeam, grade string) (quiz_dto.GradeResult, error) {
+	const op = "service.QuizService.gradeTiebreak"
+	log := s.log.With(slog.String("op", op))
+
+	result := quiz_dto.GradeResult{}
+
+	if grade != "yes" && grade != "no" {
+		return result, errs.ErrBadRequest.Wrap("Некорректная оценка для переигровки")
+	}
+	if session.TiebreakQuestion == 0 {
+		return result, errs.ErrInvalidGameState.Wrap("Резервный вопрос ещё не начат")
+	}
+
+	rows, err := s.tiebreakRepository.GetByEvent(ctx, s.db, eventID)
+	if err != nil {
+		log.Error("failed get tiebreak group", logger.Err(err))
+		return result, errs.ErrInternalError
+	}
+	member := findTiebreakTeam(rows, qt.TeamID)
+	if member == nil || member.Won {
+		return result, errs.ErrInvalidGameState.Wrap("Команда не участвует в переигровке")
+	}
+	active := activeTiebreakTeams(rows)
+
+	buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, RoundReserve, session.TiebreakQuestion)
+	if err != nil {
+		log.Error("failed get buzzes", logger.Err(err))
+		return result, errs.ErrInternalError
+	}
+
+	activeB := activeBuzz(buzzes)
+	if activeB == nil || activeB.TeamID != qt.TeamID {
+		return result, errs.ErrInvalidGameState.Wrap("Сейчас не очередь этой команды")
+	}
+
+	if grade == "yes" {
+		activeB.Status = quiz_buzz.StatusCorrect
+		if err := s.buzzRepository.Save(ctx, s.db, *activeB); err != nil {
+			log.Error("failed save buzz", logger.Err(err))
+			return result, errs.ErrInternalError
+		}
+
+		member.Won = true
+		if err := s.tiebreakRepository.Save(ctx, s.db, *member); err != nil {
+			log.Error("failed save tiebreak team", logger.Err(err))
+			return result, errs.ErrInternalError
+		}
+		// the step winner takes the highest place still contested in the group
+		qt.TiebreakScore = len(active)
+		if err := s.teamRepository.Save(ctx, s.db, qt); err != nil {
+			log.Error("failed save team", logger.Err(err))
+			return result, errs.ErrInternalError
+		}
+
+		// question concludes: stop timer, reveal answer
+		s.mu.Lock()
+		if t, ok := s.timers[eventID]; ok {
+			t.remaining = 0
+			t.running = false
+			t.started = true
+		}
+		s.mu.Unlock()
+		s.clearBuzzWindow(eventID)
+		session.AnswerRevealed = true
+		if err := s.sessionRepository.Save(ctx, s.db, session); err != nil {
+			log.Error("failed save session", logger.Err(err))
+			return result, errs.ErrInternalError
+		}
+	} else {
+		activeB.Status = quiz_buzz.StatusWrong
+		if err := s.buzzRepository.Save(ctx, s.db, *activeB); err != nil {
+			log.Error("failed save buzz", logger.Err(err))
+			return result, errs.ErrInternalError
+		}
+
+		// the fetched slice is stale — it still has this buzz as pending
+		used := attemptsUsed(refreshBuzz(buzzes, *activeB))
+		maxAttempts := len(active)
+
+		s.mu.Lock()
+		t, hasTimer := s.timers[eventID]
+		expired := !hasTimer || t.remainingNow() <= 0
+		if used >= maxAttempts || expired {
+			// all competing teams failed (or time ran out) — question closes;
+			// it stays used and the host moves to the next reserve question
+			log.Info("tiebreak question closed",
+				slog.String("event_id", eventID.String()),
+				slog.Int("question", session.TiebreakQuestion),
+				slog.Int("attempts_used", used))
+			if hasTimer {
+				t.remaining = 0
+				t.running = false
+			}
+		} else if t.running {
+			// the timer was resumed mid-answer (manual resume) — let it keep running
+		} else {
+			// answer failed — resume the timer; the next press opens a fresh window
+			t.deadline = time.Now().Add(t.remaining)
+			t.running = true
+		}
+		s.mu.Unlock()
+		s.clearBuzzWindow(eventID)
+	}
+
+	if err := s.broadcastState(ctx, eventID); err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
 func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (quiz_dto.PublicState, error) {
 	const op = "service.QuizService.GetPublicState"
 	log := s.log.With(slog.String("op", op))
@@ -1350,14 +1745,38 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 		RoundActive:      session.RoundActive,
 		AnswerRevealed:   session.AnswerRevealed,
 		LeaderboardShown: session.LeaderboardShown,
+		TiebreakActive:   session.TiebreakActive,
+		TiebreakQuestion: session.TiebreakQuestion,
 		AttemptsMax:      MaxAttemptsRound1,
 		Rounds:           RoundConfigs,
 		BuzzQueue:        []quiz_dto.BuzzEntry{},
 		Teams:            make([]quiz_dto.TeamState, 0, len(teams)),
 	}
 
+	// the tied group still competing: buzz whitelist, attempts cap, team flags
+	inTiebreak := map[uuid.UUID]bool{}
+	if session.TiebreakActive {
+		rows, err := s.tiebreakRepository.GetByEvent(ctx, s.db, eventID)
+		if err != nil {
+			log.Error("failed get tiebreak group", logger.Err(err))
+			return quiz_dto.PublicState{}, errs.ErrInternalError
+		}
+		active := activeTiebreakTeams(rows)
+		state.AttemptsMax = len(active)
+		for _, r := range active {
+			inTiebreak[r.TeamID] = true
+		}
+	}
+
 	cfg, cfgOk := roundConfig(session.CurrentRound)
-	if cfgOk {
+	if session.TiebreakActive {
+		t := s.getTimer(eventID, quiz_dto.RoundConfig{TimeSec: TiebreakTimeSec})
+		state.Timer = quiz_dto.TimerState{
+			DurationSec: TiebreakTimeSec,
+			RemainingMs: t.remainingNow().Milliseconds(),
+			Running:     t.running,
+		}
+	} else if cfgOk {
 		t := s.getTimer(eventID, cfg)
 		state.Timer = quiz_dto.TimerState{
 			DurationSec: cfg.TimeSec,
@@ -1366,7 +1785,22 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 		}
 	}
 
-	if cfgOk && session.CurrentQuestion > 0 && session.CurrentQuestion <= cfg.QuestionCount {
+	if session.TiebreakActive {
+		if session.TiebreakQuestion > 0 {
+			question, err := s.questionRepository.GetByNumber(ctx, s.db, eventID, RoundReserve, session.TiebreakQuestion)
+			if err == nil {
+				qs := &quiz_dto.QuestionState{
+					Number: question.QuestionNumber,
+					Text:   question.Text,
+				}
+				if session.AnswerRevealed {
+					qs.Answer = question.Answer
+					qs.Explanation = question.Explanation
+				}
+				state.Question = qs
+			}
+		}
+	} else if cfgOk && session.CurrentQuestion > 0 && session.CurrentQuestion <= cfg.QuestionCount {
 		question, err := s.questionRepository.GetByNumber(ctx, s.db, eventID, session.CurrentRound, session.CurrentQuestion)
 		if err == nil {
 			qs := &quiz_dto.QuestionState{
@@ -1375,13 +1809,20 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 			}
 			if session.AnswerRevealed {
 				qs.Answer = question.Answer
+				qs.Explanation = question.Explanation
 			}
 			state.Question = qs
 		}
 	}
 
-	if session.CurrentRound == Round1 && session.CurrentQuestion > 0 {
-		buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, Round1, session.CurrentQuestion)
+	buzzRound, buzzQuestion := session.CurrentRound, session.CurrentQuestion
+	showQueue := session.CurrentRound == Round1 && session.CurrentQuestion > 0
+	if session.TiebreakActive {
+		buzzRound, buzzQuestion = RoundReserve, session.TiebreakQuestion
+		showQueue = session.TiebreakQuestion > 0
+	}
+	if showQueue {
+		buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, buzzRound, buzzQuestion)
 		if err != nil {
 			log.Error("failed get buzzes", logger.Err(err))
 			return quiz_dto.PublicState{}, errs.ErrInternalError
@@ -1407,6 +1848,11 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 		state.AttemptsUsed = attemptsUsed(buzzes)
 	}
 
+	// the group shrinks as teams win steps; never show fewer attempts than used
+	if session.TiebreakActive && state.AttemptsMax < state.AttemptsUsed {
+		state.AttemptsMax = state.AttemptsUsed
+	}
+
 	for i, t := range teams {
 		r1 := t.Round1Score + t.Round1Adjust
 		r2 := t.Round2Score + t.Round2Adjust
@@ -1428,6 +1874,8 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 			Round3WrongCount: t.Round3WrongCount,
 			Round3LivesLeft:  livesLeft,
 			Round3Eliminated: t.Round3Eliminated,
+			TiebreakScore:    t.TiebreakScore,
+			InTiebreak:       inTiebreak[t.TeamID],
 		})
 	}
 

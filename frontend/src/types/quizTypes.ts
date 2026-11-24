@@ -15,6 +15,7 @@ export interface QuizQuestionState {
     number: number;
     text: string;
     answer: string;
+    explanation: string;
 }
 
 export interface QuizBuzzEntry {
@@ -37,6 +38,8 @@ export interface QuizTeamState {
     round3_wrong_count: number;
     round3_lives_left: number;
     round3_eliminated: boolean;
+    tiebreak_score: number; // secondary sort key after total_score (higher = better)
+    in_tiebreak: boolean; // still competing in the active tie-break group
 }
 
 export interface QuizPublicState {
@@ -46,6 +49,8 @@ export interface QuizPublicState {
     round_active: boolean;
     answer_revealed: boolean;
     leaderboard_shown: boolean;
+    tiebreak_active: boolean;
+    tiebreak_question: number; // reserve-pool question currently shown, 0 = none
     timer: QuizTimerState;
     question: QuizQuestionState | null;
     buzz_queue: QuizBuzzEntry[];
@@ -62,6 +67,9 @@ export interface QuizQuestion {
     question_number: number;
     text: string;
     answer: string;
+    explanation: string;
+    criteria: string;
+    used: boolean; // reserve-pool questions: shown once, never again
 }
 
 export interface HeraldLoginResponse {

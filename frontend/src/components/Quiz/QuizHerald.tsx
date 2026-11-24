@@ -155,10 +155,15 @@ export default function QuizHerald() {
                     Команда №{team.number} — {team.name}
                 </div>
                 <div className="quiz-herald-meta">
-                    {roundCfg
-                        ? `Раунд ${roundCfg.round} — «${roundCfg.name}»`
-                        : "Ожидание начала"}
-                    {state && state.current_question > 0 && ` · Вопрос №${state.current_question}`}
+                    {state?.tiebreak_active
+                        ? "Переигровка"
+                        : roundCfg
+                          ? `Раунд ${roundCfg.round} — «${roundCfg.name}»`
+                          : "Ожидание начала"}
+                    {state && !state.tiebreak_active && state.current_question > 0 &&
+                        ` · Вопрос №${state.current_question}`}
+                    {state && state.tiebreak_active && state.tiebreak_question > 0 &&
+                        ` · Резервный вопрос №${state.tiebreak_question}`}
                 </div>
                 {myTeamState && myTeamState.round3_order > 0 && (
                     <div
@@ -174,23 +179,72 @@ export default function QuizHerald() {
             <div className="quiz-herald-body">
                 {!state && <div className="quiz-msg">Загрузка…</div>}
 
-                {state && myTeamState?.round3_eliminated && (
+                {/* Tie-break: only the tied group gets active controls */}
+                {state && state.tiebreak_active && (
+                    <>
+                        {!myTeamState?.in_tiebreak ? (
+                            <div className="quiz-msg">
+                                Идёт переигровка между другими командами. Ожидайте…
+                            </div>
+                        ) : state.tiebreak_question === 0 ? (
+                            <div className="quiz-msg">Ожидание резервного вопроса…</div>
+                        ) : (
+                            <>
+                                <button
+                                    className="quiz-buzz-btn"
+                                    disabled={busy}
+                                    onClick={handleBuzz}
+                                >
+                                    НАЖАТЬ КНОПКУ
+                                </button>
+                                {(() => {
+                                    const entry = state.buzz_queue.find(
+                                        (b) => b.team_id === team.team_id,
+                                    );
+                                    const myTurn =
+                                        entry?.status === BuzzStatus.Pending && entry.is_active;
+                                    return (
+                                        <div className="quiz-herald-actions">
+                                            <button
+                                                className="quiz-grade-btn yes"
+                                                disabled={busy || !myTurn}
+                                                onClick={() => handleGrade("yes")}
+                                            >
+                                                Да
+                                            </button>
+                                            <button
+                                                className="quiz-grade-btn no"
+                                                disabled={busy || !myTurn}
+                                                onClick={() => handleGrade("no")}
+                                            >
+                                                Нет
+                                            </button>
+                                        </div>
+                                    );
+                                })()}
+                            </>
+                        )}
+                    </>
+                )}
+
+                {state && !state.tiebreak_active && myTeamState?.round3_eliminated && (
                     <div className="quiz-overlay-eliminated">
                         <div>Команда завершила участие в третьем раунде.</div>
                         <div>Набрано очков: {myTeamState.round3_score}</div>
                     </div>
                 )}
 
-                {state && !state.round_active && (
+                {state && !state.tiebreak_active && !state.round_active && (
                     <div className="quiz-msg">Ожидание начала раунда…</div>
                 )}
 
-                {state && state.round_active && state.current_question === 0 && (
+                {state && !state.tiebreak_active && state.round_active && state.current_question === 0 && (
                     <div className="quiz-msg">Ожидание первого вопроса…</div>
                 )}
 
                 {/* Round 3 order selection */}
                 {state &&
+                    !state.tiebreak_active &&
                     state.current_round === 3 &&
                     state.current_question === 0 &&
                     myTeamState &&
@@ -212,7 +266,7 @@ export default function QuizHerald() {
                     )}
 
                 {/* Round 1: buzz + yes/no */}
-                {state && state.round_active && state.current_round === 1 && state.current_question > 0 && (
+                {state && !state.tiebreak_active && state.round_active && state.current_round === 1 && state.current_question > 0 && (
                     <>
                         <button
                             className="quiz-buzz-btn"
@@ -250,7 +304,7 @@ export default function QuizHerald() {
                 )}
 
                 {/* Round 2: three-tier grading */}
-                {state && state.round_active && state.current_round === 2 && state.current_question > 0 && (
+                {state && !state.tiebreak_active && state.round_active && state.current_round === 2 && state.current_question > 0 && (
                     <div className="quiz-herald-actions">
                         <button
                             className={`quiz-grade-btn correct${
@@ -284,6 +338,7 @@ export default function QuizHerald() {
 
                 {/* Round 3: correct/incorrect with lives */}
                 {state &&
+                    !state.tiebreak_active &&
                     state.round_active &&
                     state.current_round === 3 &&
                     state.current_question > 0 &&

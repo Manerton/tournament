@@ -14,9 +14,10 @@ type TimerState struct {
 }
 
 type QuestionState struct {
-	Number int    `json:"number"`
-	Text   string `json:"text"`
-	Answer string `json:"answer"`
+	Number      int    `json:"number"`
+	Text        string `json:"text"`
+	Answer      string `json:"answer"`
+	Explanation string `json:"explanation"`
 }
 
 type BuzzEntry struct {
@@ -40,6 +41,10 @@ type TeamState struct {
 	Round3WrongCount   int    `json:"round3_wrong_count"`
 	Round3LivesLeft    int    `json:"round3_lives_left"`
 	Round3Eliminated   bool   `json:"round3_eliminated"`
+	// TiebreakScore is the secondary sort key after TotalScore (higher = better).
+	TiebreakScore int `json:"tiebreak_score"`
+	// InTiebreak marks a team still competing in the active tie-break group.
+	InTiebreak bool `json:"in_tiebreak"`
 }
 
 type PublicState struct {
@@ -49,6 +54,8 @@ type PublicState struct {
 	RoundActive      bool           `json:"round_active"`
 	AnswerRevealed   bool           `json:"answer_revealed"`
 	LeaderboardShown bool           `json:"leaderboard_shown"`
+	TiebreakActive   bool           `json:"tiebreak_active"`
+	TiebreakQuestion int            `json:"tiebreak_question"`
 	Timer            TimerState     `json:"timer"`
 	Question         *QuestionState `json:"question"`
 	BuzzQueue        []BuzzEntry    `json:"buzz_queue"`

@@ -18,7 +18,7 @@ import (
 type QuizServiceInterface interface {
 	SetupTeams(ctx context.Context, eventID uuid.UUID) error
 	ListQuestions(ctx context.Context, eventID uuid.UUID) ([]quiz_question.QuizQuestion, error)
-	UpsertQuestion(ctx context.Context, eventID uuid.UUID, round int, number int, text string, answer string) error
+	UpsertQuestion(ctx context.Context, eventID uuid.UUID, round int, number int, text string, answer string, explanation string, criteria string) error
 	DeleteQuestion(ctx context.Context, eventID uuid.UUID, questionID uuid.UUID) error
 
 	StartRound(ctx context.Context, eventID uuid.UUID, round int) error
@@ -32,6 +32,11 @@ type QuizServiceInterface interface {
 	ResetQuestion(ctx context.Context, eventID uuid.UUID) error
 	AdjustScore(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID, round int, delta int) error
 	AdminSetOrder(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID, order int) error
+
+	StartTiebreak(ctx context.Context, eventID uuid.UUID, teamIDs []uuid.UUID) error
+	StartTiebreakQuestion(ctx context.Context, eventID uuid.UUID) error
+	EndTiebreak(ctx context.Context, eventID uuid.UUID) error
+	JuryDecision(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID, score int) error
 
 	HeraldLogin(ctx context.Context, eventID uuid.UUID, code string) (quiz_dto.HeraldLoginResponse, error)
 	ListTeams(ctx context.Context, eventID uuid.UUID) ([]quiz_dto.AdminTeam, error)
@@ -288,6 +293,8 @@ type upsertQuestionRequest struct {
 	QuestionNumber int    `json:"question_number"`
 	Text           string `json:"text"`
 	Answer         string `json:"answer"`
+	Explanation    string `json:"explanation"`
+	Criteria       string `json:"criteria"`
 }
 
 func (h *QuizHandler) UpsertQuestion(w http.ResponseWriter, r *http.Request) {
@@ -303,7 +310,7 @@ func (h *QuizHandler) UpsertQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.quizService.UpsertQuestion(r.Context(), eventID, req.Round, req.QuestionNumber, req.Text, req.Answer); err != nil {
+	if err := h.quizService.UpsertQuestion(r.Context(), eventID, req.Round, req.QuestionNumber, req.Text, req.Answer, req.Explanation, req.Criteria); err != nil {
 		renderError(w, r, err)
 		return
 	}
@@ -484,6 +491,109 @@ func (h *QuizHandler) AdjustScore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, response.SuccessResponse("score adjusted"))
+}
+
+// ---------- tie-break (переигровка) ----------
+
+type startTiebreakRequest struct {
+	TeamIDs []string `json:"team_ids"`
+}
+
+// StartTiebreak opens a tie-break for the selected tied group (2+ teams).
+func (h *QuizHandler) StartTiebreak(w http.ResponseWriter, r *http.Request) {
+	eventID, ok := parseEventID(w, r)
+	if !ok {
+		return
+	}
+
+	var req startTiebreakRequest
+	if err := render.DecodeJSON(r.Body, &req); err != nil || len(req.TeamIDs) < 2 {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	teamIDs := make([]uuid.UUID, 0, len(req.TeamIDs))
+	for _, raw := range req.TeamIDs {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+			return
+		}
+		teamIDs = append(teamIDs, id)
+	}
+
+	if err := h.quizService.StartTiebreak(r.Context(), eventID, teamIDs); err != nil {
+		renderError(w, r, err)
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("tiebreak started"))
+}
+
+// StartTiebreakQuestion shows the next unused reserve question.
+func (h *QuizHandler) StartTiebreakQuestion(w http.ResponseWriter, r *http.Request) {
+	eventID, ok := parseEventID(w, r)
+	if !ok {
+		return
+	}
+
+	if err := h.quizService.StartTiebreakQuestion(r.Context(), eventID); err != nil {
+		renderError(w, r, err)
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("tiebreak question started"))
+}
+
+// EndTiebreak closes the tie-break mode and clears the tied group.
+func (h *QuizHandler) EndTiebreak(w http.ResponseWriter, r *http.Request) {
+	eventID, ok := parseEventID(w, r)
+	if !ok {
+		return
+	}
+
+	if err := h.quizService.EndTiebreak(r.Context(), eventID); err != nil {
+		renderError(w, r, err)
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("tiebreak ended"))
+}
+
+type juryDecisionRequest struct {
+	TeamID string `json:"team_id"`
+	Score  int    `json:"score"`
+}
+
+// JuryDecision manually sets a team's tiebreak score (jury fallback).
+func (h *QuizHandler) JuryDecision(w http.ResponseWriter, r *http.Request) {
+	eventID, ok := parseEventID(w, r)
+	if !ok {
+		return
+	}
+
+	var req juryDecisionRequest
+	if err := render.DecodeJSON(r.Body, &req); err != nil || req.TeamID == "" {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	teamID, err := uuid.Parse(req.TeamID)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	if err := h.quizService.JuryDecision(r.Context(), eventID, teamID, req.Score); err != nil {
+		renderError(w, r, err)
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("jury decision applied"))
 }
 
 type adminOrderRequest struct {

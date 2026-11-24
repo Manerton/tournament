@@ -52,10 +52,17 @@ function BoardColumn({ title, rows, max }: { title: string; rows: BoardRow[]; ma
 }
 
 function Leaderboard({ round, teams }: { round: number; teams: QuizTeamState[] }) {
+    // tiebreak_score is the secondary sort key: it orders teams tied on the
+    // primary value without ever changing the scores themselves
     const sortedBy = (fn: (t: QuizTeamState) => number): BoardRow[] =>
         teams
             .map((t) => ({ team: t, value: fn(t) }))
-            .sort((a, b) => b.value - a.value || a.team.number - b.team.number);
+            .sort(
+                (a, b) =>
+                    b.value - a.value ||
+                    b.team.tiebreak_score - a.team.tiebreak_score ||
+                    a.team.number - b.team.number,
+            );
 
     if (round === 1) {
         const rows = sortedBy((t) => t.round1_score);
@@ -137,8 +144,9 @@ export default function QuizDisplay() {
     // audio cue when the timer hits zero
     useEffect(() => {
         if (!state || !state.timer.running) return;
-        if (remainingMs > 0 || state.current_question === 0) return;
-        const key = `${state.current_round}:${state.current_question}`;
+        const activeQuestion = state.tiebreak_active ? state.tiebreak_question : state.current_question;
+        if (remainingMs > 0 || activeQuestion === 0) return;
+        const key = `${state.tiebreak_active ? "tb" : state.current_round}:${activeQuestion}`;
         if (beepedRef.current === key) return;
         beepedRef.current = key;
         playQuestionStartSound();
@@ -160,10 +168,18 @@ export default function QuizDisplay() {
             <BackgroundParticles />
             <div className="quiz-display-header">
                 <div className="quiz-display-round">
-                    {roundCfg ? `Раунд ${roundCfg.round} — «${roundCfg.name}»` : "Квиз-шоу"}
+                    {state.tiebreak_active
+                        ? "Переигровка"
+                        : roundCfg
+                          ? `Раунд ${roundCfg.round} — «${roundCfg.name}»`
+                          : "Квиз-шоу"}
                 </div>
                 <div className="quiz-display-qnum">
-                    {state.question ? `Вопрос №${state.question.number}` : ""}
+                    {state.question
+                        ? state.tiebreak_active
+                            ? `Резервный вопрос №${state.question.number}`
+                            : `Вопрос №${state.question.number}`
+                        : ""}
                 </div>
             </div>
 
@@ -180,7 +196,8 @@ export default function QuizDisplay() {
                     <>
                         <div className="quiz-display-question">{state.question.text}</div>
 
-                        {state.current_round === 1 && state.buzz_queue.length > 0 && (
+                        {(state.current_round === 1 || state.tiebreak_active) &&
+                            state.buzz_queue.length > 0 && (
                             <div className="quiz-display-queue">
                                 {state.buzz_queue.map((b, i) => (
                                     <div
@@ -198,7 +215,7 @@ export default function QuizDisplay() {
                             </div>
                         )}
 
-                        {state.current_round === 1 && (
+                        {(state.current_round === 1 || state.tiebreak_active) && (
                             <div className="quiz-display-attempts">
                                 Попыток использовано: {state.attempts_used} / {state.attempts_max}
                             </div>
@@ -208,6 +225,9 @@ export default function QuizDisplay() {
                             <div className="quiz-display-answer">
                                 <div className="quiz-display-answer-label">Правильный ответ</div>
                                 {state.question.answer}
+                                {state.question.explanation && (
+                                    <div className="quiz-display-explanation">{state.question.explanation}</div>
+                                )}
                             </div>
                         )}
 

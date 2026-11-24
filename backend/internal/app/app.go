@@ -47,6 +47,7 @@ import (
 	"main/internal/quiz/repository/quiz_question_repository"
 	"main/internal/quiz/repository/quiz_session_repository"
 	"main/internal/quiz/repository/quiz_team_repository"
+	"main/internal/quiz/repository/quiz_tiebreak_team_repository"
 	"main/internal/quiz/service/quiz_service"
 	"main/internal/team/handler/team_handler"
 	"main/internal/team/repository/team_participant_repository"
@@ -95,6 +96,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	quizBuzzRepository := quiz_buzz_repository.New()
 	quizAnswerRepository := quiz_answer_repository.New()
 	quizButtonRepository := quiz_button_repository.New()
+	quizTiebreakTeamRepository := quiz_tiebreak_team_repository.New()
 
 	// init service
 	wsHub := connect_manager.NewHub()
@@ -113,6 +115,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		quizAnswerRepository,
 		teamRepository,
 		quizButtonRepository,
+		quizTiebreakTeamRepository,
 		wsHub)
 
 	teamService := team_service.New(teamRepository, participantRepository, teamParticipantRepository, quizTeamRepository, eventRepository, log, storage)
@@ -155,7 +158,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	router := chi.NewRouter()
 
 	// init CORS
-	app.initCors(router, cfg.FrontendURL)
+	app.initCors(router, cfg.FrontendURLs)
 	// init middleware logger
 	router.Use(midlogger.New(log))
 	router.Use(middleware.URLFormat)
@@ -237,6 +240,10 @@ func (a *App) initRoutes(router *chi.Mux,
 			r.Post("/{id}/grant", quizHandler.GrantTurn)
 			r.Post("/{id}/adjust", quizHandler.AdjustScore)
 			r.Post("/{id}/order", quizHandler.AdminSetOrder)
+			r.Post("/{id}/tiebreak/start", quizHandler.StartTiebreak)
+			r.Post("/{id}/tiebreak/question", quizHandler.StartTiebreakQuestion)
+			r.Post("/{id}/tiebreak/end", quizHandler.EndTiebreak)
+			r.Post("/{id}/tiebreak/jury", quizHandler.JuryDecision)
 			r.Get("/{id}/buttons", quizHandler.ListButtons)
 			r.Post("/{id}/buttons", quizHandler.RegisterButton)
 			r.Delete("/{id}/buttons/{buttonId}", quizHandler.DeleteButton)
@@ -337,9 +344,9 @@ func (a *App) initRoutes(router *chi.Mux,
 	})
 }
 
-func (a *App) initCors(router *chi.Mux, frontedUrl string) {
+func (a *App) initCors(router *chi.Mux, frontendUrls []string) {
 	corsOptions := cors.Options{
-		AllowedOrigins: []string{frontedUrl},
+		AllowedOrigins: frontendUrls,
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders: []string{
 			"Accept",
