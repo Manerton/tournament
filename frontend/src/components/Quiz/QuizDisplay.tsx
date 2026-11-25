@@ -11,49 +11,48 @@ function formatTime(totalSeconds: number): string {
     return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function playQuestionStartSound() {
-    try {
-        const audio = new Audio("/start.mp3");
-        audio.volume = 0.5;
-        audio.play().catch(() => {
-            /* autoplay blocked or audio not available */
-        });
-    } catch {
-        /* audio not available */
-    }
-}
-
 interface BoardRow {
     team: QuizTeamState;
     value: number;
 }
 
-function BoardColumn({ title, rows, max }: { title: string; rows: BoardRow[]; max: number }) {
+function BoardColumn({ title, rows }: { title: string; rows: BoardRow[] }) {
+    // Each column computes its own scale so single-round bars aren't dwarfed by cumulative totals
+    const max = Math.max(...rows.map((r) => r.value), 1);
+
     return (
         <div className="quiz-board-column">
             <div className="quiz-board-title">{title}</div>
-            {rows.map(({ team, value }) => (
-                <div className="quiz-bar-row" key={team.team_id}>
-                    <div className="quiz-bar-name" title={team.name}>
-                        {team.number}. {team.name}
-                    </div>
-                    <div className="quiz-bar-track">
+            <div className="quiz-board-rows">
+                {rows.map(({ team, value }, index) => {
+                    const rank = index + 1;
+                    const pct = value > 0 ? Math.max((value / max) * 100, 10) : 0;
+                    return (
                         <div
-                            className="quiz-bar-fill"
-                            style={{ width: max > 0 ? `${Math.max((value / max) * 100, 6)}%` : "6%" }}
+                            className={`quiz-bar-row${rank <= 3 ? ` rank-${rank}` : ""}`}
+                            key={team.team_id}
                         >
-                            {value}
+                            <div className="quiz-bar-rank">{rank}</div>
+                            <div className="quiz-bar-name" title={team.name}>
+                                <span className="quiz-bar-num">№{team.number}</span> {team.name}
+                            </div>
+                            <div className="quiz-bar-track">
+                                <div
+                                    className={`quiz-bar-fill${value === 0 ? " zero" : ""}`}
+                                    style={{ width: value > 0 ? `${pct}%` : "3.2rem" }}
+                                >
+                                    {value}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            ))}
+                    );
+                })}
+            </div>
         </div>
     );
 }
 
 function Leaderboard({ round, teams }: { round: number; teams: QuizTeamState[] }) {
-    // tiebreak_score is the secondary sort key: it orders teams tied on the
-    // primary value without ever changing the scores themselves
     const sortedBy = (fn: (t: QuizTeamState) => number): BoardRow[] =>
         teams
             .map((t) => ({ team: t, value: fn(t) }))
@@ -66,10 +65,9 @@ function Leaderboard({ round, teams }: { round: number; teams: QuizTeamState[] }
 
     if (round === 1) {
         const rows = sortedBy((t) => t.round1_score);
-        const max = Math.max(...rows.map((r) => r.value), 1);
         return (
-            <div className="quiz-board">
-                <BoardColumn title="Итоги первого раунда" rows={rows} max={max} />
+            <div className="quiz-board single">
+                <BoardColumn title="Итоги 1-го тура" rows={rows} />
             </div>
         );
     }
@@ -77,30 +75,20 @@ function Leaderboard({ round, teams }: { round: number; teams: QuizTeamState[] }
     if (round === 2) {
         const roundRows = sortedBy((t) => t.round2_score);
         const totalRows = sortedBy((t) => t.round1_score + t.round2_score);
-        const max = Math.max(
-            ...roundRows.map((r) => r.value),
-            ...totalRows.map((r) => r.value),
-            1,
-        );
         return (
-            <div className="quiz-board">
-                <BoardColumn title="Второй раунд" rows={roundRows} max={max} />
-                <BoardColumn title="Общий зачёт (1 + 2)" rows={totalRows} max={max} />
+            <div className="quiz-board double">
+                <BoardColumn title="Результаты 2-го тура" rows={roundRows} />
+                <BoardColumn title="Общий зачёт (1 + 2 туры)" rows={totalRows} />
             </div>
         );
     }
 
     const roundRows = sortedBy((t) => t.round3_score);
     const totalRows = sortedBy((t) => t.total_score);
-    const max = Math.max(
-        ...roundRows.map((r) => r.value),
-        ...totalRows.map((r) => r.value),
-        1,
-    );
     return (
-        <div className="quiz-board">
-            <BoardColumn title="Третий раунд" rows={roundRows} max={max} />
-            <BoardColumn title="Финальное положение" rows={totalRows} max={max} />
+        <div className="quiz-board double">
+            <BoardColumn title="Результаты 3-го тура" rows={roundRows} />
+            <BoardColumn title="Итоговый рейтинг турнира" rows={totalRows} />
         </div>
     );
 }
@@ -110,12 +98,51 @@ export default function QuizDisplay() {
     const { state } = useQuizState(eventId);
 
     const [remainingMs, setRemainingMs] = useState<number>(0);
+    const [soundUnlocked, setSoundUnlocked] = useState<boolean>(false);
+
     const deadlineRef = useRef<number>(0);
     const runningRef = useRef<boolean>(false);
     const beepedRef = useRef<string>("");
+    const audioRef = useRef<HTMLAudioElement | null>(null);
 
-    // track a local deadline so the timer ticks smoothly between broadcasts;
-    // re-sync only on real discontinuities: start/resume or a new duration
+    const unlockAudio = () => {
+        try {
+            if (!audioRef.current) {
+                audioRef.current = new Audio("/start.mp3");
+                audioRef.current.volume = 0.6;
+            }
+            const audio = audioRef.current;
+            audio.muted = true;
+            audio
+                .play()
+                .then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.muted = false;
+                    setSoundUnlocked(true);
+                })
+                .catch(() => {
+                    /* browser still blocked */
+                });
+        } catch {
+            /* audio not available */
+        }
+    };
+
+    const playTimeoutSound = () => {
+        try {
+            const audio = audioRef.current ?? new Audio("/start.mp3");
+            audio.volume = 0.6;
+            audio.currentTime = 0;
+            audio.play().catch(() => {
+                /* autoplay blocked or audio unavailable */
+            });
+        } catch {
+            /* audio unavailable */
+        }
+    };
+
+    // Track local deadline so the timer ticks smoothly between broadcasts
     useEffect(() => {
         if (!state) return;
         const t = state.timer;
@@ -135,112 +162,198 @@ export default function QuizDisplay() {
 
     useEffect(() => {
         const tick = setInterval(() => {
-            if (!runningRef.current) return; // stay frozen while paused
+            if (!runningRef.current) return;
             setRemainingMs(Math.max(deadlineRef.current - Date.now(), 0));
-        }, 200);
+        }, 150);
         return () => clearInterval(tick);
     }, []);
 
-    // audio cue when the timer hits zero
+    // Audio cue when the timer hits zero
     useEffect(() => {
         if (!state || !state.timer.running) return;
-        const activeQuestion = state.tiebreak_active ? state.tiebreak_question : state.current_question;
+        const activeQuestion = state.tiebreak_active
+            ? state.tiebreak_question
+            : state.current_question;
         if (remainingMs > 0 || activeQuestion === 0) return;
         const key = `${state.tiebreak_active ? "tb" : state.current_round}:${activeQuestion}`;
         if (beepedRef.current === key) return;
         beepedRef.current = key;
-        playQuestionStartSound();
+        playTimeoutSound();
     }, [remainingMs, state]);
 
     if (!state) {
         return (
             <div className="quiz-display-root">
                 <BackgroundParticles />
+                <div className="quiz-display-idle">Загрузка табло…</div>
             </div>
         );
     }
 
     const roundCfg = state.rounds.find((r) => r.round === state.current_round);
     const secondsLeft = Math.ceil(remainingMs / 1000);
+    const totalDurationSec = state.current_round === 3 && !state.tiebreak_active ? 120 : 60;
+    const progressPct = Math.min(100, Math.max(0, (remainingMs / (totalDurationSec * 1000)) * 100));
+
+    const showQuestionScreen = !state.leaderboard_shown && Boolean(state.question);
+    const isPaused =
+        showQuestionScreen && !state.timer.running && remainingMs > 0 && !state.answer_revealed;
+    const isExpired = showQuestionScreen && remainingMs === 0;
+    const isWarning = showQuestionScreen && secondsLeft <= 10 && secondsLeft > 0;
+    const isCaution = showQuestionScreen && secondsLeft <= 20 && secondsLeft > 10;
+
+    const timerClass = [
+        "quiz-display-timer",
+        isExpired ? "expired" : "",
+        isWarning ? "warning" : "",
+        isCaution ? "caution" : "",
+        isPaused ? "paused" : "",
+    ]
+        .filter(Boolean)
+        .join(" ");
+
+    const showBuzzFooter =
+        showQuestionScreen && (state.current_round === 1 || state.tiebreak_active);
 
     return (
         <div className="quiz-display-root">
             <BackgroundParticles />
-            <div className="quiz-display-header">
+
+            <header className="quiz-display-header">
                 <div className="quiz-display-round">
                     {state.tiebreak_active
                         ? "Переигровка"
                         : roundCfg
-                          ? `Раунд ${roundCfg.round} — «${roundCfg.name}»`
-                          : "Квиз-шоу"}
+                          ? `Тур ${roundCfg.round} · «${roundCfg.name}»`
+                          : "Математический турнир"}
                 </div>
+
                 <div className="quiz-display-qnum">
-                    {state.question
+                    {state.question && !state.leaderboard_shown
                         ? state.tiebreak_active
                             ? `Резервный вопрос №${state.question.number}`
                             : `Вопрос №${state.question.number}`
-                        : ""}
+                        : state.leaderboard_shown
+                          ? "Турнирная таблица"
+                          : ""}
                 </div>
-            </div>
 
-            <div className="quiz-display-body">
+                <div className="quiz-display-header-right">
+                    {showQuestionScreen && (
+                        <div className={timerClass}>
+                            {isPaused && <span className="quiz-timer-badge">ПАУЗА</span>}
+                            {isExpired && <span className="quiz-timer-badge expired">ВРЕМЯ</span>}
+                            <span className="quiz-timer-digits">{formatTime(secondsLeft)}</span>
+                        </div>
+                    )}
+                    {!soundUnlocked && (
+                        <button
+                            type="button"
+                            className="quiz-sound-unlock"
+                            onClick={unlockAudio}
+                            title="Нажмите один раз перед турниром, чтобы разрешить звуковой сигнал таймера"
+                        >
+                            🔇 Вкл. звук
+                        </button>
+                    )}
+                </div>
+            </header>
+
+            {showQuestionScreen && (
+                <div className="quiz-timer-progress-track">
+                    <div
+                        className={`quiz-timer-progress-fill${
+                            isExpired || isWarning ? " danger" : isCaution || isPaused ? " caution" : ""
+                        }`}
+                        style={{ width: `${progressPct}%` }}
+                    />
+                </div>
+            )}
+
+            <main className="quiz-display-body">
                 {state.leaderboard_shown ? (
                     <Leaderboard round={state.current_round} teams={state.teams} />
                 ) : !state.question ? (
                     <div className="quiz-display-idle">
-                        {state.round_active
-                            ? "Ожидание вопроса…"
-                            : "Добро пожаловать на квиз-шоу!"}
+                        <div className="quiz-idle-title">
+                            {state.round_active
+                                ? "Ожидание вопроса…"
+                                : "Добро пожаловать на математический турнир!"}
+                        </div>
+                        {roundCfg && (
+                            <div className="quiz-idle-subtitle">
+                                Тур {roundCfg.round}: «{roundCfg.name}»
+                            </div>
+                        )}
                     </div>
                 ) : (
-                    <>
+                    <div
+                        className={`quiz-stage-card${
+                            state.answer_revealed ? " with-answer" : ""
+                        }`}
+                    >
                         <div className="quiz-display-question">{state.question.text}</div>
-
-                        {(state.current_round === 1 || state.tiebreak_active) &&
-                            state.buzz_queue.length > 0 && (
-                            <div className="quiz-display-queue">
-                                {state.buzz_queue.map((b, i) => (
-                                    <div
-                                        key={b.team_id}
-                                        className={`quiz-queue-chip${
-                                            b.is_active ? " active" : ""
-                                        }${b.status === BuzzStatus.Wrong ? " wrong" : ""}${
-                                            b.status === BuzzStatus.Correct ? " correct" : ""
-                                        }${b.status === BuzzStatus.Outpaced ? " outpaced" : ""}`}
-                                    >
-                                        {b.team_name}
-                                        {i > 0 && ` +${b.offset_ms} мс`}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {(state.current_round === 1 || state.tiebreak_active) && (
-                            <div className="quiz-display-attempts">
-                                Попыток использовано: {state.attempts_used} / {state.attempts_max}
-                            </div>
-                        )}
 
                         {state.answer_revealed && state.question.answer && (
                             <div className="quiz-display-answer">
                                 <div className="quiz-display-answer-label">Правильный ответ</div>
-                                {state.question.answer}
+                                <div className="quiz-display-answer-text">
+                                    {state.question.answer}
+                                </div>
                                 {state.question.explanation && (
-                                    <div className="quiz-display-explanation">{state.question.explanation}</div>
+                                    <div className="quiz-display-explanation">
+                                        {state.question.explanation}
+                                    </div>
                                 )}
                             </div>
                         )}
-
-                        <div
-                            className={`quiz-display-timer${
-                                secondsLeft <= 10 && secondsLeft > 0 ? " warning" : ""
-                            }`}
-                        >
-                            {formatTime(secondsLeft)}
-                        </div>
-                    </>
+                    </div>
                 )}
-            </div>
+            </main>
+
+            {showBuzzFooter && (
+                <footer className="quiz-display-footer">
+                    <div className="quiz-display-queue">
+                        {state.buzz_queue.length === 0 ? (
+                            <div className="quiz-queue-empty">Ожидание нажатия кнопки…</div>
+                        ) : (
+                            state.buzz_queue.map((b, i) => (
+                                <div
+                                    key={b.team_id}
+                                    className={`quiz-queue-chip${
+                                        b.is_active ? " active" : ""
+                                    }${b.status === BuzzStatus.Wrong ? " wrong" : ""}${
+                                        b.status === BuzzStatus.Correct ? " correct" : ""
+                                    }${b.status === BuzzStatus.Outpaced ? " outpaced" : ""}`}
+                                >
+                                    <span className="quiz-queue-pos">#{i + 1}</span>
+                                    <span className="quiz-queue-name">{b.team_name}</span>
+                                    {i > 0 && (
+                                        <span className="quiz-queue-offset">+{b.offset_ms} мс</span>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    <div className="quiz-display-attempts">
+                        <span className="quiz-attempts-label">Попытки:</span>
+                        <div className="quiz-attempts-dots">
+                            {Array.from({ length: state.attempts_max }).map((_, idx) => (
+                                <span
+                                    key={idx}
+                                    className={`quiz-attempt-dot${
+                                        idx < state.attempts_used ? " used" : ""
+                                    }`}
+                                />
+                            ))}
+                        </div>
+                        <span className="quiz-attempts-count">
+                            {state.attempts_used} / {state.attempts_max}
+                        </span>
+                    </div>
+                </footer>
+            )}
         </div>
     );
 }
