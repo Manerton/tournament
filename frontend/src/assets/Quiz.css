@@ -272,6 +272,27 @@
     opacity: 0.9;
 }
 
+.quiz-display-criteria {
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px dashed rgba(46, 204, 113, 0.45);
+    font-size: clamp(0.95rem, 1.4vw, 1.4rem);
+    line-height: 1.35;
+    color: var(--quiz-text);
+    opacity: 0.85;
+    white-space: pre-line;
+}
+
+.quiz-display-criteria-label {
+    display: block;
+    font-size: clamp(0.8rem, 1.1vw, 1.1rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #f39c12;
+    margin-bottom: 0.35rem;
+}
+
 /* Display Footer (Round 1 Queue & Attempts) */
 .quiz-display-footer {
     display: flex;

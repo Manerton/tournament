@@ -501,9 +501,9 @@ func (s *QuizService) StartQuestion(ctx context.Context, eventID uuid.UUID) erro
 	}
 	t.duration = time.Duration(cfg.TimeSec) * time.Second
 	t.remaining = t.duration
-	t.deadline = time.Now().Add(t.duration)
-	t.running = true
-	t.started = true
+	t.deadline = time.Time{}
+	t.running = false
+	t.started = false
 	s.mu.Unlock()
 
 	return s.broadcastState(ctx, eventID)
@@ -522,11 +522,27 @@ func (s *QuizService) PauseTimer(ctx context.Context, eventID uuid.UUID) error {
 	return s.broadcastState(ctx, eventID)
 }
 
+// ResumeTimer starts the timer of the current question or resumes it from a pause.
 func (s *QuizService) ResumeTimer(ctx context.Context, eventID uuid.UUID) error {
+	const op = "service.QuizService.ResumeTimer"
+	log := s.log.With(slog.String("op", op))
+
+	session, err := s.getSession(ctx, eventID)
+	if err != nil {
+		log.Error("failed get session", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	questionActive := (session.TiebreakActive && session.TiebreakQuestion > 0) ||
+		(!session.TiebreakActive && session.RoundActive && session.CurrentQuestion > 0)
+	if !questionActive {
+		return errs.ErrInvalidGameState.Wrap("Нет активного вопроса")
+	}
+
 	s.mu.Lock()
-	if t, ok := s.timers[eventID]; ok && t.started && !t.running {
+	if t, ok := s.timers[eventID]; ok && !t.running && t.remaining > 0 {
 		t.deadline = time.Now().Add(t.remaining)
 		t.running = true
+		t.started = true
 	}
 	s.mu.Unlock()
 	return s.broadcastState(ctx, eventID)
@@ -1521,9 +1537,6 @@ func (s *QuizService) StartTiebreakQuestion(ctx context.Context, eventID uuid.UU
 	s.timers[eventID] = &timerRuntime{
 		duration:  TiebreakTimeSec * time.Second,
 		remaining: TiebreakTimeSec * time.Second,
-		deadline:  time.Now().Add(TiebreakTimeSec * time.Second),
-		running:   true,
-		started:   true,
 	}
 	s.mu.Unlock()
 
@@ -1775,6 +1788,7 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 			DurationSec: TiebreakTimeSec,
 			RemainingMs: t.remainingNow().Milliseconds(),
 			Running:     t.running,
+			Started:     t.started,
 		}
 	} else if cfgOk {
 		t := s.getTimer(eventID, cfg)
@@ -1782,6 +1796,7 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 			DurationSec: cfg.TimeSec,
 			RemainingMs: t.remainingNow().Milliseconds(),
 			Running:     t.running,
+			Started:     t.started,
 		}
 	}
 
@@ -1796,6 +1811,7 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 				if session.AnswerRevealed {
 					qs.Answer = question.Answer
 					qs.Explanation = question.Explanation
+					qs.Criteria = question.Criteria
 				}
 				state.Question = qs
 			}
@@ -1810,6 +1826,7 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 			if session.AnswerRevealed {
 				qs.Answer = question.Answer
 				qs.Explanation = question.Explanation
+				qs.Criteria = question.Criteria
 			}
 			state.Question = qs
 		}

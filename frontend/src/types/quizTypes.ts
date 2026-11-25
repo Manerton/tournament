@@ -9,6 +9,7 @@ export interface QuizTimerState {
     duration_sec: number;
     remaining_ms: number;
     running: boolean;
+    started: boolean;
 }
 
 export interface QuizQuestionState {
@@ -16,6 +17,7 @@ export interface QuizQuestionState {
     text: string;
     answer: string;
     explanation: string;
+    criteria: string;
 }
 
 export interface QuizBuzzEntry {

@@ -197,7 +197,11 @@ export default function QuizDisplay() {
 
     const showQuestionScreen = !state.leaderboard_shown && Boolean(state.question);
     const isPaused =
-        showQuestionScreen && !state.timer.running && remainingMs > 0 && !state.answer_revealed;
+        showQuestionScreen &&
+        state.timer.started &&
+        !state.timer.running &&
+        remainingMs > 0 &&
+        !state.answer_revealed;
     const isExpired = showQuestionScreen && remainingMs === 0;
     const isWarning = showQuestionScreen && secondsLeft <= 10 && secondsLeft > 0;
     const isCaution = showQuestionScreen && secondsLeft <= 20 && secondsLeft > 10;
@@ -303,6 +307,14 @@ export default function QuizDisplay() {
                                 {state.question.explanation && (
                                     <div className="quiz-display-explanation">
                                         {state.question.explanation}
+                                    </div>
+                                )}
+                                {state.question.criteria && (
+                                    <div className="quiz-display-criteria">
+                                        <span className="quiz-display-criteria-label">
+                                            Критерии оценки
+                                        </span>
+                                        {state.question.criteria}
                                     </div>
                                 )}
                             </div>
