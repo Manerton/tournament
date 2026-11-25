@@ -325,6 +325,7 @@ export default function QuizAdmin() {
             : undefined;
 
     const timerRunning = !!state?.timer.running;
+    const timerStarted = !!state?.timer.started;
     const timerState = !roundCfg
         ? "idle"
         : !timerRunning
@@ -339,7 +340,9 @@ export default function QuizAdmin() {
               ? "Осталось мало времени"
               : timerState === "paused"
                 ? hasActiveQuestion
-                    ? "Пауза"
+                    ? timerStarted
+                        ? "Пауза"
+                        : "Вопрос на экране — таймер не запущен"
                     : "Готов к старту"
                 : "Тур не начат";
 
@@ -652,11 +655,19 @@ export default function QuizAdmin() {
                                                     timerRunning
                                                         ? axiosQuizPauseTimer(eventId)
                                                         : axiosQuizResumeTimer(eventId),
-                                                timerRunning ? "Таймер на паузе" : "Таймер продолжен",
+                                                timerRunning
+                                                    ? "Таймер на паузе"
+                                                    : timerStarted
+                                                      ? "Таймер продолжен"
+                                                      : "Таймер запущен",
                                             )
                                         }
                                     >
-                                        {timerRunning ? "⏸ Пауза" : "▶ Продолжить"}
+                                        {timerRunning
+                                            ? "⏸ Пауза"
+                                            : timerStarted
+                                              ? "▶ Продолжить"
+                                              : "▶ Старт таймера"}
                                     </Button>
                                     <Button
                                         variant="outline-secondary"

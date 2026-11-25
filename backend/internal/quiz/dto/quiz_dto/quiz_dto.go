@@ -11,6 +11,7 @@ type TimerState struct {
 	DurationSec int   `json:"duration_sec"`
 	RemainingMs int64 `json:"remaining_ms"`
 	Running     bool  `json:"running"`
+	Started     bool  `json:"started"`
 }
 
 type QuestionState struct {
@@ -18,6 +19,7 @@ type QuestionState struct {
 	Text        string `json:"text"`
 	Answer      string `json:"answer"`
 	Explanation string `json:"explanation"`
+	Criteria    string `json:"criteria"`
 }
 
 type BuzzEntry struct {

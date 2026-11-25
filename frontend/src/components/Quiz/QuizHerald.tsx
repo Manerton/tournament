@@ -274,22 +274,7 @@ export default function QuizHerald() {
             );
         }
 
-        // 2. Waiting in queue
-        if (entry?.status === BuzzStatus.Pending && !entry.is_active) {
-            const activeTeam = state.buzz_queue.find((b) => b.is_active);
-            return (
-                <div className="quiz-status-card waiting">
-                    <div className="quiz-status-title">Вы #{queueIdx + 1} в очереди</div>
-                    <div className="quiz-status-desc">
-                        {activeTeam
-                            ? `Сейчас отвечает команда «${activeTeam.team_name}». Ожидайте…`
-                            : "Ожидайте своей очереди на ответ…"}
-                    </div>
-                </div>
-            );
-        }
-
-        // 3. Answered correctly
+        // 2. Answered correctly
         if (entry?.status === BuzzStatus.Correct) {
             return (
                 <div className="quiz-status-card success">
@@ -303,7 +288,7 @@ export default function QuizHerald() {
             );
         }
 
-        // 4. Answered wrong — blocked until next question
+        // 3. Answered wrong — blocked until next question
         if (entry?.status === BuzzStatus.Wrong) {
             return (
                 <div className="quiz-status-card blocked">
@@ -315,8 +300,25 @@ export default function QuizHerald() {
             );
         }
 
-        // 5. Outpaced or question already closed
-        if (entry?.status === BuzzStatus.Outpaced || questionSolved) {
+        // 4. Another team holds the attempt — wait; outpaced teams may re-buzz after a wrong answer
+        const activeTeam = state.buzz_queue.find((b) => b.is_active);
+        if (activeTeam) {
+            return (
+                <div className="quiz-status-card waiting">
+                    <div className="quiz-status-title">
+                        Сейчас отвечает команда «{activeTeam.team_name}»
+                    </div>
+                    <div className="quiz-status-desc">
+                        {entry?.status === BuzzStatus.Outpaced
+                            ? "Если ответ не засчитают, вы сможете нажать кнопку снова."
+                            : "Ожидайте своей очереди на ответ…"}
+                    </div>
+                </div>
+            );
+        }
+
+        // 5. Question already closed
+        if (questionSolved) {
             return (
                 <div className="quiz-status-card muted">
                     <div className="quiz-status-title">Розыгрыш вопроса завершён</div>
@@ -325,7 +327,7 @@ export default function QuizHerald() {
             );
         }
 
-        // 6. Ready to buzz
+        // 6. Ready to buzz (including re-buzz after being outpaced in an earlier window)
         return (
             <div className="quiz-herald-stage">
                 <div className="quiz-attempts-pill">
