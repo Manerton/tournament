@@ -14,4 +14,6 @@ type QuizQuestion struct {
 	// Used marks a reserve-pool (round 4) question as shown: the hall has seen it,
 	// so it must never be shown again.
 	Used bool `gorm:"type:boolean;not null;default:false" json:"used"`
+	// Cancelled marks an annulled question: all its results are cancelled for every team.
+	Cancelled bool `gorm:"type:boolean;not null;default:false" json:"cancelled"`
 }

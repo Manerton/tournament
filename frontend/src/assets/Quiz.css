@@ -264,6 +264,20 @@
     color: var(--quiz-text);
 }
 
+.quiz-display-cancelled {
+    margin-top: 1.2vh;
+    padding: 1.2vh 2vw;
+    border: 2px solid #e74c3c;
+    border-radius: 1rem;
+    background: rgba(231, 76, 60, 0.16);
+    color: #ff8a7a;
+    font-size: clamp(1.1rem, 1.8vw, 1.8rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-align: center;
+}
+
 .quiz-display-explanation {
     margin-top: 0.85rem;
     font-size: clamp(1.05rem, 1.6vw, 1.6rem);

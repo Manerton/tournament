@@ -67,6 +67,18 @@ func (r *QuizAnswerRepository) Upsert(ctx context.Context, db *gorm.DB, answer q
 	return nil
 }
 
+func (r *QuizAnswerRepository) DeleteByQuestion(ctx context.Context, db *gorm.DB, eventID uuid.UUID, round int, questionNumber int) error {
+	const op = "repository.QuizAnswerRepository.DeleteByQuestion"
+
+	err := db.WithContext(ctx).
+		Where(quiz_answer.QuizAnswer{EventID: eventID, Round: round, QuestionNumber: questionNumber}).
+		Delete(&quiz_answer.QuizAnswer{}).Error
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}
+
 func (r *QuizAnswerRepository) DeleteByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) error {
 	const op = "repository.QuizAnswerRepository.DeleteByEvent"
 

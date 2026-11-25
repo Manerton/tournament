@@ -39,6 +39,11 @@ func OrderPoints(order int) int {
 	}
 }
 
+// TotalAllowedMistakes is the order's mistake allowance plus host-granted extra lives.
+func (t QuizTeam) TotalAllowedMistakes() int {
+	return OrderAllowedMistakes(t.Round3Order) + t.Round3ExtraLives
+}
+
 type QuizTeam struct {
 	ID               uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
 	EventID          uuid.UUID  `gorm:"type:uuid;not null;index" json:"event_id"`
@@ -51,6 +56,9 @@ type QuizTeam struct {
 	Round3Order      int        `gorm:"type:int;not null;default:0" json:"round3_order"`
 	Round3WrongCount int        `gorm:"type:int;not null;default:0" json:"round3_wrong_count"`
 	Round3Eliminated bool       `gorm:"type:boolean;not null;default:false" json:"round3_eliminated"`
+	// Round3ExtraLives are host-granted extra mistakes on top of the order's
+	// allowance, used to restore an eliminated team to the competition.
+	Round3ExtraLives int `gorm:"type:int;not null;default:0" json:"round3_extra_lives"`
 	// RoundNAdjust are the host's manual per-round score corrections (herald mistakes).
 	// Kept separate from the round scores so automatic recalculations never wipe them.
 	Round1Adjust int `gorm:"type:int;not null;default:0" json:"round1_adjust"`

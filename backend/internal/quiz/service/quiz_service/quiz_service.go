@@ -126,6 +126,7 @@ type QuizBuzzRepositoryInterface interface {
 type QuizAnswerRepositoryInterface interface {
 	GetByTeamAndRound(ctx context.Context, db *gorm.DB, eventID uuid.UUID, round int, teamID uuid.UUID) ([]quiz_answer.QuizAnswer, error)
 	Upsert(ctx context.Context, db *gorm.DB, answer quiz_answer.QuizAnswer) error
+	DeleteByQuestion(ctx context.Context, db *gorm.DB, eventID uuid.UUID, round int, questionNumber int) error
 	DeleteByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) error
 }
 
@@ -579,6 +580,128 @@ func (s *QuizService) CloseQuestion(ctx context.Context, eventID uuid.UUID) erro
 	}
 	s.mu.Unlock()
 	s.clearBuzzWindow(eventID)
+	return s.broadcastState(ctx, eventID)
+}
+
+// CancelQuestion annuls the current question: all its results are cancelled
+// for every team (points, mistakes, eliminations) and the question is closed.
+func (s *QuizService) CancelQuestion(ctx context.Context, eventID uuid.UUID) error {
+	const op = "service.QuizService.CancelQuestion"
+	log := s.log.With(slog.String("op", op))
+
+	session, err := s.getSession(ctx, eventID)
+	if err != nil {
+		log.Error("failed get session", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	if session.TiebreakActive {
+		return errs.ErrInvalidGameState.Wrap("Вопрос переигровки отменить нельзя")
+	}
+	if !session.RoundActive || session.CurrentQuestion == 0 {
+		return errs.ErrInvalidGameState.Wrap("Нет активного вопроса")
+	}
+	round, questionNumber := session.CurrentRound, session.CurrentQuestion
+
+	question, qErr := s.questionRepository.GetByNumber(ctx, s.db, eventID, round, questionNumber)
+	if qErr == nil && question.Cancelled {
+		return errs.ErrInvalidGameState.Wrap("Вопрос уже отменён")
+	}
+
+	switch round {
+	case Round1:
+		// revoke the +2 of every correct answer, then wipe the buzz history
+		buzzes, err := s.buzzRepository.GetByQuestion(ctx, s.db, eventID, Round1, questionNumber)
+		if err != nil {
+			log.Error("failed get buzzes", logger.Err(err))
+			return errs.ErrInternalError
+		}
+		for _, b := range buzzes {
+			if b.Status != quiz_buzz.StatusCorrect {
+				continue
+			}
+			qt, err := s.teamRepository.GetByTeamID(ctx, s.db, eventID, b.TeamID)
+			if err != nil {
+				log.Error("failed get quiz team", logger.Err(err))
+				return errs.ErrInternalError
+			}
+			qt.Round1Score -= 2
+			if err := s.teamRepository.Save(ctx, s.db, qt); err != nil {
+				log.Error("failed save team", logger.Err(err))
+				return errs.ErrInternalError
+			}
+		}
+		if err := s.buzzRepository.DeleteByQuestion(ctx, s.db, eventID, Round1, questionNumber); err != nil {
+			log.Error("failed delete buzzes", logger.Err(err))
+			return errs.ErrInternalError
+		}
+	case Round2, Round3:
+		// scores, mistakes and eliminations are derived from the answer records:
+		// dropping the question's answers and recalculating restores every team
+		if err := s.answerRepository.DeleteByQuestion(ctx, s.db, eventID, round, questionNumber); err != nil {
+			log.Error("failed delete answers", logger.Err(err))
+			return errs.ErrInternalError
+		}
+		teams, err := s.teamRepository.GetByEventID(ctx, s.db, eventID)
+		if err != nil {
+			log.Error("failed get quiz teams", logger.Err(err))
+			return errs.ErrInternalError
+		}
+		for _, qt := range teams {
+			if round == Round2 {
+				if err := s.recalculateRound2Score(ctx, eventID, qt); err != nil {
+					log.Error("failed recalculate round2 score", logger.Err(err))
+					return errs.ErrInternalError
+				}
+				continue
+			}
+			answers, err := s.answerRepository.GetByTeamAndRound(ctx, s.db, eventID, Round3, qt.TeamID)
+			if err != nil {
+				log.Error("failed get answers", logger.Err(err))
+				return errs.ErrInternalError
+			}
+			total := 0
+			wrongCount := 0
+			for _, a := range answers {
+				total += a.Points
+				if a.Grade == quiz_answer.GradeWrong {
+					wrongCount++
+				}
+			}
+			qt.Round3Score = total + qt.Round3Adjust
+			qt.Round3WrongCount = wrongCount
+			qt.Round3Eliminated = wrongCount > qt.TotalAllowedMistakes()
+			if err := s.teamRepository.Save(ctx, s.db, qt); err != nil {
+				log.Error("failed save team", logger.Err(err))
+				return errs.ErrInternalError
+			}
+		}
+	default:
+		return errs.ErrInvalidGameState.Wrap("Раунд не активен")
+	}
+
+	// mark the bank question as annulled (if it exists in the bank)
+	if qErr == nil {
+		question.Cancelled = true
+		if err := s.questionRepository.Upsert(ctx, s.db, question); err != nil {
+			log.Error("failed mark question cancelled", logger.Err(err))
+			return errs.ErrInternalError
+		}
+	}
+
+	// the cancelled question is over: stop the timer, drop the buzz window
+	s.mu.Lock()
+	if t, ok := s.timers[eventID]; ok {
+		t.remaining = 0
+		t.running = false
+		t.started = true
+	}
+	s.mu.Unlock()
+	s.clearBuzzWindow(eventID)
+
+	log.Info("question cancelled",
+		slog.String("event_id", eventID.String()),
+		slog.Int("round", round),
+		slog.Int("question", questionNumber))
 	return s.broadcastState(ctx, eventID)
 }
 
@@ -1102,6 +1225,39 @@ func (s *QuizService) AdminSetOrder(ctx context.Context, eventID uuid.UUID, team
 	return s.broadcastState(ctx, eventID)
 }
 
+// RestoreTeam returns an eliminated round-3 team to the competition. Extra
+// lives are granted to cover the team's accumulated mistakes, so the team
+// continues without the right to another error: the next wrong grade
+// eliminates it again.
+func (s *QuizService) RestoreTeam(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID) error {
+	const op = "service.QuizService.RestoreTeam"
+	log := s.log.With(slog.String("op", op))
+
+	qt, err := s.teamRepository.GetByTeamID(ctx, s.db, eventID, teamID)
+	if err != nil {
+		log.Error("failed get quiz team", logger.Err(err))
+		return errs.ErrBadRequest.Wrap("Команда не найдена")
+	}
+	if !qt.Round3Eliminated {
+		return errs.ErrInvalidGameState.Wrap("Команда не выбыла из третьего тура")
+	}
+
+	if deficit := qt.Round3WrongCount - qt.TotalAllowedMistakes(); deficit > 0 {
+		qt.Round3ExtraLives += deficit
+	}
+	qt.Round3Eliminated = false
+	if err := s.teamRepository.Save(ctx, s.db, qt); err != nil {
+		log.Error("failed save quiz team", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	log.Info("team restored to round 3",
+		slog.String("event_id", eventID.String()),
+		slog.String("team_id", teamID.String()),
+		slog.Int("extra_lives", qt.Round3ExtraLives))
+	return s.broadcastState(ctx, eventID)
+}
+
 // ---------- buttons (ESP32) ----------
 
 func (s *QuizService) ListButtons(ctx context.Context, eventID uuid.UUID) ([]quiz_dto.AdminButton, error) {
@@ -1340,6 +1496,19 @@ func (s *QuizService) gradeRound2(ctx context.Context, eventID uuid.UUID, sessio
 		return result, errs.ErrBadRequest.Wrap("Некорректная оценка для второго раунда")
 	}
 
+	if question, err := s.questionRepository.GetByNumber(ctx, s.db, eventID, Round2, session.CurrentQuestion); err == nil && question.Cancelled {
+		return result, errs.ErrInvalidGameState.Wrap("Вопрос отменён — оценка не требуется")
+	}
+
+	// grading opens only after the question time is over (or the question is closed)
+	s.mu.Lock()
+	t, hasTimer := s.timers[eventID]
+	timeLeft := hasTimer && t.remainingNow() > 0
+	s.mu.Unlock()
+	if timeLeft {
+		return result, errs.ErrInvalidGameState.Wrap("Оценивание откроется после окончания времени")
+	}
+
 	answer := quiz_answer.QuizAnswer{
 		EventID:        eventID,
 		Round:          Round2,
@@ -1390,6 +1559,9 @@ func (s *QuizService) gradeRound3(ctx context.Context, eventID uuid.UUID, sessio
 	if qt.Round3Order == quiz_team.OrderNone {
 		return result, errs.ErrInvalidGameState.Wrap("Орден не выбран")
 	}
+	if question, err := s.questionRepository.GetByNumber(ctx, s.db, eventID, Round3, session.CurrentQuestion); err == nil && question.Cancelled {
+		return result, errs.ErrInvalidGameState.Wrap("Вопрос отменён — оценка не требуется")
+	}
 
 	var gradeValue int
 	switch grade {
@@ -1436,7 +1608,7 @@ func (s *QuizService) gradeRound3(ctx context.Context, eventID uuid.UUID, sessio
 	qt.Round3Score = total + qt.Round3Adjust
 	qt.Round3WrongCount = wrongCount
 
-	if wrongCount > quiz_team.OrderAllowedMistakes(qt.Round3Order) {
+	if wrongCount > qt.TotalAllowedMistakes() {
 		qt.Round3Eliminated = true
 		result.Eliminated = true
 	}
@@ -1860,8 +2032,9 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 			question, err := s.questionRepository.GetByNumber(ctx, s.db, eventID, RoundReserve, session.TiebreakQuestion)
 			if err == nil {
 				qs := &quiz_dto.QuestionState{
-					Number: question.QuestionNumber,
-					Text:   question.Text,
+					Number:    question.QuestionNumber,
+					Text:      question.Text,
+					Cancelled: question.Cancelled,
 				}
 				if session.AnswerRevealed {
 					qs.Answer = question.Answer
@@ -1875,8 +2048,9 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 		question, err := s.questionRepository.GetByNumber(ctx, s.db, eventID, session.CurrentRound, session.CurrentQuestion)
 		if err == nil {
 			qs := &quiz_dto.QuestionState{
-				Number: question.QuestionNumber,
-				Text:   question.Text,
+				Number:    question.QuestionNumber,
+				Text:      question.Text,
+				Cancelled: question.Cancelled,
 			}
 			if session.AnswerRevealed {
 				qs.Answer = question.Answer
@@ -1930,7 +2104,7 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 		r2 := t.Round2Score + t.Round2Adjust
 		r3 := t.Round3Score + t.Round3Adjust
 		total := r1 + r2 + r3
-		livesLeft := quiz_team.OrderAllowedMistakes(t.Round3Order) - t.Round3WrongCount
+		livesLeft := t.TotalAllowedMistakes() - t.Round3WrongCount
 		if livesLeft < 0 {
 			livesLeft = 0
 		}

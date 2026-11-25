@@ -235,6 +235,7 @@ export const axiosQuizStartQuestion = (eventId: string) => adminAction(eventId, 
 export const axiosQuizPauseTimer = (eventId: string) => adminAction(eventId, "question/pause");
 export const axiosQuizResumeTimer = (eventId: string) => adminAction(eventId, "question/resume");
 export const axiosQuizCloseQuestion = (eventId: string) => adminAction(eventId, "question/close");
+export const axiosQuizCancelQuestion = (eventId: string) => adminAction(eventId, "question/cancel");
 export const axiosQuizRevealAnswer = (eventId: string) => adminAction(eventId, "question/reveal");
 export const axiosQuizResetQuestion = (eventId: string) => adminAction(eventId, "question/reset");
 export const axiosQuizResetTournament = (eventId: string) => adminAction(eventId, "reset");
@@ -254,6 +255,15 @@ export async function axiosQuizGrantTurn(eventId: string, teamId: string): Promi
         unwrap(res.data);
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Не удалось передать право ответа");
+    }
+}
+
+export async function axiosQuizRestoreTeam(eventId: string, teamId: string): Promise<void> {
+    try {
+        const res = await api.post<ApiResponse<void>>(`/api/quiz/admin/${eventId}/restore-team`, { team_id: teamId });
+        unwrap(res.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Не удалось вернуть команду в игру");
     }
 }
 

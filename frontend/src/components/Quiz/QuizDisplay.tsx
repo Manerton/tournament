@@ -306,6 +306,12 @@ export default function QuizDisplay() {
                     >
                         <div className="quiz-display-question">{state.question.text}</div>
 
+                        {state.question.cancelled && (
+                            <div className="quiz-display-cancelled">
+                                Вопрос отменён — баллы за него не начисляются
+                            </div>
+                        )}
+
                         {state.answer_revealed && state.question.answer && (
                             <div className="quiz-display-answer">
                                 <div className="quiz-display-answer-label">Правильный ответ</div>

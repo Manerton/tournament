@@ -15,6 +15,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuizState } from "../helpers/useQuizState";
 import {
     axiosQuizAdjustScore,
+    axiosQuizCancelQuestion,
     axiosQuizCloseQuestion,
     axiosQuizDeleteButton,
     axiosQuizEndTiebreak,
@@ -28,6 +29,7 @@ import {
     axiosQuizResetQuestion,
     axiosQuizResetTournament,
     axiosQuizResumeTimer,
+    axiosQuizRestoreTeam,
     axiosQuizRevealAnswer,
     axiosQuizSetOrder,
     axiosQuizSetupTeams,
@@ -315,6 +317,7 @@ export default function QuizAdmin() {
     const currentQuestion = state?.current_question ?? 0;
     const roundCfg = state?.rounds.find((r) => r.round === currentRound);
     const hasActiveQuestion = !!roundCfg && currentQuestion > 0;
+    const questionCancelled = !!state?.question?.cancelled;
     const nextQuestionNumber = currentQuestion + 1;
     const nextQuestionExists = roundCfg ? nextQuestionNumber <= roundCfg.question_count : false;
     const isRoundFinished = !!roundCfg && currentQuestion >= roundCfg.question_count;
@@ -678,6 +681,30 @@ export default function QuizAdmin() {
                                     >
                                         ⏹ Закрыть вопрос
                                     </Button>
+                                    <Button
+                                        variant="outline-danger"
+                                        disabled={busy || !hasActiveQuestion || questionCancelled || tiebreakActive}
+                                        title={
+                                            tiebreakActive
+                                                ? "Вопрос переигровки отменить нельзя"
+                                                : "Аннулировать результаты всех команд за этот вопрос"
+                                        }
+                                        onClick={() =>
+                                            setConfirmModal({
+                                                title: `Отменить вопрос ${currentQuestion}?`,
+                                                body: "Результаты этого вопроса будут аннулированы для всех команд: начисленные баллы, ошибки и выбывания откатятся. Действие необратимо.",
+                                                confirmLabel: "Да, отменить вопрос",
+                                                variant: "danger",
+                                                onConfirm: () =>
+                                                    run(
+                                                        () => axiosQuizCancelQuestion(eventId),
+                                                        "Вопрос отменён, результаты аннулированы",
+                                                    ),
+                                            })
+                                        }
+                                    >
+                                        🚫 Отменить вопрос
+                                    </Button>
                                 </div>
                             </div>
 
@@ -691,6 +718,9 @@ export default function QuizAdmin() {
                                                 ? `Вопрос ${currentQuestion} из ${roundCfg.question_count}`
                                                 : `Тур ${roundCfg.round} готов к запуску`}
                                         </h5>
+                                        {hasActiveQuestion && questionCancelled && (
+                                            <Badge bg="danger">Вопрос отменён</Badge>
+                                        )}
                                         {hasActiveQuestion && (
                                             <Badge bg={state?.answer_revealed ? "success" : "secondary"}>
                                                 {state?.answer_revealed
@@ -1266,9 +1296,37 @@ export default function QuizAdmin() {
                                             <td>
                                                 <strong>{t.name}</strong>
                                                 {t.round3_eliminated && (
-                                                    <Badge bg="danger" className="ms-2">
-                                                        выбыла
-                                                    </Badge>
+                                                    <>
+                                                        <Badge bg="danger" className="ms-2">
+                                                            выбыла
+                                                        </Badge>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline-success"
+                                                            className="ms-2"
+                                                            disabled={busy}
+                                                            title="Вернуть команду в Тур 3 без права на ошибку"
+                                                            onClick={() =>
+                                                                setConfirmModal({
+                                                                    title: `Вернуть «${t.name}» в игру?`,
+                                                                    body: "Команда продолжит Тур 3 без права на ошибку: следующая неверная оценка снова выбьет её из тура.",
+                                                                    confirmLabel: "Вернуть в игру",
+                                                                    variant: "success",
+                                                                    onConfirm: () =>
+                                                                        run(
+                                                                            () =>
+                                                                                axiosQuizRestoreTeam(
+                                                                                    eventId,
+                                                                                    t.team_id,
+                                                                                ),
+                                                                            `Команда возвращена в игру: ${t.name}`,
+                                                                        ),
+                                                                })
+                                                            }
+                                                        >
+                                                            Вернуть
+                                                        </Button>
+                                                    </>
                                                 )}
                                             </td>
                                             <td>

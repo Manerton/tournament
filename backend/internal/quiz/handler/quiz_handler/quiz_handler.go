@@ -26,6 +26,7 @@ type QuizServiceInterface interface {
 	PauseTimer(ctx context.Context, eventID uuid.UUID) error
 	ResumeTimer(ctx context.Context, eventID uuid.UUID) error
 	CloseQuestion(ctx context.Context, eventID uuid.UUID) error
+	CancelQuestion(ctx context.Context, eventID uuid.UUID) error
 	RevealAnswer(ctx context.Context, eventID uuid.UUID) error
 	ShowLeaderboard(ctx context.Context, eventID uuid.UUID, show bool) error
 	GrantTurn(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID) error
@@ -33,6 +34,7 @@ type QuizServiceInterface interface {
 	ResetTournament(ctx context.Context, eventID uuid.UUID) error
 	AdjustScore(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID, round int, delta int) error
 	AdminSetOrder(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID, order int) error
+	RestoreTeam(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID) error
 
 	StartTiebreak(ctx context.Context, eventID uuid.UUID, teamIDs []uuid.UUID) error
 	StartTiebreakQuestion(ctx context.Context, eventID uuid.UUID) error
@@ -381,6 +383,10 @@ func (h *QuizHandler) CloseQuestion(w http.ResponseWriter, r *http.Request) {
 	h.simpleAdminAction(w, r, h.quizService.CloseQuestion)
 }
 
+func (h *QuizHandler) CancelQuestion(w http.ResponseWriter, r *http.Request) {
+	h.simpleAdminAction(w, r, h.quizService.CancelQuestion)
+}
+
 func (h *QuizHandler) RevealAnswer(w http.ResponseWriter, r *http.Request) {
 	h.simpleAdminAction(w, r, h.quizService.RevealAnswer)
 }
@@ -462,6 +468,35 @@ func (h *QuizHandler) GrantTurn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, response.SuccessResponse("turn granted"))
+}
+
+// RestoreTeam returns an eliminated round-3 team to the competition.
+func (h *QuizHandler) RestoreTeam(w http.ResponseWriter, r *http.Request) {
+	eventID, ok := parseEventID(w, r)
+	if !ok {
+		return
+	}
+
+	var req grantRequest
+	if err := render.DecodeJSON(r.Body, &req); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	teamID, err := uuid.Parse(req.TeamID)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	if err := h.quizService.RestoreTeam(r.Context(), eventID, teamID); err != nil {
+		renderError(w, r, err)
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("team restored"))
 }
 
 type adjustScoreRequest struct {

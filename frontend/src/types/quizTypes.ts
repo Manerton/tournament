@@ -18,6 +18,7 @@ export interface QuizQuestionState {
     answer: string;
     explanation: string;
     criteria: string;
+    cancelled: boolean;
 }
 
 export interface QuizBuzzEntry {
@@ -72,6 +73,7 @@ export interface QuizQuestion {
     explanation: string;
     criteria: string;
     used: boolean; // reserve-pool questions: shown once, never again
+    cancelled: boolean; // annulled question: results cancelled for all teams
 }
 
 export interface HeraldLoginResponse {

@@ -237,6 +237,18 @@ export default function QuizHerald() {
     const renderBuzzControls = (isTiebreak: boolean) => {
         if (!state) return null;
 
+        // The question is annulled — no buzzes or grades are accepted anymore
+        if (state.question?.cancelled) {
+            return (
+                <div className="quiz-status-card muted">
+                    <div className="quiz-status-title">Вопрос отменён</div>
+                    <div className="quiz-status-desc">
+                        Результаты вопроса аннулированы. Ожидайте следующий вопрос…
+                    </div>
+                </div>
+            );
+        }
+
         const queueIdx = state.buzz_queue.findIndex((b) => b.team_id === team.team_id);
         const entry = queueIdx >= 0 ? state.buzz_queue[queueIdx] : undefined;
         const myTurn = entry?.status === BuzzStatus.Pending && entry.is_active;
@@ -454,6 +466,27 @@ export default function QuizHerald() {
 
         // 7. Round 2: What? Where? When? (3 grading buttons)
         if (state.current_round === 2) {
+            if (state.question?.cancelled) {
+                return (
+                    <div className="quiz-status-card muted">
+                        <div className="quiz-status-title">Вопрос отменён</div>
+                        <div className="quiz-status-desc">
+                            Результаты вопроса аннулированы. Ожидайте следующий вопрос…
+                        </div>
+                    </div>
+                );
+            }
+            // grading opens only after the question time is over (or the host closes it)
+            if (state.timer.remaining_ms > 0) {
+                return (
+                    <div className="quiz-status-card waiting">
+                        <div className="quiz-status-title">Идёт время на ответ</div>
+                        <div className="quiz-status-desc">
+                            Оценка бланка откроется после окончания времени.
+                        </div>
+                    </div>
+                );
+            }
             return (
                 <div className="quiz-herald-stage">
                     <div className="quiz-stage-label">Оценка бланка команды</div>
@@ -489,6 +522,16 @@ export default function QuizHerald() {
 
         // 8. Round 3 — Screen 3.2 (Grading with lives)
         if (state.current_round === 3 && myTeamState && currentOrderCfg) {
+            if (state.question?.cancelled) {
+                return (
+                    <div className="quiz-status-card muted">
+                        <div className="quiz-status-title">Вопрос отменён</div>
+                        <div className="quiz-status-desc">
+                            Результаты вопроса аннулированы. Ожидайте следующий вопрос…
+                        </div>
+                    </div>
+                );
+            }
             const maxMistakes = currentOrderCfg.maxMistakes;
             const livesLeft = myTeamState.round3_lives_left;
 

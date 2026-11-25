@@ -20,6 +20,7 @@ type QuestionState struct {
 	Answer      string `json:"answer"`
 	Explanation string `json:"explanation"`
 	Criteria    string `json:"criteria"`
+	Cancelled   bool   `json:"cancelled"`
 }
 
 type BuzzEntry struct {
