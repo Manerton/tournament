@@ -237,6 +237,7 @@ export const axiosQuizResumeTimer = (eventId: string) => adminAction(eventId, "q
 export const axiosQuizCloseQuestion = (eventId: string) => adminAction(eventId, "question/close");
 export const axiosQuizRevealAnswer = (eventId: string) => adminAction(eventId, "question/reveal");
 export const axiosQuizResetQuestion = (eventId: string) => adminAction(eventId, "question/reset");
+export const axiosQuizResetTournament = (eventId: string) => adminAction(eventId, "reset");
 
 export async function axiosQuizShowLeaderboard(eventId: string, show: boolean): Promise<void> {
     try {

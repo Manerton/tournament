@@ -276,9 +276,17 @@ export default function QuizDisplay() {
                 ) : !state.question ? (
                     <div className="quiz-display-idle">
                         <div className="quiz-idle-title">
-                            {state.round_active
-                                ? "Ожидание вопроса…"
-                                : "Добро пожаловать на математический турнир!"}
+                            {state.round_active ? (
+                                "Ожидание вопроса…"
+                            ) : (
+                                <>
+                                    Добро пожаловать на
+                                    <br />
+                                    Третий региональный математический турнир школьных команд
+                                    <br />
+                                    «Королевская битва»!
+                                </>
+                            )}
                         </div>
                         {roundCfg && (
                             <div className="quiz-idle-subtitle">

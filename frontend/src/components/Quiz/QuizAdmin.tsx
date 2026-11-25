@@ -26,6 +26,7 @@ import {
     axiosQuizPauseTimer,
     axiosQuizRegisterButton,
     axiosQuizResetQuestion,
+    axiosQuizResetTournament,
     axiosQuizResumeTimer,
     axiosQuizRevealAnswer,
     axiosQuizSetOrder,
@@ -450,6 +451,17 @@ export default function QuizAdmin() {
         );
     };
 
+    const requestResetTournament = () => {
+        setConfirmModal({
+            title: "Сбросить турнир полностью?",
+            body: "Будут удалены ВСЕ очки команд (включая ручные поправки), все ответы и нажатия кнопок, данные переигровки, а прогресс туров вернётся к началу. Резервные вопросы снова станут доступны. Команды, их коды доступа и вопросы сохранятся. Действие необратимо!",
+            confirmLabel: "Да, сбросить всё",
+            variant: "danger",
+            onConfirm: () =>
+                run(() => axiosQuizResetTournament(eventId), "Турнир сброшен: все очки и прогресс удалены"),
+        });
+    };
+
     const showOrderColumn = currentRound === 3 || showAllColumns;
     const showGrantTurnColumn = currentRound === 1 || showAllColumns;
 
@@ -514,6 +526,13 @@ export default function QuizAdmin() {
                         {state?.leaderboard_shown
                             ? "Скрыть табло с проектора"
                             : "Вывести табло на проектор"}
+                    </Button>
+                    <Button
+                        variant="outline-danger"
+                        disabled={busy}
+                        onClick={requestResetTournament}
+                    >
+                        Сбросить турнир
                     </Button>
                 </div>
             </header>

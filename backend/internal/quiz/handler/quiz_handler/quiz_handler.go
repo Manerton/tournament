@@ -30,6 +30,7 @@ type QuizServiceInterface interface {
 	ShowLeaderboard(ctx context.Context, eventID uuid.UUID, show bool) error
 	GrantTurn(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID) error
 	ResetQuestion(ctx context.Context, eventID uuid.UUID) error
+	ResetTournament(ctx context.Context, eventID uuid.UUID) error
 	AdjustScore(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID, round int, delta int) error
 	AdminSetOrder(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID, order int) error
 
@@ -386,6 +387,10 @@ func (h *QuizHandler) RevealAnswer(w http.ResponseWriter, r *http.Request) {
 
 func (h *QuizHandler) ResetQuestion(w http.ResponseWriter, r *http.Request) {
 	h.simpleAdminAction(w, r, h.quizService.ResetQuestion)
+}
+
+func (h *QuizHandler) ResetTournament(w http.ResponseWriter, r *http.Request) {
+	h.simpleAdminAction(w, r, h.quizService.ResetTournament)
 }
 
 func (h *QuizHandler) simpleAdminAction(w http.ResponseWriter, r *http.Request, action func(ctx context.Context, eventID uuid.UUID) error) {

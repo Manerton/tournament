@@ -71,3 +71,15 @@ func (r *QuizBuzzRepository) DeleteByQuestion(ctx context.Context, db *gorm.DB, 
 	}
 	return nil
 }
+
+func (r *QuizBuzzRepository) DeleteByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) error {
+	const op = "repository.QuizBuzzRepository.DeleteByEvent"
+
+	err := db.WithContext(ctx).
+		Where(quiz_buzz.QuizBuzz{EventID: eventID}).
+		Delete(&quiz_buzz.QuizBuzz{}).Error
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}

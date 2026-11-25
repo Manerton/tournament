@@ -75,3 +75,18 @@ func (r *QuizQuestionRepository) Upsert(ctx context.Context, db *gorm.DB, questi
 	}
 	return nil
 }
+
+// ResetUsedByEvent clears the used flag of all questions of the event
+// (only reserve-pool questions ever have it set).
+func (r *QuizQuestionRepository) ResetUsedByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) error {
+	const op = "repository.QuizQuestionRepository.ResetUsedByEvent"
+
+	err := db.WithContext(ctx).
+		Model(&quiz_question.QuizQuestion{}).
+		Where(quiz_question.QuizQuestion{EventID: eventID}).
+		Updates(map[string]interface{}{"used": false}).Error
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}

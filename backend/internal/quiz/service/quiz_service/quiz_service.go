@@ -104,6 +104,7 @@ type QuizQuestionRepositoryInterface interface {
 	GetByNumber(ctx context.Context, db *gorm.DB, eventID uuid.UUID, round int, number int) (quiz_question.QuizQuestion, error)
 	Upsert(ctx context.Context, db *gorm.DB, question quiz_question.QuizQuestion) error
 	DeleteByID(ctx context.Context, db *gorm.DB, id uuid.UUID) error
+	ResetUsedByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) error
 }
 
 type QuizTeamRepositoryInterface interface {
@@ -111,6 +112,7 @@ type QuizTeamRepositoryInterface interface {
 	GetByTeamID(ctx context.Context, db *gorm.DB, eventID uuid.UUID, teamID uuid.UUID) (quiz_team.QuizTeam, error)
 	GetByAccessCode(ctx context.Context, db *gorm.DB, eventID uuid.UUID, code string) (quiz_team.QuizTeam, error)
 	Save(ctx context.Context, db *gorm.DB, team quiz_team.QuizTeam) error
+	ResetScoresByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) error
 }
 
 type QuizBuzzRepositoryInterface interface {
@@ -118,11 +120,13 @@ type QuizBuzzRepositoryInterface interface {
 	GetByTeamAndQuestion(ctx context.Context, db *gorm.DB, eventID uuid.UUID, round int, questionNumber int, teamID uuid.UUID) (quiz_buzz.QuizBuzz, error)
 	Save(ctx context.Context, db *gorm.DB, buzz quiz_buzz.QuizBuzz) error
 	DeleteByQuestion(ctx context.Context, db *gorm.DB, eventID uuid.UUID, round int, questionNumber int) error
+	DeleteByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) error
 }
 
 type QuizAnswerRepositoryInterface interface {
 	GetByTeamAndRound(ctx context.Context, db *gorm.DB, eventID uuid.UUID, round int, teamID uuid.UUID) ([]quiz_answer.QuizAnswer, error)
 	Upsert(ctx context.Context, db *gorm.DB, answer quiz_answer.QuizAnswer) error
+	DeleteByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) error
 }
 
 type TeamRepositoryInterface interface {
@@ -695,6 +699,57 @@ func (s *QuizService) ResetQuestion(ctx context.Context, eventID uuid.UUID) erro
 		t.deadline = time.Now().Add(t.remaining)
 		t.running = true
 	}
+	s.mu.Unlock()
+
+	return s.broadcastState(ctx, eventID)
+}
+
+// ResetTournament wipes all quiz progress of the event: buzzes, answers,
+// tiebreak data and every team's scores (including manual adjustments and
+// round-3 order state), returns the session to the initial state, and marks
+// reserve-pool questions as unused again.
+// Teams, access codes and questions are kept.
+func (s *QuizService) ResetTournament(ctx context.Context, eventID uuid.UUID) error {
+	const op = "service.QuizService.ResetTournament"
+	log := s.log.With(slog.String("op", op))
+
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := s.buzzRepository.DeleteByEvent(ctx, tx, eventID); err != nil {
+			return err
+		}
+		if err := s.answerRepository.DeleteByEvent(ctx, tx, eventID); err != nil {
+			return err
+		}
+		if err := s.tiebreakRepository.DeleteByEvent(ctx, tx, eventID); err != nil {
+			return err
+		}
+		if err := s.teamRepository.ResetScoresByEvent(ctx, tx, eventID); err != nil {
+			return err
+		}
+		if err := s.questionRepository.ResetUsedByEvent(ctx, tx, eventID); err != nil {
+			return err
+		}
+
+		session, err := s.sessionRepository.GetOrCreate(ctx, tx, eventID)
+		if err != nil {
+			return err
+		}
+		session.CurrentRound = 0
+		session.CurrentQuestion = 0
+		session.AnswerRevealed = false
+		session.RoundActive = false
+		session.TiebreakActive = false
+		session.TiebreakQuestion = 0
+		return s.sessionRepository.Save(ctx, tx, session)
+	})
+	if err != nil {
+		log.Error("failed reset tournament", logger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	s.mu.Lock()
+	delete(s.timers, eventID)
+	delete(s.buzzWindows, eventID)
 	s.mu.Unlock()
 
 	return s.broadcastState(ctx, eventID)
