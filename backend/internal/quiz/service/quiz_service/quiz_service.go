@@ -45,9 +45,9 @@ const (
 )
 
 var RoundConfigs = []quiz_dto.RoundConfig{
-	{Round: 1, Name: "Стрелы логики", QuestionCount: 20, TimeSec: 60},
-	{Round: 2, Name: "Вектор удара", QuestionCount: 15, TimeSec: 60},
-	{Round: 3, Name: "Формула клинка", QuestionCount: 10, TimeSec: 120},
+	{Round: 1, Name: "Стрелы логики", QuestionCount: 17, TimeSec: 60},
+	{Round: 2, Name: "Вектор удара", QuestionCount: 12, TimeSec: 60},
+	{Round: 3, Name: "Формула клинка", QuestionCount: 7, TimeSec: 120},
 }
 
 func roundConfig(round int) (quiz_dto.RoundConfig, bool) {
