@@ -37,7 +37,7 @@ function BoardColumn({ title, rows }: { title: string; rows: BoardRow[] }) {
                     const pct = value > 0 ? Math.max((value / max) * 100, 10) : 0;
                     return (
                         <div
-                            className={`quiz-bar-row${rank <= 3 ? ` rank-${rank}` : ""}`}
+                            className={`quiz-bar-row${rank <= 4 ? ` rank-${rank}` : ""}`}
                             key={team.team_id}
                         >
                             <div className="quiz-bar-rank">{rank}</div>

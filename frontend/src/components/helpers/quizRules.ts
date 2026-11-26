@@ -99,7 +99,7 @@ export const QUIZ_ROUND_RULES: QuizRoundRules[] = [
 
 export const QUIZ_TIEBREAK_RULES = {
     title: "Тай-брейк",
-    subtitle: "Борьба за призовые места (1–3)",
+    subtitle: "Борьба за призовые места (1 – 4-е место)",
     params: ["60 секунд", "Брейн-ринг"],
     bullets: [
         "Кнопки активны только у команд с равным счётом за призовое место.",
