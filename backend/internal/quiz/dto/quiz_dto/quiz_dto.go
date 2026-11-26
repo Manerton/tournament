@@ -57,6 +57,7 @@ type PublicState struct {
 	RoundActive      bool           `json:"round_active"`
 	AnswerRevealed   bool           `json:"answer_revealed"`
 	LeaderboardShown bool           `json:"leaderboard_shown"`
+	RulesView        string         `json:"rules_view"`
 	TiebreakActive   bool           `json:"tiebreak_active"`
 	TiebreakQuestion int            `json:"tiebreak_question"`
 	Timer            TimerState     `json:"timer"`

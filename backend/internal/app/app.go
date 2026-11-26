@@ -239,6 +239,7 @@ func (a *App) initRoutes(router *chi.Mux,
 			r.Post("/{id}/question/reset", quizHandler.ResetQuestion)
 			r.Post("/{id}/reset", quizHandler.ResetTournament)
 			r.Post("/{id}/leaderboard", quizHandler.ShowLeaderboard)
+			r.Post("/{id}/rules", quizHandler.ShowRules)
 			r.Post("/{id}/grant", quizHandler.GrantTurn)
 			r.Post("/{id}/adjust", quizHandler.AdjustScore)
 			r.Post("/{id}/order", quizHandler.AdminSetOrder)

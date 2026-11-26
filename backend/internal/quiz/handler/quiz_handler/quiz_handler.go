@@ -29,6 +29,7 @@ type QuizServiceInterface interface {
 	CancelQuestion(ctx context.Context, eventID uuid.UUID) error
 	RevealAnswer(ctx context.Context, eventID uuid.UUID) error
 	ShowLeaderboard(ctx context.Context, eventID uuid.UUID, show bool) error
+	ShowRules(ctx context.Context, eventID uuid.UUID, view string) error
 	GrantTurn(ctx context.Context, eventID uuid.UUID, teamID uuid.UUID) error
 	ResetQuestion(ctx context.Context, eventID uuid.UUID) error
 	ResetTournament(ctx context.Context, eventID uuid.UUID) error
@@ -436,6 +437,31 @@ func (h *QuizHandler) ShowLeaderboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, response.SuccessResponse("leaderboard toggled"))
+}
+
+type showRulesRequest struct {
+	View string `json:"view"`
+}
+
+func (h *QuizHandler) ShowRules(w http.ResponseWriter, r *http.Request) {
+	eventID, ok := parseEventID(w, r)
+	if !ok {
+		return
+	}
+
+	var req showRulesRequest
+	if err := render.DecodeJSON(r.Body, &req); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest))
+		return
+	}
+
+	if err := h.quizService.ShowRules(r.Context(), eventID, req.View); err != nil {
+		renderError(w, r, err)
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("rules view toggled"))
 }
 
 type grantRequest struct {

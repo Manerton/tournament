@@ -451,6 +451,8 @@ func (s *QuizService) StartRound(ctx context.Context, eventID uuid.UUID, round i
 	session.RoundActive = true
 	session.AnswerRevealed = false
 	session.LeaderboardShown = false
+	// the projector auto-shows the new round's rules slide at question 0
+	session.RulesView = "none"
 
 	if err := s.sessionRepository.Save(ctx, s.db, session); err != nil {
 		log.Error("failed save session", logger.Err(err))
@@ -486,6 +488,7 @@ func (s *QuizService) StartQuestion(ctx context.Context, eventID uuid.UUID) erro
 
 	session.CurrentQuestion++
 	session.AnswerRevealed = false
+	session.RulesView = "none"
 	if err := s.sessionRepository.Save(ctx, s.db, session); err != nil {
 		log.Error("failed save session", logger.Err(err))
 		return errs.ErrInternalError
@@ -715,11 +718,51 @@ func (s *QuizService) ShowLeaderboard(ctx context.Context, eventID uuid.UUID, sh
 		return errs.ErrInternalError
 	}
 	session.LeaderboardShown = show
+	if show {
+		// full-screen modes are mutually exclusive
+		session.RulesView = "none"
+	}
 	if err := s.sessionRepository.Save(ctx, s.db, session); err != nil {
 		log.Error("failed save session", logger.Err(err))
 		return errs.ErrInternalError
 	}
 	return s.broadcastState(ctx, eventID)
+}
+
+// ShowRules switches the projector rules slide: "none", "overview", "1", "2" or "3".
+func (s *QuizService) ShowRules(ctx context.Context, eventID uuid.UUID, view string) error {
+	const op = "service.QuizService.ShowRules"
+	log := s.log.With(slog.String("op", op))
+
+	switch view {
+	case "none", "overview", "1", "2", "3":
+	default:
+		return errs.ErrBadRequest.Wrap("Некорректный режим правил")
+	}
+
+	session, err := s.getSession(ctx, eventID)
+	if err != nil {
+		log.Error("failed get session", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	session.RulesView = view
+	if view != "none" {
+		// full-screen modes are mutually exclusive
+		session.LeaderboardShown = false
+	}
+	if err := s.sessionRepository.Save(ctx, s.db, session); err != nil {
+		log.Error("failed save session", logger.Err(err))
+		return errs.ErrInternalError
+	}
+	return s.broadcastState(ctx, eventID)
+}
+
+// normalizeRulesView guards against an empty value from legacy rows.
+func normalizeRulesView(view string) string {
+	if view == "" {
+		return "none"
+	}
+	return view
 }
 
 // GrantTurn manually gives the answering turn to a team (human-error correction).
@@ -879,6 +922,7 @@ func (s *QuizService) ResetTournament(ctx context.Context, eventID uuid.UUID) er
 		session.RoundActive = false
 		session.TiebreakActive = false
 		session.TiebreakQuestion = 0
+		session.RulesView = "none"
 		return s.sessionRepository.Save(ctx, tx, session)
 	})
 	if err != nil {
@@ -1695,6 +1739,8 @@ func (s *QuizService) StartTiebreak(ctx context.Context, eventID uuid.UUID, team
 	session.TiebreakQuestion = 0
 	session.AnswerRevealed = false
 	session.LeaderboardShown = false
+	// the projector auto-shows the tie-break rules slide at question 0
+	session.RulesView = "none"
 	if err := s.sessionRepository.Save(ctx, s.db, session); err != nil {
 		log.Error("failed save session", logger.Err(err))
 		return errs.ErrInternalError
@@ -1749,6 +1795,7 @@ func (s *QuizService) StartTiebreakQuestion(ctx context.Context, eventID uuid.UU
 
 	session.TiebreakQuestion = next.QuestionNumber
 	session.AnswerRevealed = false
+	session.RulesView = "none"
 	if err := s.sessionRepository.Save(ctx, s.db, session); err != nil {
 		log.Error("failed save session", logger.Err(err))
 		return errs.ErrInternalError
@@ -1985,6 +2032,7 @@ func (s *QuizService) GetPublicState(ctx context.Context, eventID uuid.UUID) (qu
 		RoundActive:      session.RoundActive,
 		AnswerRevealed:   session.AnswerRevealed,
 		LeaderboardShown: session.LeaderboardShown,
+		RulesView:        normalizeRulesView(session.RulesView),
 		TiebreakActive:   session.TiebreakActive,
 		TiebreakQuestion: session.TiebreakQuestion,
 		AttemptsMax:      MaxAttemptsRound1,

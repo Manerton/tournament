@@ -10,6 +10,7 @@ import type {
     QuizButtonAdmin,
     QuizPublicState,
     QuizQuestion,
+    QuizRulesView,
     QuizTeamAdmin,
 } from "../types/quizTypes";
 
@@ -246,6 +247,15 @@ export async function axiosQuizShowLeaderboard(eventId: string, show: boolean): 
         unwrap(res.data);
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Не удалось переключить таблицу");
+    }
+}
+
+export async function axiosQuizShowRules(eventId: string, view: QuizRulesView): Promise<void> {
+    try {
+        const res = await api.post<ApiResponse<void>>(`/api/quiz/admin/${eventId}/rules`, { view });
+        unwrap(res.data);
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Не удалось переключить экран правил");
     }
 }
 

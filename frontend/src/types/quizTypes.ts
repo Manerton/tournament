@@ -45,6 +45,8 @@ export interface QuizTeamState {
     in_tiebreak: boolean; // still competing in the active tie-break group
 }
 
+export type QuizRulesView = "none" | "overview" | "1" | "2" | "3";
+
 export interface QuizPublicState {
     event_id: string;
     current_round: number;
@@ -52,6 +54,7 @@ export interface QuizPublicState {
     round_active: boolean;
     answer_revealed: boolean;
     leaderboard_shown: boolean;
+    rules_view: QuizRulesView;
     tiebreak_active: boolean;
     tiebreak_question: number; // reserve-pool question currently shown, 0 = none
     timer: QuizTimerState;

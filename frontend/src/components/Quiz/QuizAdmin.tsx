@@ -34,12 +34,13 @@ import {
     axiosQuizSetOrder,
     axiosQuizSetupTeams,
     axiosQuizShowLeaderboard,
+    axiosQuizShowRules,
     axiosQuizStartQuestion,
     axiosQuizStartRound,
     axiosQuizStartTiebreak,
     axiosQuizStartTiebreakQuestion,
 } from "../../requests/quizRequests";
-import { BuzzStatus, type QuizButtonAdmin, type QuizQuestion, type QuizTeamAdmin } from "../../types/quizTypes";
+import { BuzzStatus, type QuizButtonAdmin, type QuizQuestion, type QuizRulesView, type QuizTeamAdmin } from "../../types/quizTypes";
 import "../../assets/Quiz.css";
 
 type AdminTab = "live" | "teams" | "setup";
@@ -378,24 +379,55 @@ export default function QuizAdmin() {
         green: teams.filter((t) => t.round3_order === 3).length,
     };
 
-    // Screen status indicator for the projector
-    const screenStatus = state?.tiebreak_active
-        ? {
-              label:
-                  tiebreakQuestionNumber > 0
-                      ? `Переигровка · резервный вопрос ${tiebreakQuestionNumber}`
-                      : "Переигровка · ожидание вопроса",
-              tone: "warning" as const,
-          }
-        : state?.leaderboard_shown
+    // Screen status indicator for the projector (mirrors the display render priority)
+    const rulesView: QuizRulesView = state?.rules_view ?? "none";
+    const manualRulesView = rulesView !== "none" ? rulesView : null;
+    const autoRulesSlide =
+        state?.leaderboard_shown || manualRulesView
+            ? null
+            : tiebreakActive && tiebreakQuestionNumber === 0
+              ? "tiebreak"
+              : !tiebreakActive && currentRound > 0 && currentQuestion === 0
+                ? `Тура ${currentRound}`
+                : null;
+
+    const screenStatus = state?.leaderboard_shown
         ? { label: "Таблица лидеров", tone: "info" as const }
-        : !roundCfg
-          ? { label: "Заставка / ожидание", tone: "secondary" as const }
-          : !hasActiveQuestion
-            ? { label: `Заголовок Тура ${roundCfg.round}`, tone: "secondary" as const }
-            : state?.answer_revealed
-              ? { label: `Вопрос ${currentQuestion} · Ответ показан`, tone: "success" as const }
-              : { label: `Вопрос ${currentQuestion} · Ответ скрыт`, tone: "primary" as const };
+        : manualRulesView === "overview"
+          ? { label: "Правила: обзор всех туров", tone: "info" as const }
+          : manualRulesView
+            ? { label: `Правила Тура ${manualRulesView}`, tone: "info" as const }
+            : autoRulesSlide === "tiebreak"
+              ? { label: "Правила: тай-брейк (авто)", tone: "warning" as const }
+              : autoRulesSlide
+                ? { label: `Правила ${autoRulesSlide} (авто)`, tone: "secondary" as const }
+                : state?.tiebreak_active
+                  ? {
+                        label:
+                            tiebreakQuestionNumber > 0
+                                ? `Переигровка · резервный вопрос ${tiebreakQuestionNumber}`
+                                : "Переигровка · ожидание вопроса",
+                        tone: "warning" as const,
+                    }
+                  : !roundCfg
+                    ? { label: "Заставка / ожидание", tone: "secondary" as const }
+                    : !hasActiveQuestion
+                      ? { label: `Заголовок Тура ${roundCfg.round}`, tone: "secondary" as const }
+                      : state?.answer_revealed
+                        ? { label: `Вопрос ${currentQuestion} · Ответ показан`, tone: "success" as const }
+                        : { label: `Вопрос ${currentQuestion} · Ответ скрыт`, tone: "primary" as const };
+
+    const toggleRulesView = (view: Exclude<QuizRulesView, "none">) => {
+        const next: QuizRulesView = rulesView === view ? "none" : view;
+        run(
+            () => axiosQuizShowRules(eventId, next),
+            next === "none"
+                ? "Экран правил скрыт с проектора"
+                : next === "overview"
+                  ? "На проекторе: обзор правил всех туров"
+                  : `На проекторе: правила Тура ${next}`,
+        );
+    };
 
     const requestStartRound = (targetRound: number) => {
         const targetInfo = state?.rounds.find((r) => r.round === targetRound);
@@ -542,6 +574,45 @@ export default function QuizAdmin() {
                     </Button>
                 </div>
             </header>
+
+            {/* Projector rules screen switch (secondary to the live controls) */}
+            <div className="quiz-rules-switch">
+                <span className="quiz-rules-switch-label">Экран правил:</span>
+                <Button
+                    size="sm"
+                    variant={rulesView === "overview" ? "info" : "outline-secondary"}
+                    disabled={busy}
+                    onClick={() => toggleRulesView("overview")}
+                >
+                    Обзор всех туров
+                </Button>
+                {([1, 2, 3] as const).map((r) => (
+                    <Button
+                        key={r}
+                        size="sm"
+                        variant={rulesView === String(r) ? "info" : "outline-secondary"}
+                        disabled={busy}
+                        onClick={() => toggleRulesView(String(r) as Exclude<QuizRulesView, "none">)}
+                    >
+                        Тур {r}
+                    </Button>
+                ))}
+                {rulesView !== "none" && (
+                    <Button
+                        size="sm"
+                        variant="outline-danger"
+                        disabled={busy}
+                        onClick={() =>
+                            run(
+                                () => axiosQuizShowRules(eventId, "none"),
+                                "Экран правил скрыт с проектора",
+                            )
+                        }
+                    >
+                        Скрыть правила
+                    </Button>
+                )}
+            </div>
 
             {/* Round Stepper (Timeline) */}
             <section className="quiz-round-stepper" aria-label="Этапы турнира">

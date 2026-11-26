@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuizState } from "../helpers/useQuizState";
+import { useQuizSounds } from "../helpers/useQuizSounds";
+import { quizSoundEngine } from "../helpers/quizSoundEngine";
+import {
+    QUIZ_ROUND_RULES,
+    QUIZ_RULES_FOOTER,
+    QUIZ_TIEBREAK_RULES,
+    type QuizRoundRules,
+} from "../helpers/quizRules";
 import { BuzzStatus, type QuizTeamState } from "../../types/quizTypes";
 import BackgroundParticles from "../common/BackgroundParticles";
 import "../../assets/Quiz.css";
@@ -93,53 +101,154 @@ function Leaderboard({ round, teams }: { round: number; teams: QuizTeamState[] }
     );
 }
 
+type RulesSlideView = "overview" | "1" | "2" | "3" | "tiebreak";
+
+/** Renders **bold** markers from the rules config. */
+function renderRuleText(text: string) {
+    return text.split("**").map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part));
+}
+
+function RoundRulesSlide({ rules }: { rules: QuizRoundRules }) {
+    return (
+        <div className="quiz-rules-slide">
+            <div className="quiz-rules-head">
+                <div className="quiz-rules-title">
+                    Тур {rules.round} · «{rules.name}»
+                </div>
+                <div className="quiz-rules-format">{rules.format}</div>
+            </div>
+
+            <div className="quiz-rules-params">
+                {rules.params.map((p) => (
+                    <span className="quiz-rules-pill" key={p}>
+                        {p}
+                    </span>
+                ))}
+            </div>
+
+            {rules.note && <div className="quiz-rules-note">{rules.note}</div>}
+
+            {rules.bullets.length > 0 && (
+                <ol className="quiz-rules-bullets">
+                    {rules.bullets.map((b, i) => (
+                        <li key={i}>{renderRuleText(b)}</li>
+                    ))}
+                </ol>
+            )}
+
+            {rules.scores && (
+                <div className="quiz-rules-scores">
+                    {rules.scores.map((s) => (
+                        <div className={`quiz-rules-score tone-${s.tone}`} key={s.label}>
+                            <span className="quiz-rules-score-label">{s.label}</span>
+                            <span className="quiz-rules-score-points">{s.points}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {rules.orders && (
+                <div className="quiz-rules-orders">
+                    {rules.orders.map((o) => (
+                        <div className={`quiz-rules-order tone-${o.tone}`} key={o.name}>
+                            <div className="quiz-rules-order-name">{o.name}</div>
+                            <div className="quiz-rules-order-points">{o.points}</div>
+                            <div className="quiz-rules-order-mistakes">{o.mistakes}</div>
+                            <div className="quiz-rules-order-note">({o.note})</div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function OverviewRulesSlide() {
+    return (
+        <div className="quiz-rules-slide">
+            <div className="quiz-rules-head">
+                <div className="quiz-rules-title">Правила турнира</div>
+                <div className="quiz-rules-format">Три тура «Королевской битвы»</div>
+            </div>
+
+            <div className="quiz-rules-overview">
+                {QUIZ_ROUND_RULES.map((r) => (
+                    <div className="quiz-rules-col" key={r.round}>
+                        <div className="quiz-rules-col-round">Тур {r.round}</div>
+                        <div className="quiz-rules-col-name">«{r.name}»</div>
+                        <div className="quiz-rules-col-format">{r.format}</div>
+                        <div className="quiz-rules-col-params">
+                            {r.params.map((p) => (
+                                <span className="quiz-rules-pill" key={p}>
+                                    {p}
+                                </span>
+                            ))}
+                        </div>
+                        <div className="quiz-rules-col-highlight">{r.highlight}</div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="quiz-rules-footer">{QUIZ_RULES_FOOTER}</div>
+        </div>
+    );
+}
+
+function TiebreakRulesSlide() {
+    return (
+        <div className="quiz-rules-slide">
+            <div className="quiz-rules-head">
+                <div className="quiz-rules-title">{QUIZ_TIEBREAK_RULES.title}</div>
+                <div className="quiz-rules-format">{QUIZ_TIEBREAK_RULES.subtitle}</div>
+            </div>
+
+            <div className="quiz-rules-params">
+                {QUIZ_TIEBREAK_RULES.params.map((p) => (
+                    <span className="quiz-rules-pill" key={p}>
+                        {p}
+                    </span>
+                ))}
+            </div>
+
+            <ol className="quiz-rules-bullets">
+                {QUIZ_TIEBREAK_RULES.bullets.map((b, i) => (
+                    <li key={i}>{renderRuleText(b)}</li>
+                ))}
+            </ol>
+        </div>
+    );
+}
+
+function RulesSlide({ view }: { view: RulesSlideView }) {
+    if (view === "overview") return <OverviewRulesSlide />;
+    if (view === "tiebreak") return <TiebreakRulesSlide />;
+    const rules = QUIZ_ROUND_RULES.find((r) => r.round === Number(view));
+    return rules ? <RoundRulesSlide rules={rules} /> : null;
+}
+
 export default function QuizDisplay() {
     const { eventId } = useParams<{ eventId: string }>();
     const { state } = useQuizState(eventId);
 
     const [remainingMs, setRemainingMs] = useState<number>(0);
     const [soundUnlocked, setSoundUnlocked] = useState<boolean>(false);
+    const [soundMuted, setSoundMuted] = useState<boolean>(quizSoundEngine.isMuted());
 
     const deadlineRef = useRef<number>(0);
     const runningRef = useRef<boolean>(false);
-    const beepedRef = useRef<string>("");
-    const audioRef = useRef<HTMLAudioElement | null>(null);
 
-    const unlockAudio = () => {
-        try {
-            if (!audioRef.current) {
-                audioRef.current = new Audio("/start.mp3");
-                audioRef.current.volume = 0.6;
-            }
-            const audio = audioRef.current;
-            audio.muted = true;
-            audio
-                .play()
-                .then(() => {
-                    audio.pause();
-                    audio.currentTime = 0;
-                    audio.muted = false;
-                    setSoundUnlocked(true);
-                })
-                .catch(() => {
-                    /* browser still blocked */
-                });
-        } catch {
-            /* audio not available */
-        }
+    useQuizSounds(state, remainingMs);
+
+    const unlockAudio = async () => {
+        const ok = await quizSoundEngine.unlock();
+        setSoundUnlocked(ok);
+        if (ok) quizSoundEngine.playQuestionStart();
     };
 
-    const playTimeoutSound = () => {
-        try {
-            const audio = audioRef.current ?? new Audio("/start.mp3");
-            audio.volume = 0.6;
-            audio.currentTime = 0;
-            audio.play().catch(() => {
-                /* autoplay blocked or audio unavailable */
-            });
-        } catch {
-            /* audio unavailable */
-        }
+    const toggleMute = () => {
+        const next = !quizSoundEngine.isMuted();
+        quizSoundEngine.setMuted(next);
+        setSoundMuted(next);
     };
 
     // Track local deadline so the timer ticks smoothly between broadcasts
@@ -168,19 +277,6 @@ export default function QuizDisplay() {
         return () => clearInterval(tick);
     }, []);
 
-    // Audio cue when the timer hits zero
-    useEffect(() => {
-        if (!state || !state.timer.running) return;
-        const activeQuestion = state.tiebreak_active
-            ? state.tiebreak_question
-            : state.current_question;
-        if (remainingMs > 0 || activeQuestion === 0) return;
-        const key = `${state.tiebreak_active ? "tb" : state.current_round}:${activeQuestion}`;
-        if (beepedRef.current === key) return;
-        beepedRef.current = key;
-        playTimeoutSound();
-    }, [remainingMs, state]);
-
     if (!state) {
         return (
             <div className="quiz-display-root">
@@ -195,7 +291,20 @@ export default function QuizDisplay() {
     const totalDurationSec = state.current_round === 3 && !state.tiebreak_active ? 120 : 60;
     const progressPct = Math.min(100, Math.max(0, (remainingMs / (totalDurationSec * 1000)) * 100));
 
-    const showQuestionScreen = !state.leaderboard_shown && Boolean(state.question);
+    // Projector modes in priority order: leaderboard > rules (manual, then
+    // automatic at question 0) > question > idle splash.
+    const manualRulesView: RulesSlideView | null =
+        state.rules_view && state.rules_view !== "none" ? state.rules_view : null;
+    const rulesSlide: RulesSlideView | null = state.leaderboard_shown
+        ? null
+        : (manualRulesView ??
+          (state.tiebreak_active && state.tiebreak_question === 0
+              ? "tiebreak"
+              : state.current_round > 0 && state.current_question === 0
+                ? (String(state.current_round) as RulesSlideView)
+                : null));
+
+    const showQuestionScreen = !state.leaderboard_shown && !rulesSlide && Boolean(state.question);
     const isPaused =
         showQuestionScreen &&
         state.timer.started &&
@@ -233,13 +342,15 @@ export default function QuizDisplay() {
                 </div>
 
                 <div className="quiz-display-qnum">
-                    {state.question && !state.leaderboard_shown
+                    {showQuestionScreen && state.question
                         ? state.tiebreak_active
                             ? `Резервный вопрос №${state.question.number}`
                             : `Вопрос №${state.question.number}`
                         : state.leaderboard_shown
                           ? "Турнирная таблица"
-                          : ""}
+                          : rulesSlide
+                            ? "Правила"
+                            : ""}
                 </div>
 
                 <div className="quiz-display-header-right">
@@ -249,16 +360,6 @@ export default function QuizDisplay() {
                             {isExpired && <span className="quiz-timer-badge expired">ВРЕМЯ</span>}
                             <span className="quiz-timer-digits">{formatTime(secondsLeft)}</span>
                         </div>
-                    )}
-                    {!soundUnlocked && (
-                        <button
-                            type="button"
-                            className="quiz-sound-unlock"
-                            onClick={unlockAudio}
-                            title="Нажмите один раз перед турниром, чтобы разрешить звуковой сигнал таймера"
-                        >
-                            🔇 Вкл. звук
-                        </button>
                     )}
                 </div>
             </header>
@@ -277,6 +378,8 @@ export default function QuizDisplay() {
             <main className="quiz-display-body">
                 {state.leaderboard_shown ? (
                     <Leaderboard round={state.current_round} teams={state.teams} />
+                ) : rulesSlide ? (
+                    <RulesSlide view={rulesSlide} />
                 ) : !state.question ? (
                     <div className="quiz-display-idle">
                         <div className="quiz-idle-title">
@@ -379,6 +482,34 @@ export default function QuizDisplay() {
                         </span>
                     </div>
                 </footer>
+            )}
+
+            {!soundUnlocked ? (
+                <button
+                    type="button"
+                    className="quiz-sound-pill"
+                    onClick={unlockAudio}
+                    title="Нажмите один раз перед турниром, чтобы разрешить звук на табло"
+                >
+                    🔇 Нажмите, чтобы включить звук
+                </button>
+            ) : (
+                <div className="quiz-sound-controls">
+                    <button
+                        type="button"
+                        onClick={toggleMute}
+                        title={soundMuted ? "Включить звук" : "Выключить звук"}
+                    >
+                        {soundMuted ? "🔇" : "🔊"}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => quizSoundEngine.playQuestionStart()}
+                        title="Проверить громкость в зале"
+                    >
+                        Тест
+                    </button>
+                </div>
             )}
         </div>
     );
