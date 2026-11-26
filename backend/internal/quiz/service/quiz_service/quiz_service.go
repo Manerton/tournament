@@ -104,7 +104,7 @@ type QuizQuestionRepositoryInterface interface {
 	GetByNumber(ctx context.Context, db *gorm.DB, eventID uuid.UUID, round int, number int) (quiz_question.QuizQuestion, error)
 	Upsert(ctx context.Context, db *gorm.DB, question quiz_question.QuizQuestion) error
 	DeleteByID(ctx context.Context, db *gorm.DB, id uuid.UUID) error
-	ResetUsedByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) error
+	ResetFlagsByEvent(ctx context.Context, db *gorm.DB, eventID uuid.UUID) error
 }
 
 type QuizTeamRepositoryInterface interface {
@@ -908,7 +908,7 @@ func (s *QuizService) ResetTournament(ctx context.Context, eventID uuid.UUID) er
 		if err := s.teamRepository.ResetScoresByEvent(ctx, tx, eventID); err != nil {
 			return err
 		}
-		if err := s.questionRepository.ResetUsedByEvent(ctx, tx, eventID); err != nil {
+		if err := s.questionRepository.ResetFlagsByEvent(ctx, tx, eventID); err != nil {
 			return err
 		}
 
